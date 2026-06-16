@@ -69,6 +69,9 @@ def parse_readwise_md(content: str, filename: str = "") -> List[Dict]:
             text = hl_match.group(1).strip()
             # Remove note indicator if present
             text = re.sub(r"^\*\*Note:\*\*\s*", "", text)
+            # Strip trailing Readwise/Kindle URLs like ([Location N](url)) or (url)
+            text = re.sub(r"\s*\(\[?[Ll]ocation\s+\d+\]?\([^)]+\)\)?\s*$", "", text)
+            text = text.strip()
 
             current_highlight = {
                 "text": text,

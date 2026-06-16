@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sa_func, or_
 from app.database import get_db
 from app.models import Highlight, Tag
-from app.schemas import HighlightOut, HighlightCreate
+from app.schemas import HighlightOut, HighlightCreate, HighlightUpdate
 from app.services.highlight_card import generate_card
 from typing import Optional, List
 from datetime import datetime
@@ -161,6 +161,33 @@ async def toggle_favorite(hl_id: int, db: AsyncSession = Depends(get_db)):
     hl.favorite = 0 if hl.favorite else 1
     await db.commit()
     return {"id": hl_id, "favorite": hl.favorite}
+
+
+@router.put("/api/highlights/{hl_id}")
+async def update_highlight(hl_id: int, data: HighlightUpdate, db: AsyncSession = Depends(get_db)):
+    hl = await db.get(Highlight, hl_id)
+    if not hl:
+        return {"error": "Not found"}, 404
+    
+    update_data = data.model_dump(exclude_unset=True)
+    tag_names = update_data.pop("tags", None)
+    
+    for key, value in update_data.items():
+        setattr(hl, key, value)
+    
+    if tag_names is not None:
+        hl.tags = []
+        for tag_name in tag_names:
+            result = await db.execute(select(Tag).where(Tag.name == tag_name))
+            tag = result.scalar_one_or_none()
+            if not tag:
+                tag = Tag(name=tag_name)
+                db.add(tag)
+            hl.tags.append(tag)
+    
+    await db.commit()
+    await db.refresh(hl)
+    return {"ok": True, "id": hl.id}
 
 
 @router.get("/api/highlights/{hl_id}/card")

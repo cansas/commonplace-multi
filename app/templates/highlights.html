@@ -119,7 +119,39 @@
                                         {% endfor %}
                                     </span>
                                     {% endif %}
-                                    <a href="/api/highlights/{{ h.id }}/card" target="_blank" class="ml-auto px-3 py-1 bg-indigo-50 text-indigo-600 rounded text-xs font-medium hover:bg-indigo-100 transition-colors">📤 Share</a>
+                                    <button onclick="event.stopPropagation(); toggleEdit({{ h.id }})" class="px-3 py-1 bg-white border border-slate-200 text-slate-600 rounded text-xs font-medium hover:bg-slate-50 transition-colors">✏️ Edit</button>
+                                    <a href="/api/highlights/{{ h.id }}/card" target="_blank" class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded text-xs font-medium hover:bg-indigo-100 transition-colors">📤 Share</a>
+                                </div>
+                            </div>
+                            <!-- Inline Edit Form -->
+                            <div id="edit-{{ h.id }}" class="hidden mt-4 ml-8 p-4 bg-white border border-slate-200 rounded-lg">
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="text-xs font-semibold text-slate-500 block mb-1">Highlight</label>
+                                        <textarea id="edit-text-{{ h.id }}" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-serif italic" rows="3">{{ h.text }}</textarea>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-slate-500 block mb-1">Note</label>
+                                        <textarea id="edit-note-{{ h.id }}" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" rows="2">{{ h.note or '' }}</textarea>
+                                    </div>
+                                    <div class="flex gap-3">
+                                        <div class="flex-1">
+                                            <label class="text-xs font-semibold text-slate-500 block mb-1">Book</label>
+                                            <input id="edit-book-{{ h.id }}" type="text" value="{{ h.book_title }}" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                                        </div>
+                                        <div class="flex-1">
+                                            <label class="text-xs font-semibold text-slate-500 block mb-1">Author</label>
+                                            <input id="edit-author-{{ h.id }}" type="text" value="{{ h.book_author or '' }}" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-slate-500 block mb-1">Tags (comma-separated)</label>
+                                        <input id="edit-tags-{{ h.id }}" type="text" value="{{ h.tags | join(', ') }}" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                                    </div>
+                                    <div class="flex gap-2 justify-end">
+                                        <button onclick="event.stopPropagation(); cancelEdit({{ h.id }})" class="px-4 py-2 bg-white border border-slate-200 text-sm text-slate-600 rounded-lg hover:bg-slate-50">Cancel</button>
+                                        <button onclick="event.stopPropagation(); saveEdit({{ h.id }})" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">Save</button>
+                                    </div>
                                 </div>
                             </div>
                         </td>
@@ -200,5 +232,33 @@
             });
         });
     })();
+
+    function toggleEdit(id) {
+        var form = document.getElementById('edit-' + id);
+        form.classList.toggle('hidden');
+    }
+
+    function cancelEdit(id) {
+        document.getElementById('edit-' + id).classList.add('hidden');
+    }
+
+    function saveEdit(id) {
+        var data = {
+            text: document.getElementById('edit-text-' + id).value,
+            note: document.getElementById('edit-note-' + id).value,
+            book_title: document.getElementById('edit-book-' + id).value,
+            book_author: document.getElementById('edit-author-' + id).value,
+            tags: document.getElementById('edit-tags-' + id).value.split(',').map(function(t) { return t.trim(); }).filter(Boolean)
+        };
+        fetch('/api/highlights/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }).then(function(r) { return r.json(); }).then(function(result) {
+            if (result.ok) {
+                location.reload();
+            }
+        });
+    }
 </script>
 {% endblock %}

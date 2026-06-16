@@ -39,6 +39,16 @@ class HighlightOut(BaseModel):
         from_attributes = True
 
 
+class HighlightUpdate(BaseModel):
+    text: Optional[str] = None
+    note: Optional[str] = None
+    page: Optional[int] = None
+    chapter: Optional[str] = None
+    book_title: Optional[str] = None
+    book_author: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
 class ReadwiseBatchImport(BaseModel):
     """Matches the Readwise API v2 format that KOReader uses."""
     highlights: List[HighlightCreate]
