@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Highlights — Marginalia{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 class="text-2xl font-bold text-slate-900">Highlights</h1>
+        <span class="text-sm text-slate-500">{{ total_count }} total</span>
+    </div>
+
+    <!-- Search Bar -->
+    <form method="GET" action="/highlights" class="flex flex-col sm:flex-row gap-3">
+        <div class="flex-1 relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-lg">🔍</span>
+            <input type="text" name="search" value="{{ search or '' }}" placeholder="Search highlights..." 
+                   class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-shadow" />
+        </div>
+        <button type="submit" class="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
+            Search
+        </button>
+    </form>
+
+    <!-- Filters -->
+    <form method="GET" action="/highlights" class="flex flex-wrap items-center gap-3">
+        {% if search %}<input type="hidden" name="search" value="{{ search }}" />{% endif %}
+        <select name="source" onchange="this.form.submit()" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-shadow">
+            <option value="all" {% if source_filter == 'all' or not source_filter %}selected{% endif %}>All Sources</option>
+            <option value="koreader" {% if source_filter == 'koreader' %}selected{% endif %}>KOReader</option>
+            <option value="readwise" {% if source_filter == 'readwise' %}selected{% endif %}>Readwise</option>
+            <option value="manual" {% if source_filter == 'manual' %}selected{% endif %}>Manual</option>
+        </select>
+        <select name="sort" onchange="this.form.submit()" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-shadow">
+            <option value="newest" {% if sort == 'newest' or not sort %}selected{% endif %}>Newest First</option>
+            <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest First</option>
+        </select>
+        <select name="favorites" onchange="this.form.submit()" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-shadow">
+            <option value="" {% if not favorites_filter %}selected{% endif %}>All Highlights</option>
+            <option value="1" {% if favorites_filter == '1' %}selected{% endif %}>⭐ Favorites</option>
+        </select>
+        {% if source_filter and source_filter != 'all' %}
+        <a href="/highlights?search={{ search or '' }}" class="text-sm text-slate-500 hover:text-slate-700 underline">Clear filters</a>
+        {% endif %}
+        {% if book %}
+        <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+          📖 {{ book }}
+          <a href="/highlights?search={{ search or '' }}&source={{ source_filter or '' }}" class="ml-1 hover:text-indigo-900">&times;</a>
+        </span>
+        {% endif %}
+    </form>
+
+    <!-- Highlights Table -->
+    {% if highlights %}
+    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-2 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider w-10">⭐</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Highlight</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Book</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Author</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Source</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Date</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Tags</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for h in highlights %}
+                    <tr class="highlight-row hover:bg-slate-50 transition-colors cursor-pointer" data-target="detail-{{ h.id }}">
+                        <td class="px-2 py-3 text-center">
+                            <button onclick="event.stopPropagation(); toggleFav({{ h.id }}, this)" class="text-lg leading-none hover:scale-110 transition-transform {% if h.favorite %}text-amber-400{% else %}text-slate-300 hover:text-amber-300{% endif %}">
+                                {% if h.favorite %}⭐{% else %}☆{% endif %}
+                            </button>
+                        </td>
+                        <td class="px-5 py-3 text-sm text-slate-800 max-w-xs">
+                            <span class="block truncate">{{ h.text[:100] }}{% if h.text|length > 100 %}…{% endif %}</span>
+                        </td>
+                        <td class="px-5 py-3 text-sm text-slate-700">{{ h.book_title }}</td>
+                        <td class="px-5 py-3 text-sm text-slate-500 hidden md:table-cell">{{ h.book_author }}</td>
+                        <td class="px-5 py-3 hidden lg:table-cell">
+                            <span class="source-badge source-{{ h.source_type | lower }}">{{ h.source_type }}</span>
+                        </td>
+                        <td class="px-5 py-3 text-sm text-slate-500 hidden md:table-cell whitespace-nowrap">{{ h.highlighted_at }}</td>
+                        <td class="px-5 py-3 hidden sm:table-cell">
+                            <div class="flex flex-wrap gap-1">
+                                {% for tag in h.tags[:3] %}
+                                <span class="tag-pill">{{ tag }}</span>
+                                {% endfor %}
+                                {% if h.tags|length > 3 %}
+                                <span class="text-xs text-slate-400">+{{ h.tags|length - 3 }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    <!-- Expanded Detail Row -->
+                    <tr id="detail-{{ h.id }}" class="highlight-detail hidden">
+                        <td colspan="7" class="px-5 py-4 bg-slate-50 border-b border-slate-200">
+                            <div class="space-y-3 max-w-3xl">
+                                <div class="flex items-start gap-3">
+                                    <span class="text-lg text-indigo-500 mt-0.5">❝</span>
+                                    <p class="text-base text-slate-800 leading-relaxed italic font-serif">{{ h.text }}</p>
+                                </div>
+                                {% if h.note %}
+                                <div class="ml-8 px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-600">
+                                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Note</span>
+                                    {{ h.note }}
+                                </div>
+                                {% endif %}
+                                <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 ml-8">
+                                    <span>📖 {{ h.book_title }}</span>
+                                    {% if h.book_author %}<span>✍️ {{ h.book_author }}</span>{% endif %}
+                                    <span class="source-badge source-{{ h.source_type | lower }}">{{ h.source_type }}</span>
+                                    <span>📅 {{ h.highlighted_at }}</span>
+                                    {% if h.tags %}
+                                    <span class="flex gap-1">
+                                        {% for tag in h.tags %}
+                                        <span class="tag-pill">{{ tag }}</span>
+                                        {% endfor %}
+                                    </span>
+                                    {% endif %}
+                                    <a href="/api/highlights/{{ h.id }}/card" target="_blank" class="ml-auto px-3 py-1 bg-indigo-50 text-indigo-600 rounded text-xs font-medium hover:bg-indigo-100 transition-colors">📤 Share</a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="flex items-center justify-between">
+        <p class="text-sm text-slate-500">
+            Page {{ page }} of {{ total_pages }}
+        </p>
+        <div class="flex gap-2">
+            {% if page > 1 %}
+            <a href="?search={{ search or '' }}&source={{ source_filter or 'all' }}&sort={{ sort or 'newest' }}&favorites={{ favorites_filter }}&page={{ page - 1 }}"
+               class="px-4 py-2 bg-white border border-slate-200 text-sm text-slate-700 rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
+                ← Previous
+            </a>
+            {% endif %}
+            {% if page < total_pages %}
+            <a href="?search={{ search or '' }}&source={{ source_filter or 'all' }}&sort={{ sort or 'newest' }}&favorites={{ favorites_filter }}&page={{ page + 1 }}"
+               class="px-4 py-2 bg-white border border-slate-200 text-sm text-slate-700 rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
+                Next →
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-sm">
+        <p class="text-4xl mb-3">📝</p>
+        <h3 class="text-lg font-semibold text-slate-700 mb-1">No highlights found</h3>
+        <p class="text-slate-500 text-sm">
+            {% if search or source_filter %}
+            Try adjusting your search or filters.
+            {% else %}
+            Import your first highlights to get started.
+            {% endif %}
+        </p>
+        {% if not search and not source_filter %}
+        <a href="/import" class="inline-block mt-4 px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
+            📥 Import Highlights
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleFav(id, btn) {
+        fetch('/api/highlights/' + id + '/favorite', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.favorite) {
+                    btn.innerHTML = '⭐';
+                    btn.className = 'text-lg leading-none hover:scale-110 transition-transform text-amber-400';
+                } else {
+                    btn.innerHTML = '☆';
+                    btn.className = 'text-lg leading-none hover:scale-110 transition-transform text-slate-300 hover:text-amber-300';
+                }
+            });
+    }
+    (function() {
+        var rows = document.querySelectorAll('.highlight-row');
+        rows.forEach(function(row) {
+            row.addEventListener('click', function() {
+                var targetId = row.getAttribute('data-target');
+                var detail = document.getElementById(targetId);
+                if (detail) {
+                    detail.classList.toggle('hidden');
+                }
+            });
+        });
+    })();
+</script>
+{% endblock %}

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Marginalia{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/style.css" />
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col md:flex-row">
+
+    <!-- Mobile Header -->
+    <header class="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
+        <span class="text-lg font-bold tracking-tight">📚 Marginalia</span>
+        <button id="sidebar-toggle" class="p-2 rounded hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500" aria-label="Toggle navigation">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+        </button>
+    </header>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div id="sidebar-overlay" class="md:hidden fixed inset-0 bg-black/50 z-20 hidden"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="bg-slate-900 text-slate-300 w-64 md:w-60 lg:w-64 flex-shrink-0 flex flex-col
+                fixed md:sticky top-0 left-0 h-full z-30 md:z-auto
+                -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+        <!-- Logo Area -->
+        <div class="px-5 py-6 border-b border-slate-700">
+            <h1 class="text-xl font-bold text-white tracking-tight">📚 Marginalia</h1>
+            <p class="text-xs text-slate-500 mt-1">Self-hosted highlights</p>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            <a href="/"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
+                      {% if active_page == 'dashboard' %}bg-slate-700 text-white{% else %}text-slate-400 hover:text-white hover:bg-slate-800{% endif %}">
+                <span>📊</span> Dashboard
+            </a>
+            <a href="/books"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
+                      {% if active_page == 'books' %}bg-slate-700 text-white{% else %}text-slate-400 hover:text-white hover:bg-slate-800{% endif %}">
+                <span>📚</span> Books
+            </a>
+            <a href="/highlights"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
+                      {% if active_page == 'highlights' %}bg-slate-700 text-white{% else %}text-slate-400 hover:text-white hover:bg-slate-800{% endif %}">
+                <span>📝</span> Highlights
+            </a>
+            <a href="/review"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
+                      {% if active_page == 'review' %}bg-slate-700 text-white{% else %}text-slate-400 hover:text-white hover:bg-slate-800{% endif %}">
+                <span>📖</span> Daily Review
+            </a>
+            <a href="/import"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
+                      {% if active_page == 'import' %}bg-slate-700 text-white{% else %}text-slate-400 hover:text-white hover:bg-slate-800{% endif %}">
+                <span>📥</span> Import
+            </a>
+            <a href="/settings"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
+                      {% if active_page == 'settings' %}bg-slate-700 text-white{% else %}text-slate-400 hover:text-white hover:bg-slate-800{% endif %}">
+                <span>⚙️</span> Settings
+            </a>
+        </nav>
+
+        <!-- Footer Stats -->
+        <div class="px-5 py-4 border-t border-slate-700 text-xs text-slate-500">
+            {% if total_highlights is defined %}
+            <div class="flex items-center gap-2">
+                <span>📝</span>
+                <span><span class="text-slate-300 font-medium">{{ total_highlights }}</span> highlights</span>
+            </div>
+            {% endif %}
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 min-h-screen">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Mobile sidebar toggle JS -->
+    <script>
+        (function() {
+            const toggle = document.getElementById('sidebar-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            if (toggle && sidebar && overlay) {
+                function open() {
+                    sidebar.classList.remove('-translate-x-full');
+                    overlay.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                }
+                function close() {
+                    sidebar.classList.add('-translate-x-full');
+                    overlay.classList.add('hidden');
+                    document.body.style.overflow = '';
+                }
+                toggle.addEventListener('click', open);
+                overlay.addEventListener('click', close);
+            }
+        })();
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

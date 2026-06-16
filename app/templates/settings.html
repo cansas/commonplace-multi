@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Settings — Marginalia{% endblock %}
+
+{% block content %}
+<div class="space-y-8 max-w-3xl">
+    <!-- Page Header -->
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900">⚙️ Settings</h1>
+        <p class="text-sm text-slate-500 mt-1">Manage your Marginalia preferences and data.</p>
+    </div>
+
+    <!-- API Access -->
+    <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100">
+            <h2 class="text-base font-semibold text-slate-800">🔑 API Access</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Use the API token to access Marginalia programmatically.</p>
+        </div>
+        <div class="px-6 py-5 space-y-4">
+            <div class="flex items-center gap-3">
+                <div class="flex-1">
+                    <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">API Token</label>
+                    <div class="flex items-center gap-2">
+                        <code id="api-token-display" class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 font-mono select-all">
+                            {% if api_token %}
+                            {{ api_token[:8] }}••••••••••••{{ api_token[-4:] }}
+                            {% else %}
+                            No token configured
+                            {% endif %}
+                        </code>
+                        {% if api_token %}
+                        <button onclick="copyToken()" class="px-3 py-2 bg-white border border-slate-200 text-sm text-slate-600 rounded-lg hover:bg-slate-50 transition-colors shrink-0" title="Copy token">
+                            📋
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <form method="POST" action="/settings/regenerate-token">
+                <button type="submit" class="px-4 py-2 bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium rounded-lg hover:bg-amber-100 transition-colors">
+                    🔄 Regenerate Token
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Review Preferences -->
+    <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100">
+            <h2 class="text-base font-semibold text-slate-800">📖 Review Preferences</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Configure how your daily review works.</p>
+        </div>
+        <div class="px-6 py-5 space-y-5">
+            <!-- Mode Toggle -->
+            <form method="POST" action="/settings/review-mode">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-700">Review Mode</p>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            {% if review_mode == 'spaced' %}
+                            Spaced Repetition — rate each highlight and optimize recall.
+                            {% else %}
+                            Random — simple sequential review without ratings.
+                            {% endif %}
+                        </p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="spaced_mode" value="1" 
+                               onchange="this.form.submit()"
+                               {% if review_mode == 'spaced' %}checked{% endif %} 
+                               class="sr-only peer" />
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        <span class="ml-3 text-sm text-slate-500">
+                            {% if review_mode == 'spaced' %}Spaced{% else %}Random{% endif %}
+                        </span>
+                    </label>
+                </div>
+            </form>
+
+            <!-- Review Count -->
+            <form method="POST" action="/settings/review-count">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label for="review-count" class="text-sm font-medium text-slate-700">Highlights per session</label>
+                        <span id="review-count-value" class="text-sm font-semibold text-indigo-600">{{ review_count or 10 }}</span>
+                    </div>
+                    <input type="range" id="review-count" name="count" min="5" max="30" step="1"
+                           value="{{ review_count or 10 }}"
+                           oninput="document.getElementById('review-count-value').textContent = this.value;"
+                           onchange="this.form.submit()"
+                           class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
+                    <div class="flex justify-between text-xs text-slate-400 mt-1">
+                        <span>5</span>
+                        <span>30</span>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- Data -->
+    <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100">
+            <h2 class="text-base font-semibold text-slate-800">💾 Data</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Manage your highlight data.</p>
+        </div>
+        <div class="px-6 py-5 space-y-4">
+            <div class="flex items-center gap-6 text-sm">
+                <div>
+                    <span class="text-slate-500">Total highlights:</span>
+                    <span class="font-semibold text-slate-800 ml-1">{{ total_highlights }}</span>
+                </div>
+                <div>
+                    <span class="text-slate-500">Total books:</span>
+                    <span class="font-semibold text-slate-800 ml-1">{{ total_books }}</span>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-3 pt-2">
+                <button disabled class="px-4 py-2 bg-slate-100 text-slate-400 text-sm font-medium rounded-lg cursor-not-allowed" title="Coming soon">
+                    📦 Export All Highlights
+                </button>
+                <button onclick="confirmReset()" class="px-4 py-2 bg-red-50 border border-red-200 text-red-700 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors">
+                    🗑️ Reset Database
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- About -->
+    <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100">
+            <h2 class="text-base font-semibold text-slate-800">ℹ️ About</h2>
+        </div>
+        <div class="px-6 py-5 space-y-2 text-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-slate-500">Version</span>
+                <span class="font-medium text-slate-700">{{ version or '0.1.0' }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-slate-500">Documentation</span>
+                <a href="https://marginalia-docs.example.com" class="text-indigo-600 hover:text-indigo-800 font-medium" target="_blank" rel="noopener">View docs →</a>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-slate-500">Framework</span>
+                <span class="text-slate-600">FastAPI + Jinja2 + Tailwind</span>
+            </div>
+        </div>
+    </section>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function copyToken() {
+        var display = document.getElementById('api-token-display');
+        // In a real app, you'd fetch the full token via API
+        // For now, select the masked text
+        var range = document.createRange();
+        range.selectNodeContents(display);
+        var selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        try {
+            document.execCommand('copy');
+            var btn = event.target;
+            btn.textContent = '✅';
+            setTimeout(function() { btn.textContent = '📋'; }, 2000);
+        } catch(e) {}
+        selection.removeAllRanges();
+    }
+
+    function confirmReset() {
+        if (confirm('⚠️ Are you sure you want to reset the database? This will permanently delete all highlights, books, and review history. This action cannot be undone.')) {
+            if (confirm('Really? Type "reset" to confirm.')) {
+                // In production, submit a form
+                window.location.href = '/settings/reset';
+            }
+        }
+    }
+</script>
+{% endblock %}

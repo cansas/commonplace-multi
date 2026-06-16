@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environment
+.venv/
+venv/
+
+# Environment
+.env
+# env.example is tracked (template for new users)
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project data (persistent volumes)
+data/
+config/
+
+# Docker
+.dockerignore
+
+# Test files
+test_smoke.py
+seed_from_obsidian.py
+
+# Plan
+PLAN.md

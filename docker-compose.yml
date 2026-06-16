@@ -1,0 +1,13 @@
+services:
+  marginalia:
+    build: .
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    env_file:
+      - .env
+    environment:
+      - MARGINALIA_TOKEN=${MARGINALIA_TOKEN:-change-me}
+    restart: unless-stopped
