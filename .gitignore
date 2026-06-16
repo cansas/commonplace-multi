@@ -27,6 +27,11 @@ Thumbs.db
 data/
 config/
 
+# Build artifacts
+commonplace-sync.zip
+node_modules/
+package-lock.json
+
 # Docker
 .dockerignore
 
