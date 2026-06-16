@@ -1,0 +1,13 @@
+{
+  "name": "commonplace-sync",
+  "version": "1.0.0",
+  "description": "Sync highlights from Commonplace into Obsidian",
+  "main": "main.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "obsidian": "^1.7.2",
+    "typescript": "^5.0.0"
+  }
+}

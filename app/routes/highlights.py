@@ -136,12 +136,65 @@ async def create_highlight(
 async def list_highlights(
     skip: int = 0,
     limit: int = 50,
+    since: Optional[str] = "",
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Highlight).order_by(Highlight.created_at.desc()).offset(skip).limit(limit)
-    )
+    query = select(Highlight).order_by(Highlight.created_at.desc())
+    if since:
+        try:
+            since_dt = datetime.fromisoformat(since)
+            query = query.where(Highlight.created_at >= since_dt)
+        except (ValueError, TypeError):
+            pass
+    result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
+
+
+@router.get("/api/export")
+async def export_highlights(
+    since: Optional[str] = "",
+    db: AsyncSession = Depends(get_db),
+):
+    """Export highlights grouped by book for Obsidian sync."""
+    query = select(Highlight).order_by(Highlight.book_title, Highlight.highlighted_at)
+    if since:
+        try:
+            since_dt = datetime.fromisoformat(since)
+            query = query.where(Highlight.created_at >= since_dt)
+        except (ValueError, TypeError):
+            pass
+
+    result = await db.execute(query)
+    all_highlights = result.scalars().all()
+
+    # Group by book
+    books = {}
+    for h in all_highlights:
+        key = (h.book_title, h.book_author or "")
+        if key not in books:
+            books[key] = {
+                "title": h.book_title,
+                "author": h.book_author or "",
+                "highlights": [],
+            }
+        books[key]["highlights"].append({
+            "id": h.id,
+            "text": h.text,
+            "note": h.note,
+            "page": h.page,
+            "chapter": h.chapter,
+            "color": h.color,
+            "favorite": bool(h.favorite),
+            "highlighted_at": h.highlighted_at.isoformat() if h.highlighted_at else None,
+            "created_at": h.created_at.isoformat() if h.created_at else None,
+            "tags": [t.name for t in h.tags],
+        })
+
+    return {
+        "books": list(books.values()),
+        "total": len(all_highlights),
+        "total_books": len(books),
+    }
 
 
 @router.delete("/api/highlights/{hl_id}")

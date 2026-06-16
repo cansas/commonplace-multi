@@ -1,0 +1,9 @@
+{
+  "id": "commonplace-sync",
+  "name": "Commonplace Sync",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Sync highlights from your Commonplace server into Obsidian",
+  "author": "cansas",
+  "isDesktopOnly": false
+}
