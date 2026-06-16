@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, Notice, requestUrl, TFile } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, Notice, requestUrl } from 'obsidian';
 
 interface CommonplaceSettings {
     serverUrl: string;
@@ -125,8 +125,8 @@ export default class CommonplacePlugin extends Plugin {
 
             // Write or update the file
             const existing = this.app.vault.getAbstractFileByPath(filePath);
-            if (existing && existing instanceof TFile) {
-                await this.app.vault.modify(existing, content);
+            if (existing) {
+                await this.app.vault.modify(existing as any, content);
             } else {
                 await this.app.vault.create(filePath, content);
             }
