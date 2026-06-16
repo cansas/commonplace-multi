@@ -65,3 +65,13 @@ async def set_review_count(count: int = Form(default=10)):
 async def regenerate_api_token():
     new_token = regenerate_token()
     return {"token": new_token}
+
+
+@router.get("/settings/reset")
+async def reset_database(request: Request, db: AsyncSession = Depends(get_db)):
+    """Delete all highlights and review history."""
+    from app.models import Highlight, ReviewLog, Source, Tag
+    for model in [ReviewLog, Highlight, Source, Tag]:
+        await db.execute(model.__table__.delete())
+    await db.commit()
+    return RedirectResponse(url="/", status_code=303)
