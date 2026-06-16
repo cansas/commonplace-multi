@@ -18,10 +18,6 @@ from app.services.resurface import get_dashboard_counts
 
 app = FastAPI(title="Commonplace", version="0.1.0")
 
-# Session middleware (signed cookie)
-secret = os.environ.get("SESSION_SECRET") or hashlib.sha256(get_token().encode()).hexdigest()
-app.add_middleware(SessionMiddleware, secret_key=secret, max_age=86400 * 30)  # 30 days
-
 # Templates
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
@@ -30,8 +26,12 @@ static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-# Auth middleware
+# Auth middleware (inner — checks session, runs after Session populates it)
 app.add_middleware(AuthMiddleware)
+
+# Session middleware (outer — runs first, populates session cookie)
+secret = os.environ.get("SESSION_SECRET") or hashlib.sha256(get_token().encode()).hexdigest()
+app.add_middleware(SessionMiddleware, secret_key=secret, max_age=86400 * 30)  # 30 days
 
 # Init route modules with templates
 highlights.init(templates)
