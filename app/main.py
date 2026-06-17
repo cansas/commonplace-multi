@@ -12,7 +12,7 @@ import secrets
 
 from app.database import init_db, get_db, async_session
 from app.models import Highlight, Source
-from app.auth import AuthMiddleware, ensure_admin
+from app.auth import AuthMiddleware, ensure_admin, get_token
 from app.routes import highlights, review, import_routes, settings as settings_routes, books, auth as auth_routes, share as share_routes
 from app.services.resurface import get_dashboard_counts
 
