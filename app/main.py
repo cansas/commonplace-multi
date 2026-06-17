@@ -10,10 +10,11 @@ from sqlalchemy import select, func
 import os
 
 from app.database import init_db, get_db, async_session
-from app.models import Highlight, Source
+from app.models import Highlight, Source, BookCover
 from app.auth import AuthMiddleware, ensure_admin
 from app.routes import highlights, review, import_routes, settings as settings_routes, books, auth as auth_routes, share as share_routes
 from app.services.resurface import get_dashboard_counts
+from app.services.book_covers import batch_search
 
 app = FastAPI(title="Commonplace", version="0.3.5")
 
@@ -63,6 +64,39 @@ async def startup():
     await init_db()
     async with async_session() as db:
         await ensure_admin(db)
+
+    # Backfill book covers on startup
+    async with async_session() as db:
+        from sqlalchemy import select, func as sa_func
+        result = await db.execute(
+            select(Highlight.book_title, Highlight.book_author)
+            .distinct()
+            .group_by(Highlight.book_title, Highlight.book_author)
+            .order_by(sa_func.count(Highlight.id).desc())
+        )
+        all_books = [(r.book_title, r.book_author or "") for r in result.all()]
+
+        # Only fetch for books without a cover
+        need_cover = []
+        for title, author in all_books:
+            existing = await db.execute(
+                select(BookCover).where(
+                    BookCover.book_title == title,
+                    BookCover.book_author == author,
+                )
+            )
+            if not existing.scalar_one_or_none():
+                need_cover.append((title, author))
+
+        if need_cover:
+            print(f"  Fetching covers for {len(need_cover)} books...")
+            covers = await batch_search(need_cover, rate_limit=1.0)
+            for (title, author), url in covers.items():
+                if url:
+                    db.add(BookCover(book_title=title, book_author=author, cover_url=url, cover_source="openlibrary"))
+            await db.commit()
+            found = sum(1 for url in covers.values() if url)
+            print(f"  Found covers for {found} of {len(need_cover)} books")
 
 
 @app.get("/health")
