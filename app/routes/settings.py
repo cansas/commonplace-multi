@@ -28,6 +28,10 @@ async def settings_page(
     saved: str = "",
     new_token: str = "",
 ):
+    # Read new_token from session (more secure than URL param)
+    if not new_token:
+        new_token = request.session.pop("new_token", "")
+    
     result = await db.execute(select(func.count(Highlight.id)))
     total = result.scalar() or 0
 
@@ -54,7 +58,7 @@ async def settings_page(
             "total_books": books,
             "review_mode": _settings.get("review_mode", "random"),
             "review_count": _settings.get("review_count", 10),
-            "version": "0.4.0",
+            "version": "0.4.1",
             "saved": saved,
             "new_token": new_token,
             "username": request.session.get("username", ""),
@@ -216,10 +220,8 @@ async def create_token_form(
     db.add(tok)
     await db.commit()
 
-    return RedirectResponse(
-        url=f"/settings?new_token={plaintext}",
-        status_code=303,
-    )
+    request.session["new_token"] = plaintext
+    return RedirectResponse(url="/settings?saved=1", status_code=303)
 
 
 @router.post("/settings/revoke-token/{token_id}")
