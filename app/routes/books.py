@@ -106,24 +106,27 @@ async def books_page(
 
 @router.post("/api/books/cover/fetch")
 async def fetch_cover(title: str = Form(...), author: str = Form(default=""), db: AsyncSession = Depends(get_db)):
-    url = await search_cover(title, author)
-    if not url:
-        return {"ok": False, "error": "No cover found on Open Library"}
+    try:
+        url = await search_cover(title, author)
+        if not url:
+            return {"ok": False, "error": "No cover found on Open Library"}
 
-    result = await db.execute(
-        select(BookCover).where(
-            BookCover.book_title == title,
-            BookCover.book_author == author,
+        result = await db.execute(
+            select(BookCover).where(
+                BookCover.book_title == title,
+                BookCover.book_author == author,
+            )
         )
-    )
-    cover = result.scalar_one_or_none()
-    if cover:
-        cover.cover_url = url
-        cover.cover_source = "openlibrary"
-    else:
-        db.add(BookCover(book_title=title, book_author=author, cover_url=url, cover_source="openlibrary"))
-    await db.commit()
-    return {"ok": True, "cover_url": url}
+        cover = result.scalar_one_or_none()
+        if cover:
+            cover.cover_url = url
+            cover.cover_source = "openlibrary"
+        else:
+            db.add(BookCover(book_title=title, book_author=author, cover_url=url, cover_source="openlibrary"))
+        await db.commit()
+        return {"ok": True, "cover_url": url}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
 
 
 @router.post("/api/books/cover/upload")
