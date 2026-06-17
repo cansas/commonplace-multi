@@ -143,6 +143,7 @@ async def dashboard(
                 "book_title": random_hl.book_title,
                 "book_author": random_hl.book_author or "",
                 "note": random_hl.note,
+                "share_token": random_hl.share_token,
             } if random_hl else None,
             "imported": imported,
         },
