@@ -10,7 +10,7 @@
     </div>
 
     {% if highlight %}
-    <!-- Highlight Card -->
+    <!-- Flash Card -->
     <div class="review-card bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8">
         <!-- Book Info -->
         <div class="flex items-start justify-between mb-5">
@@ -62,57 +62,31 @@
     </div>
 
     <!-- Action Buttons -->
-    {% if review_mode == "spaced" %}
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <form method="POST" action="/review/rate" class="contents">
-            <input type="hidden" name="highlight_id" value="{{ highlight.id }}" />
-            <input type="hidden" name="rating" value="1" />
-            <button type="submit" class="review-btn review-btn-forgot px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-150 shadow-sm">
-                😵 Forgot
-                <span class="block text-xs font-normal opacity-70 mt-0.5">1</span>
-            </button>
-        </form>
-        <form method="POST" action="/review/rate" class="contents">
-            <input type="hidden" name="highlight_id" value="{{ highlight.id }}" />
-            <input type="hidden" name="rating" value="2" />
-            <button type="submit" class="review-btn review-btn-hard px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-150 shadow-sm">
-                🤔 Hard
-                <span class="block text-xs font-normal opacity-70 mt-0.5">2</span>
-            </button>
-        </form>
-        <form method="POST" action="/review/rate" class="contents">
-            <input type="hidden" name="highlight_id" value="{{ highlight.id }}" />
-            <input type="hidden" name="rating" value="3" />
-            <button type="submit" class="review-btn review-btn-good px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-150 shadow-sm">
-                👍 Good
-                <span class="block text-xs font-normal opacity-70 mt-0.5">3</span>
-            </button>
-        </form>
-        <form method="POST" action="/review/rate" class="contents">
-            <input type="hidden" name="highlight_id" value="{{ highlight.id }}" />
-            <input type="hidden" name="rating" value="4" />
-            <button type="submit" class="review-btn review-btn-easy px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-150 shadow-sm">
-                🚀 Easy
-                <span class="block text-xs font-normal opacity-70 mt-0.5">4</span>
-            </button>
-        </form>
-    </div>
-    {% else %}
     <div class="flex gap-3 justify-center">
-        <form method="POST" action="/review/skip" class="contents">
-            <input type="hidden" name="highlight_id" value="{{ highlight.id }}" />
-            <button type="submit" class="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
-                ⏭️ Skip
+        <form method="POST" action="/review/delete" class="contents"
+              onsubmit="return confirm('Delete this highlight? This cannot be undone.')">
+            <input type="hidden" name="s" value="{{ session_ids }}" />
+            <input type="hidden" name="i" value="{{ current_index - 1 }}" />
+            <button type="submit" class="px-5 py-2.5 bg-red-50 border border-red-200 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors shadow-sm">
+                🗑️ Delete
+            </button>
+        </form>
+        <form method="POST" action="/review/favorite" class="contents">
+            <input type="hidden" name="s" value="{{ session_ids }}" />
+            <input type="hidden" name="i" value="{{ current_index - 1 }}" />
+            <button type="submit" class="px-5 py-2.5 border border-slate-200 text-sm font-medium rounded-lg transition-colors shadow-sm
+                {% if highlight.favorite %}bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100{% else %}bg-white text-slate-600 hover:bg-slate-50{% endif %}">
+                {% if highlight.favorite %}⭐ Unfavorite{% else %}☆ Favorite{% endif %}
             </button>
         </form>
         <form method="POST" action="/review/next" class="contents">
-            <input type="hidden" name="highlight_id" value="{{ highlight.id }}" />
+            <input type="hidden" name="s" value="{{ session_ids }}" />
+            <input type="hidden" name="i" value="{{ current_index - 1 }}" />
             <button type="submit" class="px-6 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
                 Next →
             </button>
         </form>
     </div>
-    {% endif %}
 
     <!-- Progress -->
     <div class="text-center space-y-2">
@@ -124,20 +98,14 @@
         </div>
     </div>
 
-    <!-- Keyboard Shortcuts Hint -->
+    <!-- Keyboard Shortcuts -->
     <div class="text-center">
         <details class="inline-block text-xs text-slate-400">
             <summary class="cursor-pointer hover:text-slate-600">⌨️ Keyboard shortcuts</summary>
             <div class="mt-2 bg-white border border-slate-200 rounded-lg px-4 py-2 text-left shadow-sm">
-                {% if review_mode == "spaced" %}
-                <p><kbd class="shortcut-key">1</kbd> Forgot</p>
-                <p><kbd class="shortcut-key">2</kbd> Hard</p>
-                <p><kbd class="shortcut-key">3</kbd> Good</p>
-                <p><kbd class="shortcut-key">4</kbd> Easy</p>
-                {% else %}
                 <p><kbd class="shortcut-key">Space</kbd> Next</p>
-                <p><kbd class="shortcut-key">S</kbd> Skip</p>
-                {% endif %}
+                <p><kbd class="shortcut-key">F</kbd> Favorite</p>
+                <p><kbd class="shortcut-key">D</kbd> Delete</p>
             </div>
         </details>
     </div>
@@ -147,7 +115,13 @@
     <div class="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-sm">
         <p class="text-5xl mb-4">🎉</p>
         <h2 class="text-xl font-bold text-slate-800 mb-2">All caught up!</h2>
-        <p class="text-slate-500 mb-6">You've reviewed all your highlights for today. Come back tomorrow for more.</p>
+        <p class="text-slate-500 mb-6">
+            {% if total_count %}
+            You've completed today's session. Come back tomorrow for more.
+            {% else %}
+            No highlights to review. Import some highlights to get started.
+            {% endif %}
+        </p>
         <div class="flex gap-3 justify-center">
             <a href="/highlights" class="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
                 📝 Browse Highlights
@@ -164,41 +138,20 @@
 {% block scripts %}
 {% if highlight %}
 <script>
-    (function() {
-        function submitRating(rating) {
-            var form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/review/rate';
-            form.style.display = 'none';
-            var idInput = document.createElement('input');
-            idInput.type = 'hidden';
-            idInput.name = 'highlight_id';
-            idInput.value = '{{ highlight.id }}';
-            form.appendChild(idInput);
-            var ratingInput = document.createElement('input');
-            ratingInput.type = 'hidden';
-            ratingInput.name = 'rating';
-            ratingInput.value = rating;
-            form.appendChild(ratingInput);
-            document.body.appendChild(form);
-            form.submit();
+    document.addEventListener('keydown', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+        if (e.key === ' ' || e.key === 'Space') {
+            e.preventDefault();
+            document.querySelector('form[action="/review/next"]')?.submit();
+        } else if (e.key === 'f' || e.key === 'F') {
+            e.preventDefault();
+            document.querySelector('form[action="/review/favorite"]')?.submit();
+        } else if (e.key === 'd' || e.key === 'D') {
+            e.preventDefault();
+            document.querySelector('form[action="/review/delete"]')?.submit();
         }
-
-        document.addEventListener('keydown', function(e) {
-            // Don't trigger if user is typing in an input
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-
-            {% if review_mode == "spaced" %}
-            if (e.key === '1') { e.preventDefault(); submitRating(1); }
-            else if (e.key === '2') { e.preventDefault(); submitRating(2); }
-            else if (e.key === '3') { e.preventDefault(); submitRating(3); }
-            else if (e.key === '4') { e.preventDefault(); submitRating(4); }
-            {% else %}
-            if (e.key === ' ' || e.key === 'Space') { e.preventDefault(); document.querySelector('form[action="/review/next"]')?.submit(); }
-            else if (e.key === 's' || e.key === 'S') { e.preventDefault(); document.querySelector('form[action="/review/skip"]')?.submit(); }
-            {% endif %}
-        });
-    })();
+    });
 </script>
 {% endif %}
 {% endblock %}
