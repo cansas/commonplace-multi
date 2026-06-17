@@ -76,6 +76,7 @@ async def highlights_page(
             "highlighted_at": h.highlighted_at.strftime("%Y-%m-%d") if h.highlighted_at else "",
             "tags": [t.name for t in h.tags],
             "favorite": h.favorite,
+            "share_token": h.share_token,
         })
 
     return _jinja.TemplateResponse(
