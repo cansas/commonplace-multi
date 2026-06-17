@@ -1,22 +1,24 @@
 # Commonkore — KOReader → Commonplace Exporter
 
-A single-file exporter target for KOReader that sends your book highlights to your **Commonplace** server.
+A KOReader plugin that sends your book highlights to your **Commonplace** server.
 
 ## Installation
 
 1. Connect your KOReader device via USB
-2. Copy `commonkore.lua` into the exporter targets directory:
+2. Copy the `commonkore.koplugin/` directory into KOReader's plugins folder:
 
    ```
-   koreader/plugins/exporter.koplugin/target/commonkore.lua
+   koreader/plugins/commonkore.koplugin/main.lua
    ```
 
 3. Eject your device and open any book
-4. Open the **Tools** menu (wrench icon) → **Export** → **Commonkore**
+4. Open the **Tools** menu (wrench icon) → **Export** → **Commonplace**
 5. Set your **server URL** (e.g., `http://192.168.1.130:8765` or `https://commonplace.yourdomain.com`)
 6. Set your **API token** (from Commonplace's Settings page)
-7. Toggle **Export to Commonkore** on
+7. Toggle **Export to Commonplace** on
 8. Use the standard **Export** submenu to send highlights
+
+> **Note:** The old installation method (dropping `commonkore.lua` into `exporter.koplugin/target/`) no longer works. KOReader's exporter plugin uses a hardcoded target list, not dynamic file scanning. The plugin registers itself via KOReader's Provider system instead.
 
 ## Usage
 
@@ -28,4 +30,4 @@ If Commonplace is behind Cloudflare Access, add a **Bypass** policy for paths st
 
 ## How it works
 
-Sends highlights to `{server_url}/api/v2/highlights` with `Authorization: Token {token}`, matching the Readwise API v2 format.
+Sends highlights to `{server_url}/api/v2/highlights` with `Authorization: Token {token}`, matching the Readwise API v2 format. Registers with KOReader's `Provider:register("exporter", ...)` system as a standalone plugin (no modification to the exporter plugin needed).
