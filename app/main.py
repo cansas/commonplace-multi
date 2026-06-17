@@ -42,9 +42,8 @@ if os.path.isdir(static_dir):
 app.add_middleware(AuthMiddleware)
 
 # Session middleware (outer — runs first, populates session cookie)
-https_only = os.environ.get("SESSION_HTTPS_ONLY", "true").lower() not in ("false", "0", "off")
 secret = os.environ.get("SESSION_SECRET") or os.urandom(32).hex()
-app.add_middleware(SessionMiddleware, secret_key=secret, max_age=86400 * 30, https_only=https_only, samesite="lax")
+app.add_middleware(SessionMiddleware, secret_key=secret, max_age=86400 * 30)
 
 # Init route modules with templates
 highlights.init(templates)
