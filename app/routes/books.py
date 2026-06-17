@@ -160,8 +160,6 @@ async def backfill_covers(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Highlight.book_title, Highlight.book_author)
         .distinct()
-        .group_by(Highlight.book_title, Highlight.book_author)
-        .order_by(sa_func.count(Highlight.id).desc())
     )
     books = result.all()
     fetched = 0
