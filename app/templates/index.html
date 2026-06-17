@@ -84,7 +84,7 @@
                             {{ random_highlight.note }}
                         </div>
                         {% endif %}
-                        <a href="/highlights{% if random_highlight.id %}?id={{ random_highlight.id }}{% endif %}" class="mt-3 inline-block text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                        <a href="/highlights?book={{ random_highlight.book_title | urlencode }}" class="mt-3 inline-block text-sm text-indigo-600 hover:text-indigo-800 font-medium">
                             View in context →
                         </a>
                     </div>

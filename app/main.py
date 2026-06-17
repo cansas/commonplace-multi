@@ -19,7 +19,7 @@ from app.services.book_covers import batch_search
 app = FastAPI(title="Commonplace", version="0.4.0")
 
 # Ensure covers directory exists on the mounted volume
-COVERS_DIR = os.environ.get("COVERS_DIR", "/app/data/covers")
+COVERS_DIR = os.environ.get("COVERS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "covers"))
 os.makedirs(COVERS_DIR, exist_ok=True)
 # Ensure covers dir is writable by appuser
 try:
