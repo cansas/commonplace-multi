@@ -62,11 +62,12 @@ async def init_db():
     # ── FTS5 Full-Text Search ─────────────────────────────────────────────
     async with engine.begin() as conn:
         from sqlalchemy import text as sqltext
-        # Create FTS5 virtual table
+        # Drop old external-content FTS table if upgrading
+        await conn.execute(sqltext("DROP TABLE IF EXISTS highlights_fts"))
+        # Create FTS5 virtual table (standalone — stores its own content)
         await conn.execute(sqltext(
             "CREATE VIRTUAL TABLE IF NOT EXISTS highlights_fts USING fts5("
             "  text, note, book_title, book_author,"
-            "  content='highlights', content_rowid='id',"
             "  tokenize='porter unicode61'"
             ")"
         ))
@@ -96,22 +97,23 @@ async def init_db():
     async with async_session() as session:
         from app.models import Highlight
         from sqlalchemy import select, func
-        result = await session.execute(
-            select(func.count()).select_from(
-                sqltext("highlights_fts")
-            )
-        )
-        fts_count = result.scalar() or 0
         hl_count = await session.execute(select(func.count(Highlight.id)))
         total = hl_count.scalar() or 0
 
-        if fts_count < total:
-            print(f"  Backfilling FTS index ({fts_count}/{total} rows present)...")
+        # Check if FTS index needs backfilling by counting internal rows
+        try:
+            fts_ok = await session.execute(
+                sqltext("SELECT COUNT(*) FROM highlights_fts_data WHERE id = 1")
+            )
+            needs_backfill = fts_ok.scalar() == 0
+        except Exception:
+            needs_backfill = True
+
+        if needs_backfill and total > 0:
+            print(f"  Backfilling FTS index for {total} highlights...")
             await session.execute(sqltext(
                 "INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
-                "SELECT h.id, h.text, h.note, h.book_title, h.book_author "
-                "FROM highlights h LEFT JOIN highlights_fts f ON h.id = f.rowid "
-                "WHERE f.rowid IS NULL"
+                "SELECT id, text, note, book_title, book_author FROM highlights"
             ))
             await session.commit()
             print("  FTS backfill complete")
