@@ -137,10 +137,12 @@ async def upload_cover(title: str = Form(...), author: str = Form(default=""), f
         return JSONResponse({"ok": False, "error": "Only JPG, PNG, and WebP are accepted"}, status_code=400)
 
     dest = os.path.join(COVERS_DIR, f"{title.replace('/', '-')}_{author.replace('/', '-')}{ext}")
+    print(f"  [upload] Saving cover to: {dest}")
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     content = await file.read()
     with open(dest, "wb") as f:
         f.write(content)
+    print(f"  [upload] Wrote {len(content)} bytes. File exists: {os.path.isfile(dest)}")
     cover_url = f"/static/covers/{os.path.basename(dest)}"
 
     result = await db.execute(
