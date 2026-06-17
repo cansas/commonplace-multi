@@ -120,10 +120,14 @@ async def dashboard(
 ):
     total, books, pending = await get_dashboard_counts(db)
 
-    result = await db.execute(
-        select(Source).order_by(Source.last_import_at.desc().nullslast()).limit(5)
+    # Random highlight of the day
+    from sqlalchemy import func as sa_func
+    random_hl_result = await db.execute(
+        select(Highlight)
+        .order_by(sa_func.random())
+        .limit(1)
     )
-    recent_sources = result.scalars().all()
+    random_hl = random_hl_result.scalar_one_or_none()
 
     return templates.TemplateResponse(
         request,
@@ -133,15 +137,13 @@ async def dashboard(
             "total_highlights": total,
             "total_books": books,
             "today_review_count": pending,
-            "recent_sources": [
-                {
-                    "name": s.name,
-                    "source_type": s.source_type,
-                    "last_import_at": s.last_import_at.strftime("%Y-%m-%d %H:%M") if s.last_import_at else "",
-                    "count": s.highlights_imported or 0,
-                }
-                for s in recent_sources
-            ],
+            "random_highlight": {
+                "id": random_hl.id,
+                "text": random_hl.text,
+                "book_title": random_hl.book_title,
+                "book_author": random_hl.book_author or "",
+                "note": random_hl.note,
+            } if random_hl else None,
             "imported": imported,
         },
     )
