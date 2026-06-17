@@ -105,9 +105,18 @@ async def books_page(
 
 
 @router.post("/api/books/cover/fetch")
-async def fetch_cover(title: str = Form(...), author: str = Form(default=""), db: AsyncSession = Depends(get_db)):
+async def fetch_cover(title: str = Form(...), author: str = Form(default=""), source: str = Form(default="auto"), db: AsyncSession = Depends(get_db)):
     try:
-        url = await search_cover(title, author)
+        url = None
+        if source == "hardcover":
+            from app.services.book_covers import _hc_search
+            url = await _hc_search(title, author)
+        elif source == "openlibrary":
+            from app.services.book_covers import _ol_search
+            url = await _ol_search(title, author)
+        else:  # auto — try Hardcover, then Open Library
+            from app.services.book_covers import search_cover
+            url = await search_cover(title, author)
         if not url:
             return {"ok": False, "error": "No cover found on Open Library"}
 
