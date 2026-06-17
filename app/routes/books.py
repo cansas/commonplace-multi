@@ -39,6 +39,7 @@ async def books_page(
             Highlight.book_author,
             sa_func.count(Highlight.id).label("highlight_count"),
             sa_func.max(Highlight.highlighted_at).label("last_highlighted"),
+            sa_func.max(Highlight.id).label("sample_hl_id"),
         )
         .group_by(Highlight.book_title, Highlight.book_author)
     )
@@ -87,6 +88,7 @@ async def books_page(
             "last_highlighted": row.last_highlighted.strftime("%Y-%m-%d") if row.last_highlighted else "",
             "cover_url": cover.cover_url if cover else None,
             "cover_source": cover.cover_source if cover else "none",
+            "highlight_id": row.sample_hl_id,
         })
 
     return _jinja.TemplateResponse(
@@ -184,3 +186,19 @@ async def backfill_covers(db: AsyncSession = Depends(get_db)):
             fetched += 1
             await db.commit()
     return {"ok": True, "fetched": fetched}
+
+
+@router.post("/api/books/cover/fetch/{hl_id}")
+async def fetch_cover_by_hl(hl_id: int, db: AsyncSession = Depends(get_db)):
+    hl = await db.get(Highlight, hl_id)
+    if not hl:
+        return {"ok": False, "error": "Highlight not found"}
+    return await fetch_cover(title=hl.book_title, author=hl.book_author or "", source="auto", db=db)
+
+
+@router.post("/api/books/cover/upload/{hl_id}")
+async def upload_cover_by_hl(hl_id: int, file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    hl = await db.get(Highlight, hl_id)
+    if not hl:
+        return JSONResponse({"ok": False, "error": "Highlight not found"}, status_code=404)
+    return await upload_cover(title=hl.book_title, author=hl.book_author or "", file=file, db=db)

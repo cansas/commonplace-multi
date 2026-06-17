@@ -36,7 +36,7 @@
   {% if books %}
   <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
     {% for book in books %}
-    <a href="/highlights?book={{ book.title | urlencode }}" class="block bg-white rounded-lg border border-slate-200 overflow-hidden hover:border-indigo-300 hover:shadow-md transition-all group" data-title="{{ book.title }}" data-author="{{ book.author }}">
+    <a href="/highlights?book={{ book.title | urlencode }}" class="block bg-white rounded-lg border border-slate-200 overflow-hidden hover:border-indigo-300 hover:shadow-md transition-all group" data-hl-id="{{ book.highlight_id }}">
       <!-- Cover -->
       <div class="aspect-[2/3] bg-slate-100 flex items-center justify-center overflow-hidden">
         {% if book.cover_url %}
@@ -92,18 +92,13 @@
 {% block scripts %}
 <script>
   function cardData(el) {
-    var card = el.closest('[data-title]');
-    return {
-      title: card ? card.dataset.title : '',
-      author: card ? card.dataset.author : ''
-    };
+    var card = el.closest('[data-hl-id]');
+    return card ? card.dataset.hlId : '';
   }
   function fetchCover(el) {
-    var d = cardData(el);
-    var fd = new FormData();
-    fd.append('title', d.title);
-    fd.append('author', d.author);
-    fetch('/api/books/cover/fetch', { method: 'POST', body: fd })
+    var hlId = cardData(el);
+    if (!hlId) return;
+    fetch('/api/books/cover/fetch/' + hlId, { method: 'POST' })
       .then(function(r) { return r.json(); })
       .then(function(d) {
         if (d.ok) location.reload();
@@ -120,16 +115,15 @@
       });
   }
   function uploadCover(el) {
-    var d = cardData(el);
+    var hlId = cardData(el);
+    if (!hlId) return;
     var input = document.createElement('input');
     input.type = 'file';
     input.accept = '.jpg,.jpeg,.png,.webp';
     input.onchange = function() {
       var fd = new FormData();
-      fd.append('title', d.title);
-      fd.append('author', d.author);
       fd.append('file', input.files[0]);
-      fetch('/api/books/cover/upload', { method: 'POST', body: fd })
+      fetch('/api/books/cover/upload/' + hlId, { method: 'POST', body: fd })
         .then(function(r) { return r.json(); })
         .then(function(d) {
           if (d.ok) location.reload();
