@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} — Commonplace</title>
+
+    <!-- OpenGraph -->
+    <meta property="og:title" content="{{ title }}" />
+    <meta property="og:description" content="{{ description }}" />
+    <meta property="og:image" content="{{ png_url }}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="{{ page_url }}" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ title }}" />
+    <meta name="twitter:description" content="{{ description }}" />
+    <meta name="twitter:image" content="{{ png_url }}" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 min-h-screen">
+    <div class="max-w-3xl mx-auto px-4 py-12">
+        {% if error %}
+        <div class="text-center py-20">
+            <p class="text-4xl mb-4">🔍</p>
+            <h1 class="text-xl font-bold text-white mb-2">Highlight not found</h1>
+            <p class="text-slate-400">This share link may have been revoked or is invalid.</p>
+        </div>
+        {% else %}
+        <!-- The card image -->
+        <div class="rounded-xl overflow-hidden shadow-2xl mb-6">
+            <img src="{{ png_url }}" alt="Highlight card" class="w-full" />
+        </div>
+
+        <!-- Attribution -->
+        <div class="text-center">
+            <p class="text-lg font-semibold text-white">{{ highlight.book_title }}</p>
+            {% if highlight.book_author %}
+            <p class="text-slate-400">{{ highlight.book_author }}</p>
+            {% endif %}
+            {% if highlight.note %}
+            <div class="mt-4 px-6 py-4 bg-slate-800 rounded-xl inline-block max-w-lg">
+                <p class="text-sm text-slate-300 italic">{{ highlight.note }}</p>
+            </div>
+            {% endif %}
+            <p class="mt-6 text-xs text-slate-600">
+                <a href="https://github.com/cansas/commonplace" class="hover:text-slate-400 transition-colors">Commonplace</a>
+                — self-hosted highlight library
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

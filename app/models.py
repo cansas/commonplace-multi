@@ -30,6 +30,7 @@ class Highlight(Base):
     highlighted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     favorite = Column(Integer, default=0)  # 0=no, 1=favorite
+    share_token = Column(String(64), unique=True, nullable=True)
 
     tags = relationship("Tag", secondary=highlight_tags, lazy="selectin")
     reviews = relationship("ReviewLog", back_populates="highlight", lazy="selectin")

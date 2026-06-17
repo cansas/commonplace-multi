@@ -1,5 +1,4 @@
-"""Generate SVG highlight cards with dynamic font sizing."""
-
+"""Generate SVG highlight cards with dynamic font sizing, and convert to PNG."""
 from xml.sax.saxutils import escape
 
 
@@ -40,7 +39,6 @@ def generate_card(highlight_text, book_title="", book_author="",
     W = 1200
     H = 630
 
-    # Estimate lines with widest wrap first, then refine
     font_size, line_h, wrap_chars, quote_size = _calc_sizes(99)
     lines = _wrap_text(highlight_text, wrap_chars)
     font_size, line_h, wrap_chars, quote_size = _calc_sizes(len(lines))
@@ -51,7 +49,6 @@ def generate_card(highlight_text, book_title="", book_author="",
         lines[-1] = lines[-1] + "\u2026"
     total_lines = len(lines)
 
-    # Recalculate if line count changed due to wrap adjustment
     if total_lines >= 1:
         font_size, line_h, wrap_chars, quote_size = _calc_sizes(total_lines)
         lines = _wrap_text(highlight_text, wrap_chars)
@@ -59,9 +56,8 @@ def generate_card(highlight_text, book_title="", book_author="",
             lines = lines[:8]
             lines[-1] = lines[-1] + "\u2026"
 
-    # Vertical positioning: quote block centered, attribution below
     quote_block_h = len(lines) * line_h
-    avail_h = H - 180  # leave room for top margin + attribution area
+    avail_h = H - 180
     avail_h_for_quote = avail_h * 0.75
     if quote_block_h > avail_h_for_quote:
         ratio = avail_h_for_quote / quote_block_h
@@ -72,7 +68,6 @@ def generate_card(highlight_text, book_title="", book_author="",
     quote_start_y = int((H - quote_block_h) / 2) - 30
     attr_y = quote_start_y + quote_block_h + 30
 
-    # Keep attribution in lower portion
     if attr_y < H - 160:
         attr_y = H - 160
 
@@ -111,3 +106,12 @@ def generate_card(highlight_text, book_title="", book_author="",
 
     s += '</svg>\n'
     return s
+
+
+def svg_to_png(svg_bytes: bytes) -> bytes | None:
+    """Convert SVG bytes to PNG bytes using cairosvg."""
+    try:
+        import cairosvg
+        return cairosvg.svg2png(bytestring=svg_bytes, output_width=1200, output_height=630)
+    except ImportError:
+        return None

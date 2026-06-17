@@ -28,3 +28,22 @@ async def init_db():
             await conn.execute(text("ALTER TABLE highlights ADD COLUMN favorite INTEGER DEFAULT 0"))
         except Exception:
             pass  # Column already exists
+        try:
+            await conn.execute(text("ALTER TABLE highlights ADD COLUMN share_token VARCHAR(64)"))
+        except Exception:
+            pass  # Column already exists
+
+    # Backfill share_token for highlights that don't have one
+    async with async_session() as session:
+        from app.models import Highlight
+        from app.routes.share import get_share_token
+        from sqlalchemy import select
+        result = await session.execute(
+            select(Highlight).where(Highlight.share_token.is_(None))
+        )
+        missing = result.scalars().all()
+        for hl in missing:
+            hl.share_token = get_share_token()
+        if missing:
+            await session.commit()
+            print(f"  Backfilled share_token for {len(missing)} highlights")

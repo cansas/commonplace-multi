@@ -4,8 +4,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
 from app.database import get_db
-from app.models import Highlight, ApiToken, User
+from app.models import Highlight, Source, User, ApiToken
 from app.auth import generate_api_token, hash_password, verify_password
+from app.routes.share import get_share_token
 
 router = APIRouter(tags=["settings"])
 

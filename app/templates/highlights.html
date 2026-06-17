@@ -120,7 +120,7 @@
                                     </span>
                                     {% endif %}
                                     <button onclick="event.stopPropagation(); toggleEdit({{ h.id }})" class="px-3 py-1 bg-white border border-slate-200 text-slate-600 rounded text-xs font-medium hover:bg-slate-50 transition-colors">✏️ Edit</button>
-                                    <a href="/api/highlights/{{ h.id }}/card" target="_blank" class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded text-xs font-medium hover:bg-indigo-100 transition-colors">📤 Share</a>
+                                    <a href="/share/{{ h.share_token }}" target="_blank" class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded text-xs font-medium hover:bg-indigo-100 transition-colors">📤 Share</a>
                                 </div>
                             </div>
                             <!-- Inline Edit Form -->

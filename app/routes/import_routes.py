@@ -9,6 +9,7 @@ from app.models import Highlight, Source
 from app.services.obsidian import parse_readwise_md
 from app.services.koreader_json import parse_koreader_json
 from app.schemas import HighlightCreate, ReadwiseBatchImport
+from app.routes.share import get_share_token
 from typing import List
 from datetime import datetime
 import json
@@ -66,6 +67,7 @@ async def _save_highlights(db, highlights_list, source_name, source_type):
             category=item.get("category", "books"),
             color=item.get("color"),
             highlighted_at=item.get("highlighted_at") or datetime.utcnow(),
+            share_token=get_share_token(),
         )
         db.add(hl)
         count += 1
@@ -144,6 +146,7 @@ async def readwise_api_import(
             category=item.category or "books",
             color=item.color,
             highlighted_at=item.highlighted_at or datetime.utcnow(),
+            share_token=get_share_token(),
         )
         db.add(hl)
         count += 1
