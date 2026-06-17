@@ -16,7 +16,7 @@ from app.routes import highlights, review, import_routes, settings as settings_r
 from app.services.resurface import get_dashboard_counts
 from app.services.book_covers import batch_search
 
-app = FastAPI(title="Commonplace", version="0.3.5")
+app = FastAPI(title="Commonplace", version="0.4.0")
 
 # Templates
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
