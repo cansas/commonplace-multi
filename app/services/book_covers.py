@@ -24,7 +24,9 @@ async def search_cover(title: str, author: str = "") -> Optional[str]:
                 if cover_i:
                     return f"{COVERS_BASE}/{cover_i}-L.jpg"
     except Exception as e:
+        import traceback
         print(f"  [covers] Open Library error for '{title}': {e}")
+        traceback.print_exc()
     return None
 
 
