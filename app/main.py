@@ -91,7 +91,7 @@ async def startup():
                 covers = await batch_search(need_cover, rate_limit=1.0)
                 for (title, author), url in covers.items():
                     if url:
-                        db.add(BookCover(book_title=title, book_author=author, cover_url=url, cover_source="openlibrary"))
+                        db.add(BookCover(book_title=title, book_author=author, cover_url=url, cover_source="bookcover-api"))
                 await db.commit()
                 found = sum(1 for url in covers.values() if url)
                 print(f"  Found covers for {found} of {len(need_cover)} books")
