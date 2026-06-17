@@ -52,7 +52,7 @@ async def highlights_page(
                 query = query.where(Highlight.id == -1)  # No results
         except Exception:
             pass  # Fall back to no filter on bad query syntax
-    if source:
+    if source and source != "all":
         query = query.where(Highlight.source_type == source)
     if book:
         query = query.where(Highlight.book_title.ilike(f"%{book}%"))

@@ -100,12 +100,12 @@ async def init_db():
         hl_count = await session.execute(select(func.count(Highlight.id)))
         total = hl_count.scalar() or 0
 
-        # Check if FTS index needs backfilling by counting internal rows
+        # Check if FTS index needs backfilling
         try:
             fts_ok = await session.execute(
-                sqltext("SELECT COUNT(*) FROM highlights_fts_data WHERE id = 1")
+                sqltext("SELECT COUNT(*) FROM highlights_fts")
             )
-            needs_backfill = fts_ok.scalar() == 0
+            needs_backfill = (fts_ok.scalar() or 0) == 0
         except Exception:
             needs_backfill = True
 
