@@ -240,8 +240,8 @@ async def rename_book(
 ):
     """Rename a book across all highlights. Updates metadata and cover records.
 
-    Shows a warning to the user that future imports with the old title
-    will create a separate book entry.
+    The FTS5 AU trigger is temporarily disabled during the bulk rename to
+    avoid "SQL logic error" from trigger contention, then manually synced.
     """
     if not new_title.strip():
         return JSONResponse({"ok": False, "error": "New title is required"}, status_code=400)
@@ -261,16 +261,55 @@ async def rename_book(
     if affected == 0:
         return JSONResponse({"ok": False, "error": "No highlights found with that title"}, status_code=404)
 
-    # Update all highlights
-    from sqlalchemy import update as sql_update
+    from sqlalchemy import text as sqltext
+
+    # Temporarily drop the FTS AU trigger so the bulk UPDATE doesn't
+    # trigger re-index per row (avoids "SQL logic error" edge cases)
+    await db.execute(sqltext("DROP TRIGGER IF EXISTS highlights_au"))
+
+    # Bulk rename
     await db.execute(
-        sql_update(Highlight)
-        .where(
-            Highlight.book_title == old_title,
-            Highlight.book_author == old_author,
-        )
-        .values(book_title=new_title.strip(), book_author=new_author)
+        sqltext(
+            "UPDATE highlights SET book_title = :new_title, book_author = :new_author "
+            "WHERE book_title = :old_title AND book_author = :old_author"
+        ),
+        {
+            "new_title": new_title.strip(),
+            "new_author": new_author,
+            "old_title": old_title,
+            "old_author": old_author,
+        },
     )
+
+    # Recreate the FTS AU trigger
+    await db.execute(sqltext(
+        "CREATE TRIGGER highlights_au AFTER UPDATE OF text, note, book_title, book_author ON highlights BEGIN "
+        "  INSERT INTO highlights_fts(highlights_fts, rowid, text, note, book_title, book_author) "
+        "  VALUES ('delete', old.id, old.text, old.note, old.book_title, old.book_author); "
+        "  INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
+        "  VALUES (new.id, new.text, new.note, new.book_title, new.book_author); "
+        "END"
+    ))
+
+    # Manually sync FTS index for renamed rows (delete old + insert new)
+    await db.execute(sqltext(
+        "INSERT INTO highlights_fts(highlights_fts, rowid, text, note, book_title, book_author) "
+        "SELECT 'delete', id, text, note, :new_title, :new_author2 FROM highlights "
+        "WHERE book_title = :new_title3 AND book_author = :new_author3"
+    ), {
+        "new_title": new_title.strip(),
+        "new_author2": new_author,
+        "new_title3": new_title.strip(),
+        "new_author3": new_author,
+    })
+    await db.execute(sqltext(
+        "INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
+        "SELECT id, text, note, book_title, book_author FROM highlights "
+        "WHERE book_title = :new_title AND book_author = :new_author"
+    ), {
+        "new_title": new_title.strip(),
+        "new_author": new_author,
+    })
 
     # Update BookCover if one exists
     cover_result = await db.execute(
