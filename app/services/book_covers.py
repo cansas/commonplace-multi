@@ -149,15 +149,15 @@ async def search_cover(title: str, author: str = "", client: httpx.AsyncClient =
         if url:
             return url, "hardcover"
 
-        # 2. Open Library (free, largest catalog)
-        url = await _open_library_search(title, author, client)
-        if url:
-            return url, "openlibrary"
-
-        # 3. OPDS catalog (self-hosted, configured via env vars)
+        # 2. OPDS catalog (self-hosted, configured via env vars)
         url = await _opds_search(title, author, client)
         if url:
             return url, "opds"
+
+        # 3. Open Library (free, largest catalog)
+        url = await _open_library_search(title, author, client)
+        if url:
+            return url, "openlibrary"
 
     finally:
         if _owns_client:
