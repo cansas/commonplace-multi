@@ -115,6 +115,7 @@
       </div>
       <div class="flex justify-end gap-3 pt-2">
         <button type="button" onclick="closeRenameModal()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
+        <button type="button" onclick="deleteBook()" id="rename-delete-btn" class="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100">🗑️ Delete book</button>
         <button type="submit" id="rename-submit" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Save Changes</button>
       </div>
     </form>
@@ -308,5 +309,38 @@
 
   /* Close modal on background click */
   document.getElementById('rename-modal')?.addEventListener('click', closeRenameModal);
+
+  /* ── Delete Book ──────────────────────────────────────── */
+  function deleteBook() {
+    var title = document.getElementById('rename-old-title').value;
+    var author = document.getElementById('rename-old-author').value;
+    if (!title) return;
+
+    if (!confirm('Delete "' + title + '" and ALL its highlights? This cannot be undone.')) return;
+    var btn = document.getElementById('rename-delete-btn');
+    btn.disabled = true;
+    btn.textContent = 'Deleting...';
+
+    var fd = new FormData();
+    fd.append('title', title);
+    fd.append('author', author);
+    fetch('/api/books/delete', { method: 'POST', body: fd })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.ok) {
+          closeRenameModal();
+          location.reload();
+        } else {
+          alert('Delete failed: ' + (d.error || 'unknown'));
+          btn.disabled = false;
+          btn.textContent = '🗑️ Delete book';
+        }
+      })
+      .catch(function(e) {
+        alert('Delete failed: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = '🗑️ Delete book';
+      });
+  }
 </script>
 {% endblock %}

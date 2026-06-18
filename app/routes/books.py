@@ -365,6 +365,59 @@ async def rename_book(
     }
 
 
+@router.post("/api/books/delete")
+async def delete_book(
+    title: str = Form(...),
+    author: str = Form(default=""),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an entire book and all its highlights, with a two-step confirmation."""
+    author = author or ""
+
+    # Count what we're about to delete
+    count_result = await db.execute(
+        select(sa_func.count(Highlight.id)).where(
+            Highlight.book_title == title,
+            Highlight.book_author == author,
+        )
+    )
+    count = count_result.scalar() or 0
+
+    if count == 0:
+        return JSONResponse({"ok": False, "error": "No highlights found for that book"}, status_code=404)
+
+    from sqlalchemy import text as sqltext
+
+    # Get IDs to remove from FTS index
+    ids = await db.execute(
+        select(Highlight.id).where(
+            Highlight.book_title == title,
+            Highlight.book_author == author,
+        )
+    )
+    hl_ids = tuple(row[0] for row in ids.all())
+
+    # Delete from FTS index directly (avoids trigger content-matching issues)
+    if hl_ids:
+        placeholders = ",".join("?" for _ in hl_ids)
+        await db.execute(sqltext(f"DELETE FROM highlights_fts WHERE rowid IN ({placeholders})"), hl_ids)
+
+    # Delete highlights
+    await db.execute(
+        sqltext("DELETE FROM highlights WHERE book_title = :t AND book_author = :a"),
+        {"t": title, "a": author},
+    )
+
+    # Delete BookCover
+    await db.execute(
+        sqltext("DELETE FROM book_covers WHERE book_title = :t AND book_author = :a"),
+        {"t": title, "a": author},
+    )
+
+    await db.commit()
+    return {"ok": True, "deleted": count, "title": title}
+
+
 @router.post("/api/books/cover/backfill")
 async def backfill_covers(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
