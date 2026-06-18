@@ -87,18 +87,21 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) 
 
 OPDS_NS = {"atom": "http://www.w3.org/2005/Atom"}
 
+# Shared covers directory (same as books.py)
+_COVERS_DIR = os.environ.get("COVERS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "covers"))
+
 
 async def _opds_search(title: str, author: str, client: httpx.AsyncClient) -> Optional[str]:
     """Search an OPDS catalog for a book cover.
 
     Requires OPDS_URL, OPDS_USERNAME, and OPDS_PASSWORD env vars.
-    Returns an authenticated cover URL with embedded credentials.
+    Downloads the image and saves it locally, returns a local /static/covers/ URL.
     """
     if not OPDS_URL:
         return None
 
     auth_creds = (OPDS_USERNAME, OPDS_PASSWORD) if OPDS_USERNAME else None
-    search_url = f"{OPDS_URL.rstrip('/')}/catalog?q={url_quote(title.strip())}&size=3"
+    search_url = f"{OPDS_URL.rstrip('/')}/catalog?q={url_quote(title.strip())}&size=5"
 
     try:
         resp = await client.get(search_url, auth=auth_creds, timeout=8.0)
@@ -110,26 +113,46 @@ async def _opds_search(title: str, author: str, client: httpx.AsyncClient) -> Op
             entry_title = entry.find("atom:title", OPDS_NS)
             if entry_title is None or not entry_title.text:
                 continue
-            # Basic title match — prefer exact or close matches
             if title.strip().lower() not in entry_title.text.lower():
                 continue
             for link in entry.findall("atom:link", OPDS_NS):
                 rel = link.get("rel", "")
                 href = link.get("href", "")
-                if "image" in rel and href:
-                    # Build authenticated URL with embedded credentials
-                    if auth_creds and all(auth_creds):
-                        parsed = urlparse(href)
-                        if not parsed.scheme:
-                            # Relative URL — resolve against OPDS base
-                            base = OPDS_URL.rstrip("/")
-                            href = f"{base}{href}"
-                            parsed = urlparse(href)
-                        auth_url = f"{parsed.scheme}://{auth_creds[0]}:{auth_creds[1]}@{parsed.netloc}{parsed.path}"
-                        if parsed.query:
-                            auth_url += f"?{parsed.query}"
-                        return auth_url
-                    return href
+                if "image" not in rel or not href:
+                    continue
+
+                # Resolve absolute URL
+                parsed = urlparse(href)
+                if not parsed.scheme:
+                    base = OPDS_URL.rstrip("/")
+                    href = f"{base}{href}"
+
+                # Download the cover image
+                img_resp = await client.get(href, auth=auth_creds, timeout=8.0)
+                if img_resp.status_code != 200:
+                    continue
+
+                img_bytes = img_resp.content
+                if len(img_bytes) < 100:
+                    continue
+
+                # Save to covers directory
+                ext = ".jpg"
+                content_type = img_resp.headers.get("content-type", "")
+                if "png" in content_type:
+                    ext = ".png"
+                elif "webp" in content_type:
+                    ext = ".webp"
+
+                import hashlib
+                safe_name = hashlib.md5(f"opds_{title}_{author}".encode()).hexdigest() + ext
+                dest = os.path.join(_COVERS_DIR, safe_name)
+                os.makedirs(_COVERS_DIR, exist_ok=True)
+                with open(dest, "wb") as f:
+                    f.write(img_bytes)
+
+                local_url = f"/static/covers/{safe_name}"
+                return local_url
     except Exception as e:
         print(f"  [covers] OPDS error for '{title}': {e}")
     return None
