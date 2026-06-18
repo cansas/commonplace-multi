@@ -55,7 +55,7 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) 
         return None
 
     query = """query SearchBooks($query: String!) {
-      search(query: $query, query_type: "Book", per_page: 5, page: 1, fields: "title,slug,id,image") {
+      search(query: $query, query_type: "Book", per_page: 5, page: 1) {
         ids
         results
       }
