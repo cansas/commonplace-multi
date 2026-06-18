@@ -159,6 +159,9 @@ async def dashboard(
         )
         random_hl = random_hl_result.scalar_one_or_none()
 
+    from datetime import datetime
+    today_str = datetime.now().strftime("%A, %B %-d, %Y")
+
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -168,6 +171,7 @@ async def dashboard(
             total_highlights=total,
             total_books=books,
             today_review_count=pending,
+            today_date=today_str,
             random_highlight={
                 "id": random_hl.id,
                 "text": random_hl.text,
