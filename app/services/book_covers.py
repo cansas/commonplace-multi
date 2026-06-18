@@ -74,10 +74,9 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) 
             return None
         data = resp.json()
         search_data = data.get("data", {}).get("search", {})
-        print(f"  [covers] Hardcover search keys: {list(search_data.keys())}")
-        ids = search_data.get("ids", [])
-        results = search_data.get("results", [])
-        print(f"  [covers] Hardcover search returned {len(results)} results, {len(ids)} ids for '{title}'")
+        ids = search_data.get("ids") or []
+        results = search_data.get("results") or []
+        print(f"  [covers] Hardcover search: {len(results)} results, {len(ids)} ids for '{title}'")
         if results:
             print(f"  [covers] First result type={type(results[0]).__name__}, value={results[0]}")
         if ids:
