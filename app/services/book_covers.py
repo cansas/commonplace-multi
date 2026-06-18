@@ -88,7 +88,18 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) 
 
         for book in results_list:
             if not isinstance(book, dict):
-                continue
+                # HardCover may return each hit as an array of field values
+                if isinstance(book, list):
+                    print(f"  [covers] Book is a list with {len(book)} items, types={[type(x).__name__ for x in book[:8]]}")
+                    # Walk the list for the first dict with book-like fields
+                    for item in book:
+                        if isinstance(item, dict) and ("slug" in item or "image" in item or "title" in item):
+                            book = item
+                            break
+                    else:
+                        continue  # no usable dict found in the list
+                else:
+                    continue
             # Try direct cover image field
             cover = book.get("image") or book.get("cover_url")
             if cover:
