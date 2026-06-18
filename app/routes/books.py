@@ -129,9 +129,9 @@ async def books_page(
 @router.post("/api/books/cover/fetch")
 async def fetch_cover(title: str = Form(...), author: str = Form(default=""), source: str = Form(default="auto"), db: AsyncSession = Depends(get_db)):
     try:
-        url = await search_cover(title, author)
+        url, cover_source = await search_cover(title, author)
         if not url:
-            return {"ok": False, "error": "No cover found"}
+            return {"ok": False, "error": "No cover found on Open Library, Hardcover, or Goodreads"}
 
         result = await db.execute(
             select(BookCover).where(
@@ -142,30 +142,71 @@ async def fetch_cover(title: str = Form(...), author: str = Form(default=""), so
         cover = result.scalar_one_or_none()
         if cover:
             cover.cover_url = url
-            cover.cover_source = "openlibrary"
+            cover.cover_source = cover_source
         else:
-            db.add(BookCover(book_title=title, book_author=author, cover_url=url, cover_source="openlibrary"))
+            db.add(BookCover(book_title=title, book_author=author, cover_url=url, cover_source=cover_source))
         await db.commit()
-        return {"ok": True, "cover_url": url}
+        return {"ok": True, "cover_url": url, "source": cover_source}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
 
 
+_MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+
+# Magic bytes for image validation
+_IMAGE_SIGNATURES = {
+    b"\xff\xd8\xff": ".jpg",
+    b"\x89PNG\r\n\x1a\n": ".png",
+    b"RIFF": ".webp",  # WebP starts with RIFF
+}
+
+
+def _validate_image_header(data: bytes) -> str | None:
+    """Check magic bytes and return detected extension, or None if invalid."""
+    for sig, ext in _IMAGE_SIGNATURES.items():
+        if data[:len(sig)] == sig:
+            if ext == ".webp" and data[8:12] != b"WEBP":
+                return None
+            return ext
+    return None
+
+
 @router.post("/api/books/cover/upload")
 async def upload_cover(title: str = Form(...), author: str = Form(default=""), file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    # Validate file extension
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in (".jpg", ".jpeg", ".png", ".webp"):
         return JSONResponse({"ok": False, "error": "Only JPG, PNG, and WebP are accepted"}, status_code=400)
 
-    dest = os.path.join(COVERS_DIR, f"{_safe_filename(title)}_{_safe_filename(author)}{ext}")
-    print(f"  [upload] Saving cover to: {dest}")
-    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    # Read and validate size
     content = await file.read()
-    with open(dest, "wb") as f:
-        f.write(content)
-    print(f"  [upload] Wrote {len(content)} bytes. File exists: {os.path.isfile(dest)}")
+    if len(content) > _MAX_UPLOAD_BYTES:
+        return JSONResponse({"ok": False, "error": f"File too large ({len(content) // 1024 // 1024}MB). Max is 10MB."}, status_code=400)
+    if len(content) < 100:
+        return JSONResponse({"ok": False, "error": "File appears to be empty or too small"}, status_code=400)
+
+    # Validate image magic bytes
+    detected_ext = _validate_image_header(content)
+    if not detected_ext:
+        return JSONResponse({"ok": False, "error": "File is not a valid image (bad header bytes)"}, status_code=400)
+    ext = detected_ext  # trust the actual bytes, not the extension
+
+    # Build destination path
+    dest = os.path.join(COVERS_DIR, f"{_safe_filename(title)}_{_safe_filename(author)}{ext}")
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+
+    # Write file
+    try:
+        with open(dest, "wb") as f:
+            f.write(content)
+        if not os.path.isfile(dest):
+            return JSONResponse({"ok": False, "error": "File write succeeded but file not found on disk"}, status_code=500)
+    except OSError as e:
+        return JSONResponse({"ok": False, "error": f"Failed to write file: {e}"}, status_code=500)
+
     cover_url = f"/static/covers/{os.path.basename(dest)}"
 
+    # Update DB
     result = await db.execute(
         select(BookCover).where(
             BookCover.book_title == title,
@@ -174,6 +215,13 @@ async def upload_cover(title: str = Form(...), author: str = Form(default=""), f
     )
     cover = result.scalar_one_or_none()
     if cover:
+        # Clean up old file if it exists and is different
+        old_path = os.path.join(COVERS_DIR, os.path.basename(cover.cover_url or ""))
+        if old_path != dest and os.path.isfile(old_path):
+            try:
+                os.remove(old_path)
+            except OSError:
+                pass
         cover.cover_url = cover_url
         cover.cover_source = "upload"
     else:
@@ -199,9 +247,9 @@ async def backfill_covers(db: AsyncSession = Depends(get_db)):
         )
         if existing.scalar_one_or_none():
             continue
-        url = await search_cover(row.book_title, row.book_author or "")
+        url, cover_source = await search_cover(row.book_title, row.book_author or "")
         if url:
-            db.add(BookCover(book_title=row.book_title, book_author=row.book_author or "", cover_url=url, cover_source="openlibrary"))
+            db.add(BookCover(book_title=row.book_title, book_author=row.book_author or "", cover_url=url, cover_source=cover_source))
             fetched += 1
             await db.commit()
     return {"ok": True, "fetched": fetched}

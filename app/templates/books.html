@@ -95,25 +95,69 @@
     var card = el.closest('[data-hl-id]');
     return card ? card.dataset.hlId : '';
   }
+
+  function setLoading(el, loading) {
+    if (loading) {
+      el.dataset.origText = el.textContent;
+      el.textContent = '...';
+      el.style.pointerEvents = 'none';
+      el.style.opacity = '0.5';
+    } else {
+      el.textContent = el.dataset.origText || el.textContent;
+      el.style.pointerEvents = '';
+      el.style.opacity = '';
+    }
+  }
+
+  function cacheBust(url) {
+    return url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now();
+  }
+
+  function updateCoverImage(card, newUrl) {
+    var imgContainer = card.querySelector('.aspect-\\[2\\/3\\]');
+    if (!imgContainer) return;
+    var busted = cacheBust(newUrl);
+    imgContainer.innerHTML = '<img src="' + busted + '" alt="Cover" class="w-full h-full object-cover" loading="lazy">';
+  }
+
   function fetchCover(el) {
     var hlId = cardData(el);
     if (!hlId) return;
+    setLoading(el, true);
     fetch('/api/books/cover/fetch/' + hlId, { method: 'POST' })
       .then(function(r) { return r.json(); })
       .then(function(d) {
-        if (d.ok) location.reload();
-        else alert('No cover found: ' + (d.error || 'unknown'));
+        setLoading(el, false);
+        if (d.ok) {
+          var card = el.closest('[data-hl-id]');
+          if (card && d.cover_url) updateCoverImage(card, d.cover_url);
+        } else {
+          alert('No cover found: ' + (d.error || 'Try a different search term'));
+        }
+      })
+      .catch(function(e) {
+        setLoading(el, false);
+        alert('Network error: ' + e.message);
       });
   }
+
   function backfillCovers() {
     if (!confirm('Fetch covers for all books from Open Library? May take a minute.')) return;
+    var btn = document.querySelector('[onclick="backfillCovers()"]');
+    setLoading(btn, true);
     fetch('/api/books/cover/backfill', { method: 'POST' })
       .then(function(r) { return r.json(); })
       .then(function(d) {
+        setLoading(btn, false);
         if (d.ok) location.reload();
         else alert('Error: ' + (d.error || 'unknown'));
+      })
+      .catch(function(e) {
+        setLoading(btn, false);
+        alert('Network error: ' + e.message);
       });
   }
+
   function uploadCover(el) {
     var hlId = cardData(el);
     if (!hlId) return;
@@ -121,13 +165,29 @@
     input.type = 'file';
     input.accept = '.jpg,.jpeg,.png,.webp';
     input.onchange = function() {
+      if (!input.files || !input.files[0]) return;
+      var file = input.files[0];
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File too large (' + Math.round(file.size / 1024 / 1024) + 'MB). Max is 10MB.');
+        return;
+      }
+      setLoading(el, true);
       var fd = new FormData();
-      fd.append('file', input.files[0]);
+      fd.append('file', file);
       fetch('/api/books/cover/upload/' + hlId, { method: 'POST', body: fd })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-          if (d.ok) location.reload();
-          else alert('Upload error: ' + (d.error || 'unknown'));
+          setLoading(el, false);
+          if (d.ok) {
+            var card = el.closest('[data-hl-id]');
+            if (card && d.cover_url) updateCoverImage(card, d.cover_url);
+          } else {
+            alert('Upload error: ' + (d.error || 'unknown'));
+          }
+        })
+        .catch(function(e) {
+          setLoading(el, false);
+          alert('Network error: ' + e.message);
         });
     };
     input.click();
