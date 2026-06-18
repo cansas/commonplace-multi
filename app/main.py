@@ -1,4 +1,4 @@
-"""Commonplace — Self-hosted Readwise alternative."""
+"""commonplace — Self-hosted Readwise alternative."""
 
 from fastapi import FastAPI, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -17,7 +17,7 @@ from app.routes import highlights, review, import_routes, settings as settings_r
 from app.services.resurface import get_dashboard_counts
 from app.services.book_covers import batch_search
 
-app = FastAPI(title="Commonplace", version="0.5.6")
+app = FastAPI(title="commonplace", version="0.5.7")
 
 # Ensure covers directory exists on the mounted volume
 COVERS_DIR = os.environ.get("COVERS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "covers"))

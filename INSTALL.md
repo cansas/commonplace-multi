@@ -1,6 +1,6 @@
-# Commonplace — Setup Guide
+# commonplace — Setup Guide
 
-Commonplace is a self-hosted Readwise alternative. This covers everything from
+commonplace is a self-hosted Readwise alternative. This covers everything from
 scratch: server, KOReader plugin, and Obsidian plugin.
 
 ## Contents
@@ -105,13 +105,13 @@ refuses to start with a clear error message.
 ### Configuration
 
 1. Open any book
-2. **Tools (wrench icon) → Export → Commonplace**
+2. **Tools (wrench icon) → Export → commonplace**
 3. Set **server URL** — your server address, e.g.:
    - Docker on LAN: `http://192.168.1.130:8765`
    - Cloudflare tunnel: `https://commonplace.yourdomain.com`
    - **Do not** add a trailing slash
 4. Set **API token** — the token you created for KOReader in Settings
-5. Toggle **Export to Commonplace** on
+5. Toggle **Export to commonplace** on
 
 ### Usage
 
@@ -130,20 +130,20 @@ refuses to start with a clear error message.
    ```
    <vault>/.obsidian/plugins/commonplace-sync/
    ```
-3. In Obsidian: **Settings → Community Plugins → Commonplace Sync → Enable**
+3. In Obsidian: **Settings → Community Plugins → commonplace Sync → Enable**
 
 ### Configuration
 
-1. **Settings → Community Plugins → Commonplace Sync**
+1. **Settings → Community Plugins → commonplace Sync**
 2. Set **Server URL** (same as KOReader above)
 3. Set **API Token** — the token you created for Obsidian in Settings
-4. Choose an **Output Folder** (default: `Commonplace/`)
+4. Choose an **Output Folder** (default: `commonplace/`)
 5. Configure **Auto-sync** and **Periodic sync interval** as desired
 
 ### Usage
 
 - **Ribbon icon** (download arrow) — click to sync
-- **Command palette** — "Sync highlights from Commonplace"
+- **Command palette** — "Sync highlights from commonplace"
 - **Settings page** — "Sync Now" button
 
 ---

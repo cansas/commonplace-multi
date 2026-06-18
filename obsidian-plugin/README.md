@@ -1,6 +1,6 @@
-# Commonplace Sync — Obsidian Plugin
+# commonplace Sync — Obsidian Plugin
 
-Sync highlights from your Commonplace server into your Obsidian vault.
+Sync highlights from your commonplace server into your Obsidian vault.
 
 ## Installation
 
@@ -8,7 +8,7 @@ Sync highlights from your Commonplace server into your Obsidian vault.
 
 1. Download `commonplace-sync.zip` from the [latest release](https://github.com/cansas/commonplace/releases/latest)
 2. Extract the zip into `<vault>/.obsidian/plugins/commonplace-sync/`
-3. In Obsidian: **Settings → Community Plugins** → toggle on **Commonplace Sync**
+3. In Obsidian: **Settings → Community Plugins** → toggle on **commonplace Sync**
 
 ### From Source
 
@@ -21,15 +21,15 @@ Then copy `main.js`, `manifest.json`, and `styles.css` to `<vault>/.obsidian/plu
 
 ## Configuration
 
-1. Open Obsidian **Settings → Community Plugins → Commonplace Sync**
+1. Open Obsidian **Settings → Community Plugins → commonplace Sync**
 2. Set your **Server URL** (e.g. `https://commonplace.yourdomain.com` or `http://192.168.1.130:8765`)
-3. Set your **API Token** (from Commonplace Settings page)
-4. Choose an **Output Folder** (default: `Commonplace/`)
+3. Set your **API Token** (from commonplace Settings page)
+4. Choose an **Output Folder** (default: `commonplace/`)
 
 ## Usage
 
 - **Ribbon icon** (download arrow) — click to sync
-- **Command palette** — "Sync highlights from Commonplace"
+- **Command palette** — "Sync highlights from commonplace"
 - **Settings page** — "Sync Now" button
 
 ## Output

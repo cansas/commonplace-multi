@@ -1,6 +1,6 @@
 """
 Auth overhaul — three-layer auth: username/password web login, per-device API tokens,
-independent session secret. See Commonplace Hardening Prompt.md for the full spec.
+independent session secret. See commonplace Hardening Prompt.md for the full spec.
 """
 import hashlib
 import os
