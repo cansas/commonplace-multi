@@ -3,15 +3,21 @@
 Priority:
   1. Hardcover.app API (requires API key, best quality for modern books)
   2. Open Library Covers API (free, no key, large catalog)
+  3. OPDS catalog (self-hosted Booklore/Kavita/Calibre — requires URL + auth)
 """
 
 import os
 import asyncio
+import xml.etree.ElementTree as ET
 from typing import Optional
+from urllib.parse import urlparse, quote as url_quote
 
 import httpx
 
 HARDCOVER_API_KEY = os.environ.get("HARDCOVER_API_KEY", "")
+OPDS_URL = os.environ.get("OPDS_URL", "")
+OPDS_USERNAME = os.environ.get("OPDS_USERNAME", "")
+OPDS_PASSWORD = os.environ.get("OPDS_PASSWORD", "")
 REQUEST_TIMEOUT = 12.0
 
 
@@ -79,6 +85,56 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) 
     return None
 
 
+OPDS_NS = {"atom": "http://www.w3.org/2005/Atom"}
+
+
+async def _opds_search(title: str, author: str, client: httpx.AsyncClient) -> Optional[str]:
+    """Search an OPDS catalog for a book cover.
+
+    Requires OPDS_URL, OPDS_USERNAME, and OPDS_PASSWORD env vars.
+    Returns an authenticated cover URL with embedded credentials.
+    """
+    if not OPDS_URL:
+        return None
+
+    auth_creds = (OPDS_USERNAME, OPDS_PASSWORD) if OPDS_USERNAME else None
+    search_url = f"{OPDS_URL.rstrip('/')}/catalog?q={url_quote(title.strip())}&size=3"
+
+    try:
+        resp = await client.get(search_url, auth=auth_creds, timeout=8.0)
+        if resp.status_code != 200:
+            return None
+
+        root = ET.fromstring(resp.text)
+        for entry in root.findall("atom:entry", OPDS_NS):
+            entry_title = entry.find("atom:title", OPDS_NS)
+            if entry_title is None or not entry_title.text:
+                continue
+            # Basic title match — prefer exact or close matches
+            if title.strip().lower() not in entry_title.text.lower():
+                continue
+            for link in entry.findall("atom:link", OPDS_NS):
+                rel = link.get("rel", "")
+                href = link.get("href", "")
+                if "image" in rel and href:
+                    # Build authenticated URL with embedded credentials
+                    if auth_creds and all(auth_creds):
+                        parsed = urlparse(href)
+                        if not parsed.scheme:
+                            # Relative URL — resolve against OPDS base
+                            base = OPDS_URL.rstrip("/")
+                            href = f"{base}{href}"
+                            parsed = urlparse(href)
+                        auth_url = f"{parsed.scheme}://{auth_creds[0]}:{auth_creds[1]}@{parsed.netloc}{parsed.path}"
+                        if parsed.query:
+                            auth_url += f"?{parsed.query}"
+                        return auth_url
+                    return href
+    except Exception as e:
+        print(f"  [covers] OPDS error for '{title}': {e}")
+    return None
+
+
 async def search_cover(title: str, author: str = "", client: httpx.AsyncClient = None) -> tuple[Optional[str], str]:
     """Search for a book cover across multiple sources with fallback.
 
@@ -97,6 +153,11 @@ async def search_cover(title: str, author: str = "", client: httpx.AsyncClient =
         url = await _open_library_search(title, author, client)
         if url:
             return url, "openlibrary"
+
+        # 3. OPDS catalog (self-hosted, configured via env vars)
+        url = await _opds_search(title, author, client)
+        if url:
+            return url, "opds"
 
     finally:
         if _owns_client:
