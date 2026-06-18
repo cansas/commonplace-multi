@@ -3,7 +3,6 @@
 Priority:
   1. Hardcover.app API (requires API key, best quality for modern books)
   2. Open Library Covers API (free, no key, large catalog)
-  3. bookcover.longitood.com (legacy Goodreads scraper)
 """
 
 import os
@@ -13,7 +12,6 @@ from typing import Optional
 import httpx
 
 HARDCOVER_API_KEY = os.environ.get("HARDCOVER_API_KEY", "")
-LEGACY_COVER_API = os.environ.get("BOOKCOVER_API_URL", "https://bookcover.longitood.com")
 REQUEST_TIMEOUT = 12.0
 
 
@@ -81,21 +79,6 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) 
     return None
 
 
-async def _legacy_bookcover_search(title: str, author: str, client: httpx.AsyncClient) -> Optional[str]:
-    """Search the legacy bookcover API (Goodreads scraper)."""
-    params = {"book_title": title.strip()}
-    if author:
-        params["author_name"] = author.strip()
-
-    try:
-        resp = await client.get(f"{LEGACY_COVER_API}/bookcover", params=params)
-        if resp.status_code == 200:
-            return resp.json().get("url")
-    except Exception as e:
-        print(f"  [covers] Legacy API error for '{title}': {e}")
-    return None
-
-
 async def search_cover(title: str, author: str = "", client: httpx.AsyncClient = None) -> tuple[Optional[str], str]:
     """Search for a book cover across multiple sources with fallback.
 
@@ -114,11 +97,6 @@ async def search_cover(title: str, author: str = "", client: httpx.AsyncClient =
         url = await _open_library_search(title, author, client)
         if url:
             return url, "openlibrary"
-
-        # 3. Legacy Goodreads scraper (last resort)
-        url = await _legacy_bookcover_search(title, author, client)
-        if url:
-            return url, "bookcover"
 
     finally:
         if _owns_client:

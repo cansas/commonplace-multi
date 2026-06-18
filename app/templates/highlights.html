@@ -260,7 +260,11 @@
         }).then(function(r) { return r.json(); }).then(function(result) {
             if (result.ok) {
                 location.reload();
+            } else {
+                alert('Save failed: ' + (result.error || 'unknown'));
             }
+        }).catch(function(e) {
+            alert('Save failed: ' + e.message);
         });
     }
 

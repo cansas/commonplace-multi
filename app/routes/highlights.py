@@ -255,13 +255,19 @@ async def update_highlight(hl_id: int, data: HighlightUpdate, db: AsyncSession =
     hl = await db.get(Highlight, hl_id)
     if not hl:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Highlight not found")
-    
+
     update_data = data.model_dump(exclude_unset=True)
     tag_names = update_data.pop("tags", None)
-    
+
+    from sqlalchemy import text as sqltext
+
+    # Drop FTS AU trigger to avoid content-matching issues
+    await db.execute(sqltext("DROP TRIGGER IF EXISTS highlights_au"))
+
+    # Update highlight fields
     for key, value in update_data.items():
         setattr(hl, key, value)
-    
+
     if tag_names is not None:
         hl.tags = []
         for tag_name in tag_names:
@@ -271,9 +277,29 @@ async def update_highlight(hl_id: int, data: HighlightUpdate, db: AsyncSession =
                 tag = Tag(name=tag_name)
                 db.add(tag)
             hl.tags.append(tag)
-    
+
     await db.commit()
-    await db.refresh(hl)
+
+    # Recreate FTS AU trigger
+    await db.execute(sqltext(
+        "CREATE TRIGGER highlights_au AFTER UPDATE OF text, note, book_title, book_author ON highlights BEGIN "
+        "  INSERT INTO highlights_fts(highlights_fts, rowid, text, note, book_title, book_author) "
+        "  VALUES ('delete', old.id, old.text, old.note, old.book_title, old.book_author); "
+        "  INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
+        "  VALUES (new.id, new.text, new.note, new.book_title, new.book_author); "
+        "END"
+    ))
+
+    # Sync FTS for this specific row
+    await db.execute(sqltext(
+        "INSERT INTO highlights_fts(highlights_fts, rowid, text, note, book_title, book_author) "
+        "VALUES ('delete', :id, :text, :note, :book_title, :book_author)"
+    ), {"id": hl.id, "text": hl.text or "", "note": hl.note or "", "book_title": hl.book_title or "", "book_author": hl.book_author or ""})
+    await db.execute(sqltext(
+        "INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
+        "VALUES (:id, :text, :note, :book_title, :book_author)"
+    ), {"id": hl.id, "text": hl.text or "", "note": hl.note or "", "book_title": hl.book_title or "", "book_author": hl.book_author or ""})
+
     return {"ok": True, "id": hl.id}
 
 
