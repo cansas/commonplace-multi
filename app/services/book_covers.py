@@ -75,15 +75,18 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) 
         data = resp.json()
         search_data = data.get("data", {}).get("search", {})
         ids = search_data.get("ids") or []
-        results = search_data.get("results") or []
-        print(f"  [covers] Hardcover search: {len(results)} results, {len(ids)} ids for '{title}'")
-        if results:
-            print(f"  [covers] First result type={type(results[0]).__name__}, value={results[0]}")
-        if ids:
-            print(f"  [covers] First ids: {ids[:3]}")
+        results = search_data.get("results") or {}
+        if not isinstance(results, list):
+            # results is a dict mapping ID -> object (Typesense format)
+            results_list = list(results.values())
+        else:
+            results_list = results
+        ids_list = ids if isinstance(ids, list) else list(ids.values()) if isinstance(ids, dict) else []
+        print(f"  [covers] Hardcover search: {len(results_list)} results, {len(ids_list)} ids for '{title}'")
+        if results_list:
+            print(f"  [covers] First result type={type(results_list[0]).__name__}")
 
-        # Handle both object results and ID-only results
-        for book in results:
+        for book in results_list:
             if not isinstance(book, dict):
                 continue
             # Try direct cover image field
@@ -103,8 +106,8 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) 
                 return cover
 
         # Fallback: try querying books by ID
-        if ids:
-            bid = ids[0]
+        if ids_list:
+            bid = ids_list[0]
             book_query = "{ book: books_by_pk(id: " + str(bid) + ") { id title slug image { url } } }"
             book_resp = await client.post(
                 "https://api.hardcover.app/v1/graphql",
@@ -121,10 +124,10 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) 
                     if img and isinstance(img, dict) and img.get("url"):
                         return img["url"]
 
-        if results:
-            print(f"  [covers] Hardcover first result: {results[0]}")
-        if ids and not results:
-            print(f"  [covers] Hardcover IDs without results: {ids[:3]}")
+        if results_list:
+            print(f"  [covers] Hardcover first result keys: {list(results_list[0].keys())[:10] if isinstance(results_list[0], dict) else results_list[0]}")
+        if ids_list and not results_list:
+            print(f"  [covers] Hardcover IDs without results: {ids_list[:3]}")
 
     except Exception as e:
         import traceback
