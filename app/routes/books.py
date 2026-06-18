@@ -230,6 +230,71 @@ async def upload_cover(title: str = Form(...), author: str = Form(default=""), f
     return {"ok": True, "cover_url": cover_url}
 
 
+@router.post("/api/books/rename")
+async def rename_book(
+    old_title: str = Form(...),
+    old_author: str = Form(default=""),
+    new_title: str = Form(...),
+    new_author: str = Form(default=""),
+    db: AsyncSession = Depends(get_db),
+):
+    """Rename a book across all highlights. Updates metadata and cover records.
+
+    Shows a warning to the user that future imports with the old title
+    will create a separate book entry.
+    """
+    if not new_title.strip():
+        return JSONResponse({"ok": False, "error": "New title is required"}, status_code=400)
+
+    old_author = old_author or ""
+    new_author = new_author or ""
+
+    # Count highlights affected
+    count_result = await db.execute(
+        select(sa_func.count(Highlight.id)).where(
+            Highlight.book_title == old_title,
+            Highlight.book_author == old_author,
+        )
+    )
+    affected = count_result.scalar() or 0
+
+    if affected == 0:
+        return JSONResponse({"ok": False, "error": "No highlights found with that title"}, status_code=404)
+
+    # Update all highlights
+    from sqlalchemy import update as sql_update
+    await db.execute(
+        sql_update(Highlight)
+        .where(
+            Highlight.book_title == old_title,
+            Highlight.book_author == old_author,
+        )
+        .values(book_title=new_title.strip(), book_author=new_author)
+    )
+
+    # Update BookCover if one exists
+    cover_result = await db.execute(
+        select(BookCover).where(
+            BookCover.book_title == old_title,
+            BookCover.book_author == old_author,
+        )
+    )
+    cover = cover_result.scalar_one_or_none()
+    if cover:
+        cover.book_title = new_title.strip()
+        cover.book_author = new_author
+
+    await db.commit()
+
+    return {
+        "ok": True,
+        "affected": affected,
+        "old_title": old_title,
+        "new_title": new_title.strip(),
+        "warning": "Highlights imported later with the old title will appear as a separate book.",
+    }
+
+
 @router.post("/api/books/cover/backfill")
 async def backfill_covers(db: AsyncSession = Depends(get_db)):
     result = await db.execute(

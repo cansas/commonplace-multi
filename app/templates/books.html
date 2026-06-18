@@ -36,7 +36,7 @@
   {% if books %}
   <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
     {% for book in books %}
-    <a href="/highlights?book={{ book.title | urlencode }}" class="block bg-white rounded-lg border border-slate-200 overflow-hidden hover:border-indigo-300 hover:shadow-md transition-all group" data-hl-id="{{ book.highlight_id }}">
+    <a href="/highlights?book={{ book.title | urlencode }}" class="block bg-white rounded-lg border border-slate-200 overflow-hidden hover:border-indigo-300 hover:shadow-md transition-all group" data-hl-id="{{ book.highlight_id }}" data-title="{{ book.title }}" data-author="{{ book.author }}">
       <!-- Cover -->
       <div class="aspect-[2/3] bg-slate-100 flex items-center justify-center overflow-hidden">
         {% if book.cover_url %}
@@ -56,6 +56,7 @@
         <div class="flex items-center justify-between mt-2">
           <span class="text-xs font-medium text-indigo-600">{{ book.highlight_count }} highlight{% if book.highlight_count != 1 %}s{% endif %}</span>
             <div class="flex gap-1">
+              <span onclick="event.preventDefault(); event.stopPropagation(); renameBook(this)" class="text-xs text-slate-400 hover:text-amber-500 cursor-pointer" title="Edit title">✏️</span>
               <span onclick="event.preventDefault(); event.stopPropagation(); fetchCover(this)" class="text-xs text-slate-400 hover:text-indigo-500 cursor-pointer" title="Fetch cover from Goodreads">🔍</span>
               <span onclick="event.preventDefault(); event.stopPropagation(); uploadCover(this)" class="text-xs text-slate-400 hover:text-emerald-500 cursor-pointer" title="Upload custom cover">📤</span>
             </div>
@@ -88,6 +89,38 @@
   {% endif %}
 </div>
 {% endblock %}
+
+<!-- Rename Modal -->
+<div id="rename-modal" class="fixed inset-0 z-50 hidden bg-black/40 flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden" onclick="event.stopPropagation()">
+    <div class="px-6 py-4 border-b border-slate-100">
+      <h3 class="text-lg font-semibold text-slate-900">✏️ Rename Book</h3>
+    </div>
+    <form id="rename-form" class="p-6 space-y-4" onsubmit="return submitRename(event)">
+      <input type="hidden" id="rename-old-title" name="old_title" />
+      <input type="hidden" id="rename-old-author" name="old_author" />
+      <div>
+        <label for="rename-new-title" class="block text-sm font-medium text-slate-700 mb-1">Title</label>
+        <input type="text" id="rename-new-title" name="new_title" required
+               class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent" />
+      </div>
+      <div>
+        <label for="rename-new-author" class="block text-sm font-medium text-slate-700 mb-1">Author</label>
+        <input type="text" id="rename-new-author" name="new_author"
+               class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent" />
+      </div>
+      <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+        <p class="font-medium mb-1">⚠️ Affects all highlights for this book</p>
+        <p id="rename-warning" class="text-amber-700 text-xs"></p>
+        <p class="text-amber-700 text-xs mt-1">Future imports using the old title will create a <strong>separate book entry</strong>.</p>
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" onclick="closeRenameModal()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
+        <button type="submit" id="rename-submit" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 {% block scripts %}
 <script>
@@ -192,5 +225,60 @@
     };
     input.click();
   }
+
+  /* ── Rename Book ──────────────────────────────────────── */
+  var renameCard = null;
+
+  function renameBook(el) {
+    renameCard = el.closest('[data-hl-id]');
+    if (!renameCard) return;
+    var oldTitle = renameCard.dataset.title;
+    var oldAuthor = renameCard.dataset.author;
+    var hlCount = renameCard.querySelector('.text-indigo-600')?.textContent || '?';
+
+    document.getElementById('rename-old-title').value = oldTitle;
+    document.getElementById('rename-old-author').value = oldAuthor;
+    document.getElementById('rename-new-title').value = oldTitle;
+    document.getElementById('rename-new-author').value = oldAuthor === 'Unknown' ? '' : oldAuthor;
+    document.getElementById('rename-warning').textContent = 'Renaming will update ' + hlCount + '.';
+    document.getElementById('rename-submit').disabled = false;
+    document.getElementById('rename-submit').textContent = 'Save Changes';
+    document.getElementById('rename-modal').classList.remove('hidden');
+  }
+
+  function closeRenameModal() {
+    document.getElementById('rename-modal').classList.add('hidden');
+    renameCard = null;
+  }
+
+  function submitRename(event) {
+    event.preventDefault();
+    var btn = document.getElementById('rename-submit');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    var fd = new FormData(document.getElementById('rename-form'));
+    fetch('/api/books/rename', { method: 'POST', body: fd })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.ok) {
+          closeRenameModal();
+          location.reload();
+        } else {
+          alert('Error: ' + (d.error || 'unknown'));
+          btn.disabled = false;
+          btn.textContent = 'Save Changes';
+        }
+      })
+      .catch(function(e) {
+        alert('Network error: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
+      });
+    return false;
+  }
+
+  /* Close modal on background click */
+  document.getElementById('rename-modal')?.addEventListener('click', closeRenameModal);
 </script>
 {% endblock %}
