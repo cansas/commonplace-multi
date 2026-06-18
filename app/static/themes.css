@@ -9,31 +9,30 @@
 :root,
 .theme-modern {
   --bg-page: #f8fafc;
-  --bg-sidebar: #0f172a;
+  --bg-sidebar: #ffffff;
   --bg-card: #ffffff;
   --bg-page-alt: #f1f5f9;
+  --bg-sidebar-hover: #f1f5f9;
+  --bg-sidebar-active: #e2e8f0;
 
   --text-primary: #1e293b;
   --text-secondary: #475569;
   --text-muted: #64748b;
   --text-muted-lighter: #94a3b8;
 
-  --text-sidebar: #cbd5e1;
-  --text-sidebar-muted: #64748b;
-  --text-sidebar-active: #ffffff;
+  --text-sidebar: #475569;
+  --text-sidebar-muted: #94a3b8;
+  --text-sidebar-active: #0f172a;
 
   --border-subtle: #e2e8f0;
   --border-card: #e2e8f0;
-  --border-sidebar: #334155;
+  --border-sidebar: #e2e8f0;
 
   --color-accent: #4f46e5;
   --color-accent-hover: #4338ca;
   --color-accent-light: #eef2ff;
   --color-accent-lighter: #e0e7ff;
   --color-accent-text: #4338ca;
-
-  --sidebar-hover-bg: #1e293b;
-  --sidebar-active-bg: #334155;
 
   --color-link: #4f46e5;
   --color-link-hover: #4338ca;
@@ -49,42 +48,35 @@
   --btn-primary-bg: #4f46e5;
   --btn-primary-text: #ffffff;
   --btn-primary-hover: #4338ca;
-
-  --stat-emerald: #059669;
-  --stat-amber: #d97706;
-  --stat-indigo: #4f46e5;
-
-  --logo-filter: brightness(0) invert(1);
 }
 
 /* ---------- Reader Theme ---------- */
 .theme-reader {
   --bg-page: #faf8f5;
-  --bg-sidebar: #3f3732;
+  --bg-sidebar: #f5f0ea;
   --bg-card: #ffffff;
   --bg-page-alt: #f5f0ea;
+  --bg-sidebar-hover: #e8dfd3;
+  --bg-sidebar-active: #d4c8b6;
 
   --text-primary: #3f3732;
   --text-secondary: #655743;
   --text-muted: #9c8a72;
   --text-muted-lighter: #b8a992;
 
-  --text-sidebar: #d4cec7;
-  --text-sidebar-muted: #9c8a72;
-  --text-sidebar-active: #ffffff;
+  --text-sidebar: #655743;
+  --text-sidebar-muted: #b8a992;
+  --text-sidebar-active: #3f3732;
 
   --border-subtle: #e8dfd3;
   --border-card: #e8dfd3;
-  --border-sidebar: #655743;
+  --border-sidebar: #d4c8b6;
 
   --color-accent: #655743;
   --color-accent-hover: #524635;
   --color-accent-light: #f5f0ea;
   --color-accent-lighter: #ebe8e4;
   --color-accent-text: #524635;
-
-  --sidebar-hover-bg: #4a403a;
-  --sidebar-active-bg: #574c44;
 
   --color-link: #655743;
   --color-link-hover: #3f3732;
@@ -100,12 +92,6 @@
   --btn-primary-bg: #655743;
   --btn-primary-text: #ffffff;
   --btn-primary-hover: #524635;
-
-  --stat-emerald: #059669;
-  --stat-amber: #d97706;
-  --stat-indigo: #655743;
-
-  --logo-filter: brightness(0) invert(1);
 }
 
 /* ---------- Global overrides ---------- */
@@ -163,19 +149,21 @@ a.link-accent:hover { color: var(--color-link-hover); }
 .sidebar-nav a {
   color: var(--text-sidebar);
   transition: background-color 0.15s ease, color 0.15s ease;
+  border-radius: 0.5rem;
 }
 .sidebar-nav a:hover {
-  background-color: var(--sidebar-hover-bg);
+  background-color: var(--bg-sidebar-hover);
   color: var(--text-sidebar-active);
 }
 .sidebar-nav a.active {
-  background-color: var(--sidebar-active-bg);
+  background-color: var(--bg-sidebar-active);
   color: var(--text-sidebar-active);
+  font-weight: 600;
 }
 
-/* Logo in sidebar */
+/* Logo in sidebar — dark icon on light sidebar bg, no filter needed */
 .sidebar-logo {
-  filter: var(--logo-filter);
+  filter: none;
 }
 
 /* Theme toggle button */
@@ -195,7 +183,7 @@ a.link-accent:hover { color: var(--color-link-hover); }
   color: var(--text-sidebar-muted);
 }
 .theme-toggle-btn:hover {
-  background-color: var(--sidebar-hover-bg);
+  background-color: var(--bg-sidebar-hover);
   color: var(--text-sidebar-active);
 }
 
@@ -213,13 +201,7 @@ a.link-accent:hover { color: var(--color-link-hover); }
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
-/* Stat card accent colors per theme */
-.stat-emerald { color: var(--stat-emerald); }
-.stat-amber { color: var(--stat-amber); }
-.stat-indigo { color: var(--stat-indigo); }
-
-/* Selection highlight already set above.
-   Also fix the accent-colored range input thumb. */
+/* Selection highlight */
 input[type="range"]::-webkit-slider-thumb {
   background: var(--color-accent) !important;
 }
@@ -227,7 +209,7 @@ input[type="range"]::-moz-range-thumb {
   background: var(--color-accent) !important;
 }
 
-/* Misc overrides for theme-reader — italic style for serif */
+/* Reader theme serif for review quotes */
 .theme-reader .review-quote p {
   font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
 }
