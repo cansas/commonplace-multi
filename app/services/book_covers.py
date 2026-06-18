@@ -72,8 +72,17 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) 
             print(f"  [covers] Hardcover HTTP {resp.status_code} for '{title}': {resp.text[:300]}")
             return None
         data = resp.json()
-        results = data.get("data", {}).get("search", {}).get("results", [])
+        search_data = data.get("data", {}).get("search", {})
+        print(f"  [covers] Hardcover search keys: {list(search_data.keys())}")
+        results = search_data.get("results", [])
         print(f"  [covers] Hardcover search returned {len(results)} results for '{title}'")
+        if results:
+            print(f"  [covers] First result type={type(results[0]).__name__}, value={results[0]}")
+
+        for book in results:
+            if not isinstance(book, dict):
+                print(f"  [covers] Skipping non-dict result: {book}")
+                continue
 
         for book in results:
             # Try direct cover image field
