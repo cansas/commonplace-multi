@@ -146,12 +146,25 @@
                 <p class="text-[10px] text-muted truncate">{{ book.author }}</p>
                 {% endif %}
             </a>
-            {% empty %}
-            {% for _ in range(6) %}
+            {% else %}
             <div class="aspect-[2/3] bg-page-alt rounded-xl border border-card flex items-center justify-center">
                 <span class="text-muted-lighter text-xs">📚</span>
             </div>
-            {% endfor %}
+            <div class="aspect-[2/3] bg-page-alt rounded-xl border border-card flex items-center justify-center">
+                <span class="text-muted-lighter text-xs">📚</span>
+            </div>
+            <div class="aspect-[2/3] bg-page-alt rounded-xl border border-card flex items-center justify-center">
+                <span class="text-muted-lighter text-xs">📚</span>
+            </div>
+            <div class="aspect-[2/3] bg-page-alt rounded-xl border border-card flex items-center justify-center">
+                <span class="text-muted-lighter text-xs">📚</span>
+            </div>
+            <div class="aspect-[2/3] bg-page-alt rounded-xl border border-card flex items-center justify-center">
+                <span class="text-muted-lighter text-xs">📚</span>
+            </div>
+            <div class="aspect-[2/3] bg-page-alt rounded-xl border border-card flex items-center justify-center">
+                <span class="text-muted-lighter text-xs">📚</span>
+            </div>
             {% endfor %}
         </div>
     </div>
