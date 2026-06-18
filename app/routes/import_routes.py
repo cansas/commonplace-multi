@@ -10,7 +10,7 @@ from app.services.obsidian import parse_readwise_md
 from app.services.koreader_json import parse_koreader_json
 from app.schemas import HighlightCreate, ReadwiseBatchImport
 from app.routes.share import get_share_token
-from app.csrf import template_context
+from app.csrf import template_context, csrf_guard
 from typing import List
 from datetime import datetime
 import json
@@ -110,9 +110,11 @@ async def _save_highlights(db, highlights_list, source_name, source_type):
 @router.post("/import/readwise")
 async def import_readwise(
     request: Request,
+    csrf_token: str = Form(default=""),
     files: List[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db),
 ):
+    csrf_guard(request, csrf_token)
     all_highlights = []
     source_names = []
     for f in files:
@@ -133,9 +135,11 @@ async def import_readwise(
 @router.post("/import/koreader-json")
 async def import_koreader_json(
     request: Request,
+    csrf_token: str = Form(default=""),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
+    csrf_guard(request, csrf_token)
     content = json.loads(await file.read())
     parsed = parse_koreader_json(content)
 

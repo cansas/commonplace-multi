@@ -9,7 +9,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.models import User
 from app.auth import verify_password
-from app.csrf import template_context
+from app.csrf import template_context, csrf_guard
 
 router = APIRouter(tags=["auth"])
 

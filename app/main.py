@@ -12,12 +12,12 @@ import os
 from app.database import init_db, get_db, async_session
 from app.models import Highlight, Source, BookCover
 from app.auth import AuthMiddleware, ensure_admin
-from app.csrf import CSRFMiddleware, generate_csrf_token, template_context
+from app.csrf import CSRFMiddleware, generate_csrf_token, template_context, SecurityHeadersMiddleware
 from app.routes import highlights, review, import_routes, settings as settings_routes, books, auth as auth_routes, share as share_routes
 from app.services.resurface import get_dashboard_counts
 from app.services.book_covers import batch_search
 
-app = FastAPI(title="commonplace", version="0.5.7")
+app = FastAPI(title="commonplace", version="0.5.9")
 
 # Ensure covers directory exists on the mounted volume
 COVERS_DIR = os.environ.get("COVERS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "covers"))
@@ -66,6 +66,9 @@ app.add_middleware(AuthMiddleware)
 
 # CSRF middleware — sets CSRF cookie on GET, runs after session is available
 app.add_middleware(CSRFMiddleware)
+
+# Security headers
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Session middleware (outer — runs first, populates session cookie)
 _session_https = os.environ.get("SESSION_HTTPS_ONLY", "true").lower() == "true"

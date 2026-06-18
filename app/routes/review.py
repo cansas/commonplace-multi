@@ -1,13 +1,14 @@
 """Daily review — flash-card style. Respects daily limit from settings."""
-from fastapi import APIRouter, Depends, Request, Form
+from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import Highlight, ReviewLog
 from app.services.resurface import get_random_highlights
 from app.routes.settings import _settings as review_settings
-from app.csrf import template_context
+from app.csrf import template_context, csrf_guard
 from datetime import datetime
+import time
 
 router = APIRouter(tags=["review"])
 
@@ -125,14 +126,34 @@ async def review_page(
     )
 
 
+# ── Rate limiting for review actions ──────────────────────────────────────
+
+_REVIEW_LIMIT_ENTRIES: dict = {}
+_REVIEW_MAX_PER_MIN = 30
+
+
+def _check_review_rate_limit(request: Request):
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    window = 60
+    _REVIEW_LIMIT_ENTRIES[ip] = [t for t in _REVIEW_LIMIT_ENTRIES.get(ip, []) if now - t < window]
+    if len(_REVIEW_LIMIT_ENTRIES[ip]) >= _REVIEW_MAX_PER_MIN:
+        raise HTTPException(status_code=429, detail="Too many review actions. Slow down.")
+    _REVIEW_LIMIT_ENTRIES[ip].append(now)
+
+
 # ── Actions — each one logs the review and advances ──────────────────────
 
 
 @router.post("/review/next")
 async def review_next(
+    request: Request,
     hl_id: int = Form(...),
+    csrf_token: str = Form(default=""),
     db: AsyncSession = Depends(get_db),
 ):
+    csrf_guard(request, csrf_token)
+    _check_review_rate_limit(request)
     await _log_review(db, hl_id)
     await db.commit()
     return RedirectResponse(url="/review", status_code=303)
@@ -140,9 +161,13 @@ async def review_next(
 
 @router.post("/review/favorite")
 async def review_favorite(
+    request: Request,
     hl_id: int = Form(...),
+    csrf_token: str = Form(default=""),
     db: AsyncSession = Depends(get_db),
 ):
+    csrf_guard(request, csrf_token)
+    _check_review_rate_limit(request)
     hl = await db.get(Highlight, hl_id)
     if hl:
         hl.favorite = 0 if hl.favorite else 1
@@ -153,9 +178,13 @@ async def review_favorite(
 
 @router.post("/review/delete")
 async def review_delete(
+    request: Request,
     hl_id: int = Form(...),
+    csrf_token: str = Form(default=""),
     db: AsyncSession = Depends(get_db),
 ):
+    csrf_guard(request, csrf_token)
+    _check_review_rate_limit(request)
     hl = await db.get(Highlight, hl_id)
     if hl:
         await db.delete(hl)

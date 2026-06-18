@@ -9,7 +9,7 @@ from app.database import get_db
 from app.models import Highlight, Source, User, ApiToken
 from app.auth import generate_api_token, hash_password, verify_password
 from app.routes.share import get_share_token
-from app.csrf import template_context
+from app.csrf import template_context, csrf_guard
 
 router = APIRouter(tags=["settings"])
 
@@ -84,7 +84,7 @@ async def settings_page(
             total_books=books,
             review_mode=_settings.get("review_mode", "random"),
             review_count=_settings.get("review_count", 10),
-            version="0.5.7",
+            version="0.5.9",
             saved=saved,
             new_token=new_token,
             username=request.session.get("username", ""),
@@ -93,14 +93,24 @@ async def settings_page(
 
 
 @router.post("/settings/review-mode")
-async def set_review_mode(spaced_mode: str = Form(default="")):
+async def set_review_mode(
+    request: Request,
+    csrf_token: str = Form(default=""),
+    spaced_mode: str = Form(default=""),
+):
+    csrf_guard(request, csrf_token)
     _settings["review_mode"] = "spaced" if spaced_mode == "1" else "random"
     _save_settings()
     return RedirectResponse(url="/settings?saved=1", status_code=303)
 
 
 @router.post("/settings/review-count")
-async def set_review_count(count: int = Form(default=10)):
+async def set_review_count(
+    request: Request,
+    csrf_token: str = Form(default=""),
+    count: int = Form(default=10),
+):
+    csrf_guard(request, csrf_token)
     _settings["review_count"] = max(5, min(30, count))
     _save_settings()
     return RedirectResponse(url="/settings?saved=1", status_code=303)
@@ -112,11 +122,13 @@ async def set_review_count(count: int = Form(default=10)):
 @router.post("/settings/change-password")
 async def change_password(
     request: Request,
+    csrf_token: str = Form(default=""),
     current_password: str = Form(...),
     new_password: str = Form(...),
     confirm_password: str = Form(...),
     db: AsyncSession = Depends(get_db),
 ):
+    csrf_guard(request, csrf_token)
     user_id = request.session.get("user_id")
     if not user_id:
         return RedirectResponse(url="/login", status_code=303)
@@ -230,9 +242,11 @@ async def revoke_token(
 @router.post("/settings/create-token")
 async def create_token_form(
     request: Request,
+    csrf_token: str = Form(default=""),
     token_name: str = Form(...),
     db: AsyncSession = Depends(get_db),
 ):
+    csrf_guard(request, csrf_token)
     """Create a token from the settings page form."""
     user_id = request.session.get("user_id")
     if not user_id:
@@ -260,8 +274,10 @@ async def create_token_form(
 async def revoke_token_form(
     request: Request,
     token_id: int,
+    csrf_token: str = Form(default=""),
     db: AsyncSession = Depends(get_db),
 ):
+    csrf_guard(request, csrf_token)
     """Revoke a token from the settings page form."""
     user_id = request.session.get("user_id")
     if not user_id:
@@ -284,9 +300,11 @@ async def revoke_token_form(
 @router.post("/settings/reset")
 async def reset_database(
     request: Request,
+    csrf_token: str = Form(default=""),
     confirm: str = Form(...),
     db: AsyncSession = Depends(get_db),
 ):
+    csrf_guard(request, csrf_token)
     """Delete all highlights and review history. Requires typing 'reset'."""
     if confirm.strip().lower() != "reset":
         return RedirectResponse(url="/settings?error=Type+%22reset%22+to+confirm", status_code=303)

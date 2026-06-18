@@ -105,3 +105,42 @@ def template_context(request: Request, **kwargs) -> dict:
     else:
         ctx["csrf_token"] = ""
     return ctx
+
+
+def csrf_guard(request: Request, csrf_token: str = "") -> None:
+    """FastAPI dependency: raises 403 if CSRF token is invalid.
+
+    Usage: add ``csrf_token: str = Form(default="")`` to the handler
+    and ``Depends(csrf_guard)`` to the route's dependencies.
+    """
+    path = request.url.path
+    for prefix in CSRF_EXEMPT_PREFIXES:
+        if path.startswith(prefix):
+            return
+    if path in CSRF_EXEMPT_PATHS:
+        return
+
+    if not csrf_token:
+        from fastapi import HTTPException, status
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing CSRF token")
+
+    cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
+    if not cookie_token or csrf_token != cookie_token or not verify_csrf_token(csrf_token, request.session):
+        from fastapi import HTTPException, status
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token")
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Sets security-related response headers for defense-in-depth."""
+
+    HEADERS = {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "same-origin",
+    }
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        for name, value in self.HEADERS.items():
+            response.headers[name] = value
+        return response
