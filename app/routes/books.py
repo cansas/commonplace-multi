@@ -397,14 +397,19 @@ async def delete_book(
     )
     hl_ids = [row[0] for row in ids.all()]
 
-    # Delete from FTS index using expanding bind param for IN clause
+    # Drop FTS triggers to avoid content-matching issues during bulk delete
+    await db.execute(sqltext("DROP TRIGGER IF EXISTS highlights_ai"))
+    await db.execute(sqltext("DROP TRIGGER IF EXISTS highlights_ad"))
+    await db.execute(sqltext("DROP TRIGGER IF EXISTS highlights_au"))
+
+    # Delete from FTS index directly
     if hl_ids:
         stmt = sqltext("DELETE FROM highlights_fts WHERE rowid IN (:ids)").bindparams(
             bindparam("ids", expanding=True)
         )
         await db.execute(stmt, {"ids": hl_ids})
 
-    # Delete highlights
+    # Delete highlights (no triggers to interfere)
     await db.execute(
         sqltext("DELETE FROM highlights WHERE book_title = :t AND book_author = :a"),
         {"t": title, "a": author},
@@ -415,6 +420,28 @@ async def delete_book(
         sqltext("DELETE FROM book_covers WHERE book_title = :t AND book_author = :a"),
         {"t": title, "a": author},
     )
+
+    # Recreate FTS triggers
+    await db.execute(sqltext(
+        "CREATE TRIGGER IF NOT EXISTS highlights_ai AFTER INSERT ON highlights BEGIN "
+        "  INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
+        "  VALUES (new.id, new.text, new.note, new.book_title, new.book_author); "
+        "END"
+    ))
+    await db.execute(sqltext(
+        "CREATE TRIGGER IF NOT EXISTS highlights_ad AFTER DELETE ON highlights BEGIN "
+        "  INSERT INTO highlights_fts(highlights_fts, rowid, text, note, book_title, book_author) "
+        "  VALUES ('delete', old.id, old.text, old.note, old.book_title, old.book_author); "
+        "END"
+    ))
+    await db.execute(sqltext(
+        "CREATE TRIGGER highlights_au AFTER UPDATE OF text, note, book_title, book_author ON highlights BEGIN "
+        "  INSERT INTO highlights_fts(highlights_fts, rowid, text, note, book_title, book_author) "
+        "  VALUES ('delete', old.id, old.text, old.note, old.book_title, old.book_author); "
+        "  INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
+        "  VALUES (new.id, new.text, new.note, new.book_title, new.book_author); "
+        "END"
+    ))
 
     await db.commit()
     return {"ok": True, "deleted": count, "title": title}

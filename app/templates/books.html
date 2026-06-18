@@ -325,7 +325,14 @@
     fd.append('title', title);
     fd.append('author', author);
     fetch('/api/books/delete', { method: 'POST', body: fd })
-      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (!r.ok) {
+          return r.text().then(function(text) {
+            throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 200));
+          });
+        }
+        return r.json();
+      })
       .then(function(d) {
         if (d.ok) {
           closeRenameModal();
