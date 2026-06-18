@@ -321,11 +321,14 @@ async def rename_book(
         "END"
     ))
 
-    # Manually sync FTS for the target book (covers both renamed and pre-existing rows)
-    for op in ["delete", "insert"]:
-        prefix = "INSERT INTO highlights_fts(highlights_fts, rowid, text, note, book_title, book_author) " if op == "delete" else "INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
-        select_part = f"SELECT 'delete', id, text, note, book_title, book_author FROM highlights WHERE book_title = :t AND book_author = :a" if op == "delete" else "SELECT id, text, note, book_title, book_author FROM highlights WHERE book_title = :t AND book_author = :a"
-        await db.execute(sqltext(prefix + select_part), {"t": new_title.strip(), "a": new_author})
+    # Manually sync FTS for the target book — delete stale and re-insert
+    # (DELETE+INSERT on individual rows can fail if FTS content doesn't
+    # match exactly after a bulk UPDATE; a full clear+rebuild is simpler)
+    await db.execute(sqltext("DELETE FROM highlights_fts"))
+    await db.execute(sqltext(
+        "INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
+        "SELECT id, text, note, book_title, book_author FROM highlights"
+    ))
 
     # BookCover — if merge, prefer the existing target cover and remove the old
     if target_exists:
