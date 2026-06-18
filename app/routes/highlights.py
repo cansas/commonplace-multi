@@ -5,9 +5,9 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sa_func
 from app.database import get_db
-from app.models import Highlight, Tag
+from app.models import Highlight, Tag, BookCover
 from app.schemas import HighlightOut, HighlightCreate, HighlightUpdate
-from app.services.highlight_card import generate_card
+from app.services.highlight_card import generate_card, fetch_cover_data
 from app.csrf import template_context
 from typing import Optional, List
 from datetime import datetime
@@ -282,13 +282,27 @@ async def highlight_card(hl_id: int, db: AsyncSession = Depends(get_db)):
     hl = await db.get(Highlight, hl_id)
     if not hl:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Highlight not found")
-    
+
+    # Look up cover image
+    cover_uri = None
+    if hl.book_title:
+        cover_result = await db.execute(
+            select(BookCover).where(
+                BookCover.book_title == hl.book_title,
+                BookCover.book_author == (hl.book_author or ""),
+            )
+        )
+        cover = cover_result.scalar_one_or_none()
+        if cover and cover.cover_url:
+            cover_uri = await fetch_cover_data(cover.cover_url)
+
     svg = generate_card(
         highlight_text=hl.text or "",
         book_title=hl.book_title or "",
         book_author=hl.book_author or "",
         note=hl.note or "",
         highlight_id=hl.id,
+        cover_data_uri=cover_uri,
     )
     from fastapi.responses import Response
     return Response(content=svg, media_type="image/svg+xml")

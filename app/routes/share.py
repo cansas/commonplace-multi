@@ -6,8 +6,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
-from app.models import Highlight
-from app.services.highlight_card import generate_card, svg_to_png
+from app.models import Highlight, BookCover
+from app.services.highlight_card import generate_card, svg_to_png, fetch_cover_data
 
 router = APIRouter(tags=["share"])
 
@@ -45,12 +45,14 @@ async def share_png(share_token: str, db: AsyncSession = Depends(get_db)):
     if not hl:
         return JSONResponse(status_code=404, content={"error": "Not found"})
 
+    cover_uri = await _get_cover_data(hl, db)
     svg = generate_card(
         highlight_text=hl.text or "",
         book_title=hl.book_title or "",
         book_author=hl.book_author or "",
         note=hl.note or "",
         highlight_id=hl.id,
+        cover_data_uri=cover_uri,
     )
     png = svg_to_png(svg.encode("utf-8"))
     if png is None:
@@ -65,12 +67,14 @@ async def share_svg(share_token: str, db: AsyncSession = Depends(get_db)):
     if not hl:
         return JSONResponse(status_code=404, content={"error": "Not found"})
 
+    cover_uri = await _get_cover_data(hl, db)
     svg = generate_card(
         highlight_text=hl.text or "",
         book_title=hl.book_title or "",
         book_author=hl.book_author or "",
         note=hl.note or "",
         highlight_id=hl.id,
+        cover_data_uri=cover_uri,
     )
     return Response(content=svg, media_type="image/svg+xml")
 
@@ -93,7 +97,7 @@ async def share_page(share_token: str, request: Request, db: AsyncSession = Depe
             "highlight": hl,
             "page_url": page_url,
             "png_url": png_url,
-            "title": f"\"{hl.text[:80]}{'...' if len(hl.text) > 80 else ''}\"",
+            "title": f"\u201c{hl.text[:80]}{'...' if len(hl.text) > 80 else ''}\u201d",
             "description": f"From {hl.book_title or 'Unknown Book'}{' by ' + hl.book_author if hl.book_author else ''}",
         },
     )
@@ -103,3 +107,19 @@ async def share_page(share_token: str, request: Request, db: AsyncSession = Depe
 
 def get_share_token() -> str:
     return _generate_share_token()
+
+
+async def _get_cover_data(hl: Highlight, db: AsyncSession) -> str | None:
+    """Fetch cover image data URI for a highlight's book, if available."""
+    if not hl.book_title:
+        return None
+    result = await db.execute(
+        select(BookCover).where(
+            BookCover.book_title == hl.book_title,
+            BookCover.book_author == (hl.book_author or ""),
+        )
+    )
+    cover = result.scalar_one_or_none()
+    if cover and cover.cover_url:
+        return await fetch_cover_data(cover.cover_url)
+    return None
