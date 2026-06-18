@@ -71,14 +71,22 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) 
             headers={"Authorization": f"Bearer {HARDCOVER_API_KEY}"},
         )
         if resp.status_code != 200:
+            print(f"  [covers] Hardcover HTTP {resp.status_code} for '{title}'")
             return None
         data = resp.json()
         books = data.get("data", {}).get("books", [])
+        print(f"  [covers] Hardcover found {len(books)} books for '{title}'")
 
         for book in books:
             img = book.get("image")
             if img and img.get("url"):
+                print(f"  [covers] Hardcover cover: {img['url']}")
                 return img["url"]
+
+        # If no cover but books found, log why
+        if books:
+            for book in books:
+                print(f"  [covers] Hardcover book '{book.get('title', '?')}' has image={bool(book.get('image'))}")
 
     except Exception as e:
         print(f"  [covers] Hardcover error for '{title}': {e}")
