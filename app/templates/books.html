@@ -266,7 +266,14 @@
 
     var fd = new FormData(document.getElementById('rename-form'));
     fetch('/api/books/rename', { method: 'POST', body: fd })
-      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (!r.ok) {
+          return r.text().then(function(text) {
+            throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 200));
+          });
+        }
+        return r.json();
+      })
       .then(function(d) {
         if (d.ok) {
           closeRenameModal();
@@ -278,7 +285,7 @@
         }
       })
       .catch(function(e) {
-        alert('Network error: ' + e.message);
+        alert('Rename failed: ' + e.message);
         btn.disabled = false;
         btn.textContent = 'Save Changes';
       });
