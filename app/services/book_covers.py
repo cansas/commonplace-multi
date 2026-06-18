@@ -1,8 +1,8 @@
 """Book cover lookup — multi-source with fallback chain.
 
 Priority:
-  1. Open Library Covers API (free, no key, large catalog)
-  2. Hardcover.app API (requires API key, good for newer books)
+  1. Hardcover.app API (requires API key, best quality for modern books)
+  2. Open Library Covers API (free, no key, large catalog)
   3. bookcover.longitood.com (legacy Goodreads scraper)
 """
 
@@ -105,15 +105,15 @@ async def search_cover(title: str, author: str = "", client: httpx.AsyncClient =
     if _owns_client:
         client = httpx.AsyncClient(timeout=REQUEST_TIMEOUT)
     try:
-        # 1. Open Library (free, largest catalog)
-        url = await _open_library_search(title, author, client)
-        if url:
-            return url, "openlibrary"
-
-        # 2. Hardcover.app (needs API key)
+        # 1. Hardcover.app (needs API key, best for newer/modern books)
         url = await _hardcover_search(title, author, client)
         if url:
             return url, "hardcover"
+
+        # 2. Open Library (free, largest catalog)
+        url = await _open_library_search(title, author, client)
+        if url:
+            return url, "openlibrary"
 
         # 3. Legacy Goodreads scraper (last resort)
         url = await _legacy_bookcover_search(title, author, client)
