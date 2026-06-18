@@ -264,21 +264,68 @@ async def update_highlight(hl_id: int, data: HighlightUpdate, db: AsyncSession =
     # Drop FTS AU trigger to avoid content-matching issues
     await db.execute(sqltext("DROP TRIGGER IF EXISTS highlights_au"))
 
-    # Update highlight fields
-    for key, value in update_data.items():
-        setattr(hl, key, value)
+    # Build SET clause from non-None fields
+    set_parts = []
+    params = {"id": hl_id}
+    for key in ("text", "note", "page", "chapter", "book_title", "book_author"):
+        if key in update_data:
+            set_parts.append(f"{key} = :{key}")
+            params[key] = update_data[key]
 
+    if set_parts:
+        await db.execute(
+            sqltext(f"UPDATE highlights SET {', '.join(set_parts)} WHERE id = :id"),
+            params,
+        )
+
+    # Handle tags (need to manage highlight_tags junction table)
     if tag_names is not None:
-        hl.tags = []
+        # Remove existing tag associations
+        await db.execute(
+            sqltext("DELETE FROM highlight_tags WHERE highlight_id = :id"),
+            {"id": hl_id},
+        )
         for tag_name in tag_names:
-            result = await db.execute(select(Tag).where(Tag.name == tag_name))
-            tag = result.scalar_one_or_none()
-            if not tag:
-                tag = Tag(name=tag_name)
-                db.add(tag)
-            hl.tags.append(tag)
+            tag_name = tag_name.strip()
+            if not tag_name:
+                continue
+            # Upsert tag
+            result = await db.execute(
+                sqltext("SELECT id FROM tags WHERE name = :name"),
+                {"name": tag_name},
+            )
+            row = result.one_or_none()
+            if row:
+                tag_id = row[0]
+            else:
+                result = await db.execute(
+                    sqltext("INSERT INTO tags (name) VALUES (:name) RETURNING id"),
+                    {"name": tag_name},
+                )
+                tag_id = result.scalar_one()
+            await db.execute(
+                sqltext("INSERT OR IGNORE INTO highlight_tags (highlight_id, tag_id) VALUES (:hid, :tid)"),
+                {"hid": hl_id, "tid": tag_id},
+            )
 
-    await db.commit()
+    # Rebuild FTS for this highlight
+    row = await db.execute(
+        sqltext("SELECT id, text, note, book_title, book_author FROM highlights WHERE id = :id"),
+        {"id": hl_id},
+    )
+    hl_row = row.one_or_none()
+    if hl_row:
+        await db.execute(sqltext(
+            "DELETE FROM highlights_fts WHERE rowid = :id"
+        ), {"id": hl_id})
+        await db.execute(sqltext(
+            "INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
+            "VALUES (:id, :text, :note, :book_title, :book_author)"
+        ), {
+            "id": hl_row.id, "text": hl_row.text or "",
+            "note": hl_row.note or "", "book_title": hl_row.book_title or "",
+            "book_author": hl_row.book_author or "",
+        })
 
     # Recreate FTS AU trigger
     await db.execute(sqltext(
@@ -290,17 +337,8 @@ async def update_highlight(hl_id: int, data: HighlightUpdate, db: AsyncSession =
         "END"
     ))
 
-    # Sync FTS for this specific row
-    await db.execute(sqltext(
-        "INSERT INTO highlights_fts(highlights_fts, rowid, text, note, book_title, book_author) "
-        "VALUES ('delete', :id, :text, :note, :book_title, :book_author)"
-    ), {"id": hl.id, "text": hl.text or "", "note": hl.note or "", "book_title": hl.book_title or "", "book_author": hl.book_author or ""})
-    await db.execute(sqltext(
-        "INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
-        "VALUES (:id, :text, :note, :book_title, :book_author)"
-    ), {"id": hl.id, "text": hl.text or "", "note": hl.note or "", "book_title": hl.book_title or "", "book_author": hl.book_author or ""})
-
-    return {"ok": True, "id": hl.id}
+    await db.commit()
+    return {"ok": True, "id": hl_id}
 
 
 @router.get("/api/highlights/{hl_id}/card")
