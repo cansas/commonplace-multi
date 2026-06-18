@@ -236,38 +236,68 @@ async def rename_book(
     old_author: str = Form(default=""),
     new_title: str = Form(...),
     new_author: str = Form(default=""),
+    merge: str = Form(default=""),
     db: AsyncSession = Depends(get_db),
 ):
-    """Rename a book across all highlights. Updates metadata and cover records.
+    """Rename a book across all highlights. Merges if target already exists.
 
-    The FTS5 AU trigger is temporarily disabled during the bulk rename to
-    avoid "SQL logic error" from trigger contention, then manually synced.
+    If the target (new_title, new_author) already matches a different book,
+    returns ``conflict: true`` with details on the first call.  On a second
+    call with ``merge=true``, all highlights from the source book are
+    reassigned to the existing target book (they merge naturally since they
+    share the same title/author after the UPDATE), and the old BookCover
+    is cleaned up.
     """
     if not new_title.strip():
         return JSONResponse({"ok": False, "error": "New title is required"}, status_code=400)
 
     old_author = old_author or ""
     new_author = new_author or ""
+    do_merge = merge.strip().lower() == "true"
 
-    # Count highlights affected
-    count_result = await db.execute(
+    # Count source highlights
+    src_count = await db.execute(
         select(sa_func.count(Highlight.id)).where(
             Highlight.book_title == old_title,
             Highlight.book_author == old_author,
         )
     )
-    affected = count_result.scalar() or 0
+    affected = src_count.scalar() or 0
 
     if affected == 0:
         return JSONResponse({"ok": False, "error": "No highlights found with that title"}, status_code=404)
 
+    # Check if target already exists (different book, same title/author)
+    target_exists = False
+    target_count = 0
+    if new_title.strip() != old_title or new_author != old_author:
+        tgt = await db.execute(
+            select(sa_func.count(Highlight.id)).where(
+                Highlight.book_title == new_title.strip(),
+                Highlight.book_author == new_author,
+            )
+        )
+        target_count = tgt.scalar() or 0
+        target_exists = target_count > 0
+
+    # If there's a conflict and user hasn't confirmed merge, ask
+    if target_exists and not do_merge:
+        return {
+            "ok": False,
+            "conflict": True,
+            "existing_count": target_count,
+            "new_title": new_title.strip(),
+            "new_author": new_author,
+            "message": f"\"{new_title.strip()}\" already exists with {target_count} highlight{'s' if target_count != 1 else ''}. "
+                       f"Merge {affected} highlight{'s' if affected != 1 else ''} into it?",
+        }
+
     from sqlalchemy import text as sqltext
 
-    # Temporarily drop the FTS AU trigger so the bulk UPDATE doesn't
-    # trigger re-index per row (avoids "SQL logic error" edge cases)
+    # Temporarily drop the FTS AU trigger
     await db.execute(sqltext("DROP TRIGGER IF EXISTS highlights_au"))
 
-    # Bulk rename
+    # Bulk rename (or merge — same operation: set all old titles to new values)
     await db.execute(
         sqltext(
             "UPDATE highlights SET book_title = :new_title, book_author = :new_author "
@@ -291,46 +321,44 @@ async def rename_book(
         "END"
     ))
 
-    # Manually sync FTS index for renamed rows (delete old + insert new)
-    await db.execute(sqltext(
-        "INSERT INTO highlights_fts(highlights_fts, rowid, text, note, book_title, book_author) "
-        "SELECT 'delete', id, text, note, :new_title, :new_author2 FROM highlights "
-        "WHERE book_title = :new_title3 AND book_author = :new_author3"
-    ), {
-        "new_title": new_title.strip(),
-        "new_author2": new_author,
-        "new_title3": new_title.strip(),
-        "new_author3": new_author,
-    })
-    await db.execute(sqltext(
-        "INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
-        "SELECT id, text, note, book_title, book_author FROM highlights "
-        "WHERE book_title = :new_title AND book_author = :new_author"
-    ), {
-        "new_title": new_title.strip(),
-        "new_author": new_author,
-    })
+    # Manually sync FTS for the target book (covers both renamed and pre-existing rows)
+    for op in ["delete", "insert"]:
+        prefix = "INSERT INTO highlights_fts(highlights_fts, rowid, text, note, book_title, book_author) " if op == "delete" else "INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
+        select_part = f"SELECT 'delete', id, text, note, book_title, book_author FROM highlights WHERE book_title = :t AND book_author = :a" if op == "delete" else "SELECT id, text, note, book_title, book_author FROM highlights WHERE book_title = :t AND book_author = :a"
+        await db.execute(sqltext(prefix + select_part), {"t": new_title.strip(), "a": new_author})
 
-    # Update BookCover if one exists
-    cover_result = await db.execute(
-        select(BookCover).where(
-            BookCover.book_title == old_title,
-            BookCover.book_author == old_author,
+    # BookCover — if merge, prefer the existing target cover and remove the old
+    if target_exists:
+        # Delete old source cover (target cover already exists or will persist)
+        await db.execute(
+            sqltext("DELETE FROM book_covers WHERE book_title = :t AND book_author = :a"),
+            {"t": old_title, "a": old_author},
         )
-    )
-    cover = cover_result.scalar_one_or_none()
-    if cover:
-        cover.book_title = new_title.strip()
-        cover.book_author = new_author
+    else:
+        # Simple rename: update the old cover to the new title
+        cover = await db.execute(
+            select(BookCover).where(
+                BookCover.book_title == old_title,
+                BookCover.book_author == old_author,
+            )
+        )
+        cover_row = cover.scalar_one_or_none()
+        if cover_row:
+            cover_row.book_title = new_title.strip()
+            cover_row.book_author = new_author
 
     await db.commit()
 
+    total = affected + (target_count if target_exists else 0)
+    msg = f"Merged {total} highlights" if target_exists else f"Renamed {affected} highlight{'s' if affected != 1 else ''}"
+
     return {
         "ok": True,
-        "affected": affected,
+        "merged": target_exists,
+        "affected": total,
         "old_title": old_title,
         "new_title": new_title.strip(),
-        "warning": "Highlights imported later with the old title will appear as a separate book.",
+        "message": msg,
     }
 
 

@@ -265,30 +265,44 @@
     btn.textContent = 'Saving...';
 
     var fd = new FormData(document.getElementById('rename-form'));
-    fetch('/api/books/rename', { method: 'POST', body: fd })
-      .then(function(r) {
-        if (!r.ok) {
-          return r.text().then(function(text) {
-            throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 200));
-          });
-        }
-        return r.json();
-      })
-      .then(function(d) {
-        if (d.ok) {
-          closeRenameModal();
-          location.reload();
-        } else {
-          alert('Error: ' + (d.error || 'unknown'));
+
+    function doRequest(mergeFlag) {
+      if (mergeFlag) fd.set('merge', 'true');
+      fetch('/api/books/rename', { method: 'POST', body: fd })
+        .then(function(r) {
+          if (!r.ok) {
+            return r.text().then(function(text) {
+              throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 200));
+            });
+          }
+          return r.json();
+        })
+        .then(function(d) {
+          if (d.ok) {
+            closeRenameModal();
+            location.reload();
+          } else if (d.conflict) {
+            // Target book already exists — ask user to merge
+            if (confirm(d.message)) {
+              doRequest(true);
+            } else {
+              btn.disabled = false;
+              btn.textContent = 'Save Changes';
+            }
+          } else {
+            alert('Error: ' + (d.error || 'unknown'));
+            btn.disabled = false;
+            btn.textContent = 'Save Changes';
+          }
+        })
+        .catch(function(e) {
+          alert('Rename failed: ' + e.message);
           btn.disabled = false;
           btn.textContent = 'Save Changes';
-        }
-      })
-      .catch(function(e) {
-        alert('Rename failed: ' + e.message);
-        btn.disabled = false;
-        btn.textContent = 'Save Changes';
-      });
+        });
+    }
+
+    doRequest(false);
     return false;
   }
 
