@@ -5,8 +5,8 @@
 <div class="space-y-8 max-w-3xl">
     <!-- Page Header -->
     <div>
-        <h1 class="text-2xl font-bold text-slate-900">⚙️ Settings</h1>
-        <p class="text-sm text-slate-500 mt-1">Manage your commonplace preferences and data.</p>
+        <h1 class="text-2xl font-bold text-primary">⚙️ Settings</h1>
+        <p class="text-sm text-muted mt-1">Manage your commonplace preferences and data.</p>
     </div>
 
     {% if saved %}
@@ -165,6 +165,33 @@
         </div>
     </section>
 
+    <!-- Theme -->
+    <section class="bg-card rounded-xl border border-card shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-card">
+            <h2 class="text-base font-semibold text-primary">🎨 Theme</h2>
+            <p class="text-xs text-muted mt-0.5">Choose between Modern and Reader appearances.</p>
+        </div>
+        <div class="px-6 py-5">
+            <div class="flex items-center gap-6">
+                <button onclick="setTheme('modern')" class="theme-option flex-1 p-4 rounded-xl border-2 transition-all text-left {% if user_theme == 'modern' %}border-accent bg-accent-light{% else %}border-card hover:border-accent/40{% endif %}">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-6 h-6 rounded bg-zinc-900 flex items-center justify-center"><span class="text-white text-xs">M</span></div>
+                        <span class="font-semibold text-primary">Modern</span>
+                    </div>
+                    <p class="text-xs text-muted">Clean, Linear-inspired. Zinc grays, Inter font, sharp edges.</p>
+                </button>
+                <button onclick="setTheme('reader')" class="theme-option flex-1 p-4 rounded-xl border-2 transition-all text-left {% if user_theme == 'reader' %}border-accent bg-accent-light{% else %}border-card hover:border-accent/40{% endif %}">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-6 h-6 rounded bg-ink-900 flex items-center justify-center"><span class="text-white text-xs">R</span></div>
+                        <span class="font-semibold text-primary">Reader</span>
+                    </div>
+                    <p class="text-xs text-muted">Warm, cozy. Cream tones, Source Serif, soft corners.</p>
+                </button>
+            </div>
+            <p class="text-xs text-muted mt-3">Theme is saved to your browser and persisted server-side.</p>
+        </div>
+    </section>
+
     <!-- Data -->
     <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-100">
@@ -202,7 +229,7 @@
         <div class="px-6 py-5 space-y-2 text-sm">
             <div class="flex items-center justify-between">
                 <span class="text-slate-500">Version</span>
-                <span class="font-medium text-slate-700">{{ version or '0.1.0' }}</span>
+                <span class="font-medium text-slate-700">{{ version or '0.5.10' }}</span>
             </div>
             <div class="flex items-center justify-between">
                 <span class="text-slate-500">Username</span>
@@ -220,6 +247,24 @@
 
 {% block scripts %}
 <script>
+    function setTheme(theme) {
+        // Update visual selection
+        document.querySelectorAll('.theme-option').forEach(function(el) {
+            el.classList.remove('border-accent', 'bg-accent-light');
+            el.classList.add('border-card');
+        });
+        var selected = document.querySelector('[onclick="setTheme(\'' + theme + '\')"]');
+        if (selected) {
+            selected.classList.remove('border-card');
+            selected.classList.add('border-accent', 'bg-accent-light');
+        }
+        // Apply via window toggle
+        if (window.toggleTheme) {
+            var current = localStorage.getItem('commonplace-theme') || document.body.getAttribute('data-theme') || 'modern';
+            if (current !== theme) window.toggleTheme();
+        }
+    }
+
     function confirmReset() {
         if (confirm('⚠️ Are you sure you want to reset the database? This will permanently delete all highlights, books, and review history. This action cannot be undone.')) {
             var response = prompt('Type "reset" to confirm:');

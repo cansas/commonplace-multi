@@ -1,0 +1,233 @@
+/* ============================================================
+   Commonplace — Theme System
+   CSS custom properties drive both themes.
+   Class .theme-reader toggles the warm alternative.
+   Default (no class) = Modern / zinc palette.
+   ============================================================ */
+
+/* ---------- Theme Tokens ---------- */
+:root,
+.theme-modern {
+  --bg-page: #f8fafc;
+  --bg-sidebar: #0f172a;
+  --bg-card: #ffffff;
+  --bg-page-alt: #f1f5f9;
+
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-muted-lighter: #94a3b8;
+
+  --text-sidebar: #cbd5e1;
+  --text-sidebar-muted: #64748b;
+  --text-sidebar-active: #ffffff;
+
+  --border-subtle: #e2e8f0;
+  --border-card: #e2e8f0;
+  --border-sidebar: #334155;
+
+  --color-accent: #4f46e5;
+  --color-accent-hover: #4338ca;
+  --color-accent-light: #eef2ff;
+  --color-accent-lighter: #e0e7ff;
+  --color-accent-text: #4338ca;
+
+  --sidebar-hover-bg: #1e293b;
+  --sidebar-active-bg: #334155;
+
+  --color-link: #4f46e5;
+  --color-link-hover: #4338ca;
+
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --selection-bg: #6366f1;
+
+  --scrollbar-track: #f1f5f9;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
+
+  --btn-primary-bg: #4f46e5;
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover: #4338ca;
+
+  --stat-emerald: #059669;
+  --stat-amber: #d97706;
+  --stat-indigo: #4f46e5;
+
+  --logo-filter: brightness(0) invert(1);
+}
+
+/* ---------- Reader Theme ---------- */
+.theme-reader {
+  --bg-page: #faf8f5;
+  --bg-sidebar: #3f3732;
+  --bg-card: #ffffff;
+  --bg-page-alt: #f5f0ea;
+
+  --text-primary: #3f3732;
+  --text-secondary: #655743;
+  --text-muted: #9c8a72;
+  --text-muted-lighter: #b8a992;
+
+  --text-sidebar: #d4cec7;
+  --text-sidebar-muted: #9c8a72;
+  --text-sidebar-active: #ffffff;
+
+  --border-subtle: #e8dfd3;
+  --border-card: #e8dfd3;
+  --border-sidebar: #655743;
+
+  --color-accent: #655743;
+  --color-accent-hover: #524635;
+  --color-accent-light: #f5f0ea;
+  --color-accent-lighter: #ebe8e4;
+  --color-accent-text: #524635;
+
+  --sidebar-hover-bg: #4a403a;
+  --sidebar-active-bg: #574c44;
+
+  --color-link: #655743;
+  --color-link-hover: #3f3732;
+
+  --font-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --selection-bg: #655743;
+
+  --scrollbar-track: #f5f0ea;
+  --scrollbar-thumb: #d4cec7;
+  --scrollbar-thumb-hover: #b8a992;
+
+  --btn-primary-bg: #655743;
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover: #524635;
+
+  --stat-emerald: #059669;
+  --stat-amber: #d97706;
+  --stat-indigo: #655743;
+
+  --logo-filter: brightness(0) invert(1);
+}
+
+/* ---------- Global overrides ---------- */
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+::selection {
+  background: var(--selection-bg) !important;
+  color: #ffffff;
+}
+
+/* ---------- Semantic utility classes ---------- */
+.bg-page { background-color: var(--bg-page); }
+.bg-page-alt { background-color: var(--bg-page-alt); }
+.bg-sidebar { background-color: var(--bg-sidebar); }
+.bg-card { background-color: var(--bg-card); }
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+.text-muted-lighter { color: var(--text-muted-lighter); }
+.text-sidebar { color: var(--text-sidebar); }
+.text-sidebar-muted { color: var(--text-sidebar-muted); }
+.text-sidebar-active { color: var(--text-sidebar-active); }
+.border-subtle { border-color: var(--border-subtle); }
+.border-card { border-color: var(--border-card); }
+.border-sidebar { border-color: var(--border-sidebar); }
+
+/* Accent */
+.bg-accent { background-color: var(--color-accent); }
+.bg-accent-light { background-color: var(--color-accent-light); }
+.bg-accent-lighter { background-color: var(--color-accent-lighter); }
+.text-accent { color: var(--color-accent-text); }
+.text-accent-solid { color: var(--color-accent); }
+.hover-bg-accent-hover:hover { background-color: var(--color-accent-hover); }
+.border-accent { border-color: var(--color-accent); }
+
+/* Links */
+a.link-accent { color: var(--color-link); }
+a.link-accent:hover { color: var(--color-link-hover); }
+
+/* Buttons */
+.btn-primary {
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+}
+.btn-primary:hover {
+  background-color: var(--btn-primary-hover);
+}
+
+/* Sidebar nav */
+.sidebar-nav a {
+  color: var(--text-sidebar);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.sidebar-nav a:hover {
+  background-color: var(--sidebar-hover-bg);
+  color: var(--text-sidebar-active);
+}
+.sidebar-nav a.active {
+  background-color: var(--sidebar-active-bg);
+  color: var(--text-sidebar-active);
+}
+
+/* Logo in sidebar */
+.sidebar-logo {
+  filter: var(--logo-filter);
+}
+
+/* Theme toggle button */
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  background-color: transparent;
+  color: var(--text-sidebar-muted);
+}
+.theme-toggle-btn:hover {
+  background-color: var(--sidebar-hover-bg);
+  color: var(--text-sidebar-active);
+}
+
+/* Scrollbar per theme */
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+* {
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* Stat card accent colors per theme */
+.stat-emerald { color: var(--stat-emerald); }
+.stat-amber { color: var(--stat-amber); }
+.stat-indigo { color: var(--stat-indigo); }
+
+/* Selection highlight already set above.
+   Also fix the accent-colored range input thumb. */
+input[type="range"]::-webkit-slider-thumb {
+  background: var(--color-accent) !important;
+}
+input[type="range"]::-moz-range-thumb {
+  background: var(--color-accent) !important;
+}
+
+/* Misc overrides for theme-reader — italic style for serif */
+.theme-reader .review-quote p {
+  font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+}

@@ -8,14 +8,16 @@
     <link rel="icon" type="image/png" sizes="128x128" href="/static/logo-128.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/themes.css" />
     {% block head_extra %}{% endblock %}
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col md:flex-row">
+<body class="bg-page text-primary antialiased min-h-screen flex flex-col md:flex-row"
+      data-theme="{{ user_theme or 'modern' }}">
 
     <!-- Mobile Header -->
-    <header class="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
-        <span class="text-lg font-bold tracking-tight"><img src="/static/logo-32.png" class="inline-block w-7 h-7 mr-1.5 align-text-bottom brightness-0 invert" alt="">commonplace</span>
-        <button id="sidebar-toggle" class="p-2 rounded hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500" aria-label="Toggle navigation">
+    <header class="md:hidden bg-sidebar text-sidebar px-4 py-3 flex items-center justify-between">
+        <span class="text-lg font-bold tracking-tight text-sidebar-active"><img src="/static/logo-32.png" class="sidebar-logo inline-block w-7 h-7 mr-1.5 align-text-bottom" alt="">commonplace</span>
+        <button id="sidebar-toggle" class="p-2 rounded hover:bg-sidebar-hover focus:outline-none focus:ring-2 focus:ring-sidebar-active/40" aria-label="Toggle navigation">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
             </svg>
@@ -26,60 +28,64 @@
     <div id="sidebar-overlay" class="md:hidden fixed inset-0 bg-black/50 z-20 hidden"></div>
 
     <!-- Sidebar -->
-    <aside id="sidebar" class="bg-slate-900 text-slate-300 w-64 md:w-60 lg:w-64 flex-shrink-0 flex flex-col
+    <aside id="sidebar" class="bg-sidebar text-sidebar w-64 md:w-60 lg:w-64 flex-shrink-0 flex flex-col
                 fixed md:sticky top-0 left-0 h-full z-30 md:z-auto
                 -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
         <!-- Logo Area -->
-        <div class="px-5 py-6 border-b border-slate-700">
-            <h1 class="text-xl font-bold text-white tracking-tight"><img src="/static/logo-32.png" class="inline-block w-8 h-8 mr-1.5 align-text-bottom brightness-0 invert" alt="">commonplace</h1>
-            <p class="text-xs text-slate-500 mt-1">Self-hosted highlights</p>
+        <div class="px-5 py-6 border-b border-sidebar">
+            <h1 class="text-xl font-bold text-sidebar-active tracking-tight"><img src="/static/logo-32.png" class="sidebar-logo inline-block w-8 h-8 mr-1.5 align-text-bottom" alt="">commonplace</h1>
+            <p class="text-xs text-sidebar-muted mt-1">Self-hosted highlights</p>
         </div>
 
         <!-- Navigation -->
-        <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav class="sidebar-nav flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             <a href="/"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
-                      {% if active_page == 'dashboard' %}bg-slate-700 text-white{% else %}text-slate-400 hover:text-white hover:bg-slate-800{% endif %}">
+                      {% if active_page == 'dashboard' %}active{% endif %}">
                 <span>📊</span> Dashboard
             </a>
             <a href="/books"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
-                      {% if active_page == 'books' %}bg-slate-700 text-white{% else %}text-slate-400 hover:text-white hover:bg-slate-800{% endif %}">
+                      {% if active_page == 'books' %}active{% endif %}">
                 <span>📚</span> Books
             </a>
             <a href="/highlights"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
-                      {% if active_page == 'highlights' %}bg-slate-700 text-white{% else %}text-slate-400 hover:text-white hover:bg-slate-800{% endif %}">
+                      {% if active_page == 'highlights' %}active{% endif %}">
                 <span>📝</span> Highlights
             </a>
             <a href="/review"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
-                      {% if active_page == 'review' %}bg-slate-700 text-white{% else %}text-slate-400 hover:text-white hover:bg-slate-800{% endif %}">
+                      {% if active_page == 'review' %}active{% endif %}">
                 <span>📖</span> Daily Review
             </a>
             <a href="/import"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
-                      {% if active_page == 'import' %}bg-slate-700 text-white{% else %}text-slate-400 hover:text-white hover:bg-slate-800{% endif %}">
+                      {% if active_page == 'import' %}active{% endif %}">
                 <span>📥</span> Import
             </a>
             <a href="/settings"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
-                      {% if active_page == 'settings' %}bg-slate-700 text-white{% else %}text-slate-400 hover:text-white hover:bg-slate-800{% endif %}">
+                      {% if active_page == 'settings' %}active{% endif %}">
                 <span>⚙️</span> Settings
             </a>
-            <div class="border-t border-slate-700 my-2"></div>
+            <div class="border-t border-sidebar my-2"></div>
             <a href="/logout"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:text-white hover:bg-slate-800 transition-colors duration-150">
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150">
                 <span>🚪</span> Logout
             </a>
         </nav>
 
-        <!-- Footer Stats -->
-        <div class="px-5 py-4 border-t border-slate-700 text-xs text-slate-500">
+        <!-- Theme Toggle + Footer -->
+        <div class="px-3 py-3 border-t border-sidebar space-y-2">
+            <button id="theme-toggle" class="theme-toggle-btn" onclick="toggleTheme()">
+                <span id="theme-toggle-icon" class="text-base">🎨</span>
+                <span id="theme-toggle-label">Switch to Reader</span>
+            </button>
             {% if total_highlights is defined %}
-            <div class="flex items-center gap-2">
+            <div class="px-2 text-xs text-sidebar-muted flex items-center gap-2">
                 <span>📝</span>
-                <span><span class="text-slate-300 font-medium">{{ total_highlights }}</span> highlights</span>
+                <span><span class="text-sidebar font-medium">{{ total_highlights }}</span> highlights</span>
             </div>
             {% endif %}
         </div>
@@ -113,6 +119,66 @@
                 toggle.addEventListener('click', open);
                 overlay.addEventListener('click', close);
             }
+        })();
+    </script>
+
+    <!-- Theme Switcher -->
+    <script>
+        (function() {
+            const THEME_STORAGE_KEY = 'commonplace-theme';
+            const body = document.body;
+
+            function getStoredTheme() {
+                // Server-set theme (data attribute) takes precedence on first load
+                const serverTheme = body.getAttribute('data-theme');
+                const stored = localStorage.getItem(THEME_STORAGE_KEY);
+                return stored || serverTheme || 'modern';
+            }
+
+            function applyTheme(theme) {
+                body.classList.remove('theme-modern', 'theme-reader');
+                if (theme === 'reader') {
+                    body.classList.add('theme-reader');
+                } else {
+                    body.classList.add('theme-modern');
+                }
+                localStorage.setItem(THEME_STORAGE_KEY, theme);
+                body.setAttribute('data-theme', theme);
+
+                // Update toggle button text
+                const icon = document.getElementById('theme-toggle-icon');
+                const label = document.getElementById('theme-toggle-label');
+                if (icon && label) {
+                    if (theme === 'reader') {
+                        icon.textContent = '🎨';
+                        label.textContent = 'Switch to Modern';
+                    } else {
+                        icon.textContent = '📖';
+                        label.textContent = 'Switch to Reader';
+                    }
+                }
+            }
+
+            // Apply on load
+            applyTheme(getStoredTheme());
+
+            // Expose toggle function globally
+            window.toggleTheme = function() {
+                const current = localStorage.getItem(THEME_STORAGE_KEY) || body.getAttribute('data-theme') || 'modern';
+                const next = current === 'reader' ? 'modern' : 'reader';
+                applyTheme(next);
+
+                // Persist to server if logged in
+                fetch('/settings/theme', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'theme=' + next + '&csrf_token={{ csrf_token }}',
+                }).catch(function() {
+                    // Server persistence is optional — theme still works locally
+                });
+            };
         })();
     </script>
 

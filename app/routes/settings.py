@@ -16,7 +16,11 @@ router = APIRouter(tags=["settings"])
 _jinja = None
 
 _SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", ".settings.json")
-_settings = {"review_mode": "random", "review_count": 10}
+_settings = {"review_mode": "random", "review_count": 10, "theme": "modern"}
+
+def get_theme() -> str:
+    """Return the persisted theme preference ('modern' or 'reader')."""
+    return _settings.get("theme", "modern")
 
 
 def _load_settings():
@@ -84,7 +88,7 @@ async def settings_page(
             total_books=books,
             review_mode=_settings.get("review_mode", "random"),
             review_count=_settings.get("review_count", 10),
-            version="0.5.9",
+            version="0.5.10",
             saved=saved,
             new_token=new_token,
             username=request.session.get("username", ""),
@@ -114,6 +118,22 @@ async def set_review_count(
     _settings["review_count"] = max(5, min(30, count))
     _save_settings()
     return RedirectResponse(url="/settings?saved=1", status_code=303)
+
+
+@router.post("/settings/theme")
+async def set_theme(
+    request: Request,
+    csrf_token: str = Form(default=""),
+    theme: str = Form(default="modern"),
+):
+    csrf_guard(request, csrf_token)
+    theme = theme.strip().lower()
+    if theme not in ("modern", "reader"):
+        theme = "modern"
+    _settings["theme"] = theme
+    _save_settings()
+    request.session["theme"] = theme
+    return {"ok": True, "theme": theme}
 
 
 # ── Password change ───────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models import User
 from app.auth import verify_password
 from app.csrf import template_context, csrf_guard
+from app.routes.settings import get_theme
 
 router = APIRouter(tags=["auth"])
 
@@ -64,6 +65,7 @@ async def login(
     if user and verify_password(password, user.password_hash):
         request.session["user_id"] = user.id
         request.session["username"] = user.username
+        request.session["theme"] = get_theme()
         return RedirectResponse(url="/", status_code=303)
 
     _login_attempts[ip].append(now)

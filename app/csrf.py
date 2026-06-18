@@ -98,12 +98,14 @@ def verify_csrf_request(request: Request) -> str | None:
 
 
 def template_context(request: Request, **kwargs) -> dict:
-    """Build a template context dict with csrf_token automatically included."""
+    """Build a template context dict with csrf_token and user_theme."""
     ctx = dict(kwargs)
     if request.session.get("user_id"):
         ctx["csrf_token"] = generate_csrf_token(request.session)
     else:
         ctx["csrf_token"] = ""
+    # User theme preference (loaded from settings file on login, cached in session)
+    ctx["user_theme"] = request.session.get("theme", "modern")
     return ctx
 
 
