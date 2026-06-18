@@ -12,6 +12,7 @@ import os
 from app.database import init_db, get_db, async_session
 from app.models import Highlight, Source, BookCover
 from app.auth import AuthMiddleware, ensure_admin
+from app.csrf import CSRFMiddleware, generate_csrf_token, template_context
 from app.routes import highlights, review, import_routes, settings as settings_routes, books, auth as auth_routes, share as share_routes
 from app.services.resurface import get_dashboard_counts
 from app.services.book_covers import batch_search
@@ -38,12 +39,37 @@ static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+
+# Session secret — use env var if set, otherwise generate and persist
+def _get_or_create_session_secret() -> str:
+    env_secret = os.environ.get("SESSION_SECRET")
+    if env_secret:
+        return env_secret
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data")
+    secret_file = os.path.join(data_dir, ".session_secret")
+    if os.path.isfile(secret_file):
+        return open(secret_file).read().strip()
+    secret = os.urandom(32).hex()
+    os.makedirs(data_dir, exist_ok=True)
+    with open(secret_file, "w") as f:
+        f.write(secret)
+    os.chmod(secret_file, 0o600)
+    print("  WARNING: SESSION_SECRET not set — generated a persistent secret in data/.session_secret")
+    print("           Set SESSION_SECRET env var for production deployments.")
+    return secret
+
+
+secret = _get_or_create_session_secret()
+
 # Auth middleware (inner — checks session, runs after Session populates it)
 app.add_middleware(AuthMiddleware)
 
+# CSRF middleware — sets CSRF cookie on GET, runs after session is available
+app.add_middleware(CSRFMiddleware)
+
 # Session middleware (outer — runs first, populates session cookie)
-secret = os.environ.get("SESSION_SECRET") or os.urandom(32).hex()
-app.add_middleware(SessionMiddleware, secret_key=secret, max_age=86400 * 30)
+_session_https = os.environ.get("SESSION_HTTPS_ONLY", "true").lower() == "true"
+app.add_middleware(SessionMiddleware, secret_key=secret, max_age=86400 * 30, same_site="lax", https_only=_session_https)
 
 # Init route modules with templates
 highlights.init(templates)
@@ -120,24 +146,26 @@ async def dashboard(
 ):
     total, books, pending = await get_dashboard_counts(db)
 
-    # Random highlight of the day
-    from sqlalchemy import func as sa_func
-    random_hl_result = await db.execute(
-        select(Highlight)
-        .order_by(sa_func.random())
-        .limit(1)
-    )
-    random_hl = random_hl_result.scalar_one_or_none()
+    # Random highlight — use random offset instead of ORDER BY random() for efficiency
+    random_hl = None
+    if total > 0:
+        import random
+        offset = random.randint(0, total - 1)
+        random_hl_result = await db.execute(
+            select(Highlight).offset(offset).limit(1)
+        )
+        random_hl = random_hl_result.scalar_one_or_none()
 
     return templates.TemplateResponse(
         request,
         "index.html",
-        {
-            "active_page": "dashboard",
-            "total_highlights": total,
-            "total_books": books,
-            "today_review_count": pending,
-            "random_highlight": {
+        template_context(
+            request,
+            active_page="dashboard",
+            total_highlights=total,
+            total_books=books,
+            today_review_count=pending,
+            random_highlight={
                 "id": random_hl.id,
                 "text": random_hl.text,
                 "book_title": random_hl.book_title,
@@ -145,6 +173,6 @@ async def dashboard(
                 "note": random_hl.note,
                 "share_token": random_hl.share_token,
             } if random_hl else None,
-            "imported": imported,
-        },
+            imported=imported,
+        ),
     )

@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models import Highlight, ReviewLog
 from app.services.resurface import get_random_highlights
 from app.routes.settings import _settings as review_settings
+from app.csrf import template_context
 from datetime import datetime
 
 router = APIRouter(tags=["review"])
@@ -73,12 +74,13 @@ async def review_page(
         return _jinja.TemplateResponse(
             request,
             "review.html",
-            {
-                "active_page": "review",
-                "highlight": None,
-                "current_index": daily_limit,
-                "total_count": daily_limit,
-            },
+            template_context(
+                request,
+                active_page="review",
+                highlight=None,
+                current_index=daily_limit,
+                total_count=daily_limit,
+            ),
         )
 
     hl = await _get_unreviewed_highlight(db)
@@ -88,12 +90,13 @@ async def review_page(
         return _jinja.TemplateResponse(
             request,
             "review.html",
-            {
-                "active_page": "review",
-                "highlight": None,
-                "current_index": done_today,
-                "total_count": daily_limit,
-            },
+            template_context(
+                request,
+                active_page="review",
+                highlight=None,
+                current_index=done_today,
+                total_count=daily_limit,
+            ),
         )
 
     highlight_data = {
@@ -112,12 +115,13 @@ async def review_page(
     return _jinja.TemplateResponse(
         request,
         "review.html",
-        {
-            "active_page": "review",
-            "highlight": highlight_data,
-            "current_index": done_today + 1,
-            "total_count": daily_limit,
-        },
+        template_context(
+            request,
+            active_page="review",
+            highlight=highlight_data,
+            current_index=done_today + 1,
+            total_count=daily_limit,
+        ),
     )
 
 

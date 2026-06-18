@@ -7,9 +7,19 @@ from sqlalchemy import select, func as sa_func, or_
 from app.database import get_db
 from app.models import Highlight, BookCover
 from app.services.book_covers import search_cover
+from app.csrf import template_context
 from typing import Optional
 import math
 import os
+import re
+
+
+def _escape_ilike(s: str) -> str:
+    return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+def _safe_filename(name: str) -> str:
+    return re.sub(r'[^\w.-]', '_', name)[:128]
+
 
 router = APIRouter(tags=["books"])
 
@@ -47,8 +57,8 @@ async def books_page(
     if search:
         query = query.where(
             or_(
-                Highlight.book_title.ilike(f"%{search}%"),
-                Highlight.book_author.ilike(f"%{search}%"),
+                Highlight.book_title.ilike(f"%{_escape_ilike(search)}%", escape="\\"),
+                Highlight.book_author.ilike(f"%{_escape_ilike(search)}%", escape="\\"),
             )
         )
 
@@ -72,15 +82,24 @@ async def books_page(
     result = await db.execute(query)
     rows = result.all()
 
-    books = []
-    for row in rows:
+    # Bulk-fetch covers to avoid N+1
+    cover_keys = [(row.book_title, row.book_author or "") for row in rows]
+    cover_map = {}
+    if cover_keys:
         cover_result = await db.execute(
             select(BookCover).where(
-                BookCover.book_title == row.book_title,
-                BookCover.book_author == (row.book_author or ""),
+                or_(*[
+                    (BookCover.book_title == t) & (BookCover.book_author == a)
+                    for t, a in cover_keys
+                ]) if cover_keys else False
             )
         )
-        cover = cover_result.scalar_one_or_none()
+        for cover in cover_result.scalars().all():
+            cover_map[(cover.book_title, cover.book_author)] = cover
+
+    books = []
+    for row in rows:
+        cover = cover_map.get((row.book_title, row.book_author or ""))
         books.append({
             "title": row.book_title,
             "author": row.book_author or "Unknown",
@@ -94,22 +113,22 @@ async def books_page(
     return _jinja.TemplateResponse(
         request,
         "books.html",
-        {
-            "active_page": "books",
-            "books": books,
-            "search": search,
-            "sort": sort,
-            "page": page,
-            "total_pages": total_pages,
-            "total_books": total,
-        },
+        template_context(
+            request,
+            active_page="books",
+            books=books,
+            search=search,
+            sort=sort,
+            page=page,
+            total_pages=total_pages,
+            total_books=total,
+        ),
     )
 
 
 @router.post("/api/books/cover/fetch")
 async def fetch_cover(title: str = Form(...), author: str = Form(default=""), source: str = Form(default="auto"), db: AsyncSession = Depends(get_db)):
     try:
-        from app.services.book_covers import search_cover
         url = await search_cover(title, author)
         if not url:
             return {"ok": False, "error": "No cover found"}
@@ -138,7 +157,7 @@ async def upload_cover(title: str = Form(...), author: str = Form(default=""), f
     if ext not in (".jpg", ".jpeg", ".png", ".webp"):
         return JSONResponse({"ok": False, "error": "Only JPG, PNG, and WebP are accepted"}, status_code=400)
 
-    dest = os.path.join(COVERS_DIR, f"{title.replace('/', '-')}_{author.replace('/', '-')}{ext}")
+    dest = os.path.join(COVERS_DIR, f"{_safe_filename(title)}_{_safe_filename(author)}{ext}")
     print(f"  [upload] Saving cover to: {dest}")
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     content = await file.read()

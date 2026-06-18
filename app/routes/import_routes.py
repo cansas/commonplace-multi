@@ -10,6 +10,7 @@ from app.services.obsidian import parse_readwise_md
 from app.services.koreader_json import parse_koreader_json
 from app.schemas import HighlightCreate, ReadwiseBatchImport
 from app.routes.share import get_share_token
+from app.csrf import template_context
 from typing import List
 from datetime import datetime
 import json
@@ -37,9 +38,10 @@ async def import_page(
     return _jinja.TemplateResponse(
         request,
         "import.html",
-        {
-            "active_page": "import",
-            "recent_imports": [
+        template_context(
+            request,
+            active_page="import",
+            recent_imports=[
                 {
                     "name": s.name,
                     "source_type": s.source_type,
@@ -48,27 +50,23 @@ async def import_page(
                 }
                 for s in sources
             ],
-        },
+        ),
     )
-
-
-async def _is_duplicate(db, text, book_title, highlighted_at):
-    """Check if a highlight with the same text, book, and timestamp already exists."""
-    from sqlalchemy import and_
-    result = await db.execute(
-        select(Highlight).where(
-            and_(
-                Highlight.text == text,
-                Highlight.book_title == book_title,
-                Highlight.highlighted_at == highlighted_at,
-            )
-        ).limit(1)
-    )
-    return result.scalar_one_or_none() is not None
 
 
 async def _save_highlights(db, highlights_list, source_name, source_type):
     """Bulk-save highlights and record source. Skips duplicates."""
+    from sqlalchemy import and_
+
+    # Pre-fetch existing highlights to avoid N+1 queries
+    existing_set = set()
+    if highlights_list:
+        result = await db.execute(
+            select(Highlight.text, Highlight.book_title, Highlight.highlighted_at)
+        )
+        for row in result.all():
+            existing_set.add((row.text, row.book_title, row.highlighted_at))
+
     count = 0
     skipped = 0
     for item in highlights_list:
@@ -76,7 +74,7 @@ async def _save_highlights(db, highlights_list, source_name, source_type):
         book_title = item.get("book_title", "Untitled")
         highlighted_at = item.get("highlighted_at")
 
-        if await _is_duplicate(db, text, book_title, highlighted_at):
+        if (text, book_title, highlighted_at) in existing_set:
             skipped += 1
             continue
 
@@ -94,6 +92,7 @@ async def _save_highlights(db, highlights_list, source_name, source_type):
             share_token=get_share_token(),
         )
         db.add(hl)
+        existing_set.add((text, book_title, highlighted_at))
         count += 1
 
     # Record the import source
@@ -155,6 +154,14 @@ async def readwise_api_import(
     data: ReadwiseBatchImport,
     db: AsyncSession = Depends(get_db),
 ):
+    # Pre-fetch existing highlights to avoid N+1 queries
+    existing_set = set()
+    result = await db.execute(
+        select(Highlight.text, Highlight.book_title, Highlight.highlighted_at)
+    )
+    for row in result.all():
+        existing_set.add((row.text, row.book_title, row.highlighted_at))
+
     count = 0
     skipped = 0
     for item in data.highlights:
@@ -162,7 +169,7 @@ async def readwise_api_import(
         book_title = item.book_title or "Untitled"
         highlighted_at = item.highlighted_at
 
-        if await _is_duplicate(db, text, book_title, highlighted_at):
+        if (text, book_title, highlighted_at) in existing_set:
             skipped += 1
             continue
 
@@ -182,6 +189,7 @@ async def readwise_api_import(
             share_token=get_share_token(),
         )
         db.add(hl)
+        existing_set.add((text, book_title, highlighted_at))
         count += 1
 
     src = Source(

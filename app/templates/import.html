@@ -22,6 +22,7 @@
             </div>
 
             <form method="POST" action="/import/readwise" enctype="multipart/form-data" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                 <div class="border-2 border-dashed border-slate-200 rounded-lg p-5 text-center hover:border-indigo-300 transition-colors">
                     <label for="readwise-file" class="cursor-pointer block">
                         <span class="text-3xl block mb-2">📄</span>
@@ -63,6 +64,7 @@
             </div>
 
             <form method="POST" action="/import/koreader" enctype="multipart/form-data" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                 <div class="border-2 border-dashed border-slate-200 rounded-lg p-5 text-center hover:border-emerald-300 transition-colors">
                     <label for="koreader-file" class="cursor-pointer block">
                         <span class="text-3xl block mb-2">📁</span>

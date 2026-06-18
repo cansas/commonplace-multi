@@ -9,6 +9,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.models import User
 from app.auth import verify_password
+from app.csrf import template_context
 
 router = APIRouter(tags=["auth"])
 
@@ -17,6 +18,7 @@ _jinja = None
 # Login rate limiting: 5 attempts per 5 minutes per IP
 LOGIN_MAX_ATTEMPTS = 5
 LOGIN_WINDOW = 300  # 5 minutes in seconds
+_MAX_RATE_LIMIT_ENTRIES = 10000
 _login_attempts = defaultdict(list)
 
 
@@ -29,7 +31,7 @@ def init(templates):
 async def login_page(request: Request):
     if request.session.get("user_id"):
         return RedirectResponse(url="/", status_code=303)
-    return _jinja.TemplateResponse(request, "login.html", {"error": ""})
+    return _jinja.TemplateResponse(request, "login.html", template_context(request, error=""))
 
 
 @router.post("/login")
@@ -42,11 +44,16 @@ async def login(
     # Rate limit check
     ip = request.client.host if request.client else "unknown"
     now = time.time()
+
+    # Evict oldest entries if dict grows too large
+    if len(_login_attempts) > _MAX_RATE_LIMIT_ENTRIES:
+        _login_attempts.clear()
+
     _login_attempts[ip] = [t for t in _login_attempts[ip] if now - t < LOGIN_WINDOW]
     if len(_login_attempts[ip]) >= LOGIN_MAX_ATTEMPTS:
         return _jinja.TemplateResponse(
             request, "login.html",
-            {"error": "Too many login attempts. Try again in 5 minutes."},
+            template_context(request, error="Too many login attempts. Try again in 5 minutes."),
         )
     
     result = await db.execute(
@@ -62,7 +69,7 @@ async def login(
     _login_attempts[ip].append(now)
     return _jinja.TemplateResponse(
         request, "login.html",
-        {"error": "Invalid username or password."},
+        template_context(request, error="Invalid username or password."),
     )
 
 

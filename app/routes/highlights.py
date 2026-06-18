@@ -1,6 +1,6 @@
 """Highlight CRUD + search routes."""
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, HTTPException, status
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sa_func
@@ -8,9 +8,15 @@ from app.database import get_db
 from app.models import Highlight, Tag
 from app.schemas import HighlightOut, HighlightCreate, HighlightUpdate
 from app.services.highlight_card import generate_card
+from app.csrf import template_context
 from typing import Optional, List
 from datetime import datetime
 import math
+import re
+
+
+def _escape_ilike(s: str) -> str:
+    return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 router = APIRouter(tags=["highlights"])
 
@@ -55,7 +61,7 @@ async def highlights_page(
     if source and source != "all":
         query = query.where(Highlight.source_type == source)
     if book:
-        query = query.where(Highlight.book_title.ilike(f"%{book}%"))
+        query = query.where(Highlight.book_title.ilike(f"%{_escape_ilike(book)}%", escape="\\"))
     if favorites == "1":
         query = query.where(Highlight.favorite == 1)
 
@@ -88,17 +94,18 @@ async def highlights_page(
     return _jinja.TemplateResponse(
         request,
         "highlights.html",
-        {
-            "active_page": "highlights",
-            "highlights": hl_list,
-            "search": search,
-            "source_filter": source,
-            "book": book,
-            "favorites_filter": favorites,
-            "page": page,
-            "total_pages": total_pages,
-            "total_count": total,
-        },
+        template_context(
+            request,
+            active_page="highlights",
+            highlights=hl_list,
+            search=search,
+            source_filter=source,
+            book=book,
+            favorites_filter=favorites,
+            page=page,
+            total_pages=total_pages,
+            total_count=total,
+        ),
     )
 
 
@@ -172,9 +179,11 @@ async def list_highlights(
 @router.get("/api/export")
 async def export_highlights(
     since: Optional[str] = "",
+    offset: int = 0,
+    limit: int = 500,
     db: AsyncSession = Depends(get_db),
 ):
-    """Export highlights grouped by book for Obsidian sync."""
+    """Export highlights grouped by book for Obsidian sync. Paginated."""
     query = select(Highlight).order_by(Highlight.book_title, Highlight.highlighted_at)
     if since:
         try:
@@ -183,7 +192,11 @@ async def export_highlights(
         except (ValueError, TypeError):
             pass
 
-    result = await db.execute(query)
+    count_q = select(sa_func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_q)
+    total = total_result.scalar() or 0
+
+    result = await db.execute(query.offset(offset).limit(limit))
     all_highlights = result.scalars().all()
 
     # Group by book
@@ -211,8 +224,10 @@ async def export_highlights(
 
     return {
         "books": list(books.values()),
-        "total": len(all_highlights),
+        "total": total,
         "total_books": len(books),
+        "offset": offset,
+        "limit": limit,
     }
 
 
@@ -229,7 +244,7 @@ async def delete_highlight(hl_id: int, db: AsyncSession = Depends(get_db)):
 async def toggle_favorite(hl_id: int, db: AsyncSession = Depends(get_db)):
     hl = await db.get(Highlight, hl_id)
     if not hl:
-        return {"error": "Not found"}, 404
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Highlight not found")
     hl.favorite = 0 if hl.favorite else 1
     await db.commit()
     return {"id": hl_id, "favorite": hl.favorite}
@@ -239,7 +254,7 @@ async def toggle_favorite(hl_id: int, db: AsyncSession = Depends(get_db)):
 async def update_highlight(hl_id: int, data: HighlightUpdate, db: AsyncSession = Depends(get_db)):
     hl = await db.get(Highlight, hl_id)
     if not hl:
-        return {"error": "Not found"}, 404
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Highlight not found")
     
     update_data = data.model_dump(exclude_unset=True)
     tag_names = update_data.pop("tags", None)
@@ -266,7 +281,7 @@ async def update_highlight(hl_id: int, data: HighlightUpdate, db: AsyncSession =
 async def highlight_card(hl_id: int, db: AsyncSession = Depends(get_db)):
     hl = await db.get(Highlight, hl_id)
     if not hl:
-        return {"error": "Not found"}, 404
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Highlight not found")
     
     svg = generate_card(
         highlight_text=hl.text or "",

@@ -1,4 +1,6 @@
 """Settings page routes + API token management."""
+import json
+import os
 from fastapi import APIRouter, Depends, Request, Form, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,13 +9,36 @@ from app.database import get_db
 from app.models import Highlight, Source, User, ApiToken
 from app.auth import generate_api_token, hash_password, verify_password
 from app.routes.share import get_share_token
+from app.csrf import template_context
 
 router = APIRouter(tags=["settings"])
 
 _jinja = None
 
-# In-memory settings (no DB for preferences yet)
+_SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", ".settings.json")
 _settings = {"review_mode": "random", "review_count": 10}
+
+
+def _load_settings():
+    global _settings
+    try:
+        if os.path.isfile(_SETTINGS_FILE):
+            with open(_SETTINGS_FILE) as f:
+                _settings = json.load(f)
+    except Exception:
+        pass
+
+
+def _save_settings():
+    try:
+        os.makedirs(os.path.dirname(_SETTINGS_FILE), exist_ok=True)
+        with open(_SETTINGS_FILE, "w") as f:
+            json.dump(_settings, f)
+    except Exception:
+        pass
+
+
+_load_settings()
 
 
 def init(templates):
@@ -51,30 +76,33 @@ async def settings_page(
     return _jinja.TemplateResponse(
         request,
         "settings.html",
-        {
-            "active_page": "settings",
-            "tokens": tokens,
-            "total_highlights": total,
-            "total_books": books,
-            "review_mode": _settings.get("review_mode", "random"),
-            "review_count": _settings.get("review_count", 10),
-            "version": "0.4.2",
-            "saved": saved,
-            "new_token": new_token,
-            "username": request.session.get("username", ""),
-        },
+        template_context(
+            request,
+            active_page="settings",
+            tokens=tokens,
+            total_highlights=total,
+            total_books=books,
+            review_mode=_settings.get("review_mode", "random"),
+            review_count=_settings.get("review_count", 10),
+            version="0.4.2",
+            saved=saved,
+            new_token=new_token,
+            username=request.session.get("username", ""),
+        ),
     )
 
 
 @router.post("/settings/review-mode")
 async def set_review_mode(spaced_mode: str = Form(default="")):
     _settings["review_mode"] = "spaced" if spaced_mode == "1" else "random"
+    _save_settings()
     return RedirectResponse(url="/settings?saved=1", status_code=303)
 
 
 @router.post("/settings/review-count")
 async def set_review_count(count: int = Form(default=10)):
     _settings["review_count"] = max(5, min(30, count))
+    _save_settings()
     return RedirectResponse(url="/settings?saved=1", status_code=303)
 
 
@@ -100,7 +128,7 @@ async def change_password(
     if not verify_password(current_password, user.password_hash):
         return RedirectResponse(url="/settings?error=wrong-password", status_code=303)
 
-    if len(new_password) < 4:
+    if len(new_password) < 8:
         return RedirectResponse(url="/settings?error=weak-password", status_code=303)
 
     user.password_hash = hash_password(new_password)
