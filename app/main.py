@@ -16,6 +16,7 @@ from app.csrf import CSRFMiddleware, generate_csrf_token, template_context, Secu
 from app.routes import highlights, review, import_routes, settings as settings_routes, books, auth as auth_routes, share as share_routes, backup as backup_routes
 from app.services.resurface import get_dashboard_counts
 from app.services.book_covers import batch_search
+from app.routes.settings import get_hardcover_api_key
 
 app = FastAPI(title="commonplace", version="0.6.0")
 
@@ -126,7 +127,8 @@ async def startup():
 
             if need_cover:
                 print(f"  Fetching covers for {len(need_cover)} books...")
-                covers = await batch_search(need_cover, rate_limit=1.0)
+                hc_key = get_hardcover_api_key()
+                covers = await batch_search(need_cover, rate_limit=1.0, hardcover_key=hc_key)
                 for (title, author), (url, source) in covers.items():
                     if url:
                         db.add(BookCover(book_title=title, book_author=author, cover_url=url, cover_source=source))

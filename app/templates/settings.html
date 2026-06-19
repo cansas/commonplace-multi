@@ -260,6 +260,37 @@
         </div>
     </section>
 
+    <!-- Cover Sources -->
+    <section class="bg-card rounded-xl border border-card shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-card">
+            <h2 class="text-base font-semibold text-primary">📚 Cover Sources</h2>
+            <p class="text-xs text-muted mt-0.5">Configure where book covers are fetched from. The HardCover API key is optional — covers still work via Open Library without it.</p>
+        </div>
+        <div class="px-6 py-5 space-y-4">
+            <div>
+                <label for="hardcover-key" class="text-sm font-medium text-primary block mb-1">HardCover API Key</label>
+                <div class="flex items-center gap-3">
+                    <input type="password" id="hardcover-key" value="{{ hardcover_key or '' }}"
+                           placeholder="Leave empty to use env var or skip"
+                           class="flex-1 px-3 py-2 border border-card rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent font-mono" />
+                    <span id="hc-status" class="text-xs text-muted w-20 text-center">
+                        {% if hardcover_key %}🔑 Set{% else %}⬜ Empty{% endif %}
+                    </span>
+                </div>
+                <p class="text-xs text-muted mt-1.5">Get a free API key at <a href="https://hardcover.app" target="_blank" class="link-accent">hardcover.app</a>. Stored in settings, no restart needed.</p>
+            </div>
+            <div class="flex items-center gap-3 pt-1">
+                <button onclick="saveCoverKey()" class="px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg btn-primary hover:bg-accent-hover transition shadow-sm">
+                    💾 Save & Test
+                </button>
+                <button onclick="clearCoverKey()" class="px-4 py-2 border border-card text-secondary text-sm font-medium rounded-lg hover:bg-page-alt transition">
+                    Clear
+                </button>
+                <span id="hc-result" class="text-xs text-muted"></span>
+            </div>
+        </div>
+    </section>
+
     <!-- About -->
     <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-100">
@@ -314,6 +345,51 @@
         btn.disabled = true;
         btn.textContent = 'Restoring...';
         return true;
+    }
+
+    function saveCoverKey() {
+        var key = document.getElementById('hardcover-key').value.trim();
+        var result = document.getElementById('hc-result');
+        var status = document.getElementById('hc-status');
+        result.textContent = 'Saving...';
+        var fd = new FormData();
+        fd.append('csrf_token', '{{ csrf_token }}');
+        fd.append('hardcover_key', key);
+        fd.append('action', 'set');
+        fetch('/settings/cover-source', { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.ok) {
+                    status.textContent = d.connected ? '✅ Connected' : '🔑 Saved';
+                    result.textContent = d.message || 'Saved';
+                } else {
+                    result.textContent = 'Error: ' + (d.detail || 'unknown');
+                }
+            })
+            .catch(function(e) {
+                result.textContent = 'Network error';
+            });
+    }
+
+    function clearCoverKey() {
+        if (!confirm('Remove the Hardcover API key? Covers will fall back to Open Library.')) return;
+        var result = document.getElementById('hc-result');
+        var status = document.getElementById('hc-status');
+        document.getElementById('hardcover-key').value = '';
+        var fd = new FormData();
+        fd.append('csrf_token', '{{ csrf_token }}');
+        fd.append('action', 'clear');
+        fetch('/settings/cover-source', { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.ok) {
+                    status.textContent = '⬜ Empty';
+                    result.textContent = 'Key removed';
+                }
+            })
+            .catch(function(e) {
+                result.textContent = 'Network error';
+            });
     }
 
     function confirmReset() {

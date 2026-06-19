@@ -49,9 +49,10 @@ async def _open_library_search(title: str, author: str, client: httpx.AsyncClien
     return None
 
 
-async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) -> Optional[str]:
+async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient, api_key: str = "") -> Optional[str]:
     """Search Hardcover.app for a book cover using GraphQL API."""
-    if not HARDCOVER_API_KEY:
+    key = api_key or HARDCOVER_API_KEY
+    if not key:
         return None
 
     query = """query SearchBooks($query: String!) {
@@ -67,7 +68,7 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) 
         resp = await client.post(
             "https://api.hardcover.app/v1/graphql",
             json=payload,
-            headers={"Authorization": f"Bearer {HARDCOVER_API_KEY}"},
+            headers={"Authorization": f"Bearer {key}"},
         )
         if resp.status_code != 200:
             print(f"  [covers] Hardcover HTTP {resp.status_code} for '{title}': {resp.text[:300]}")
@@ -120,7 +121,7 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) 
             book_resp = await client.post(
                 "https://api.hardcover.app/v1/graphql",
                 json={"query": book_query},
-                headers={"Authorization": f"Bearer {HARDCOVER_API_KEY}"},
+                headers={"Authorization": f"Bearer {key}"},
             )
             if book_resp.status_code == 200:
                 book_data = book_resp.json().get("data", {}).get("book", {})
@@ -145,7 +146,7 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient) 
     return None
 
 
-async def search_cover(title: str, author: str = "", client: httpx.AsyncClient = None) -> tuple[Optional[str], str]:
+async def search_cover(title: str, author: str = "", client: httpx.AsyncClient = None, hardcover_key: str = "") -> tuple[Optional[str], str]:
     """Search for a book cover across multiple sources with fallback.
 
     Returns (cover_url, source_name) or (None, "") if no source has a cover.
@@ -155,7 +156,7 @@ async def search_cover(title: str, author: str = "", client: httpx.AsyncClient =
         client = httpx.AsyncClient(timeout=REQUEST_TIMEOUT)
     try:
         # 1. Hardcover.app (needs API key, best for newer/modern books)
-        url = await _hardcover_search(title, author, client)
+        url = await _hardcover_search(title, author, client, api_key=hardcover_key)
         if url:
             return url, "hardcover"
 
@@ -170,7 +171,7 @@ async def search_cover(title: str, author: str = "", client: httpx.AsyncClient =
     return None, ""
 
 
-async def batch_search(books: list[tuple[str, str]], rate_limit: float = 1.0, concurrency: int = 3) -> dict:
+async def batch_search(books: list[tuple[str, str]], rate_limit: float = 1.0, concurrency: int = 3, hardcover_key: str = "") -> dict:
     """Search for covers for multiple books concurrently.
 
     Returns dict mapping (title, author) -> (url, source).
@@ -180,7 +181,7 @@ async def batch_search(books: list[tuple[str, str]], rate_limit: float = 1.0, co
 
     async def _fetch(client, title, author):
         async with sem:
-            url, source = await search_cover(title, author, client=client)
+            url, source = await search_cover(title, author, client=client, hardcover_key=hardcover_key)
             results[(title, author)] = (url, source)
             await asyncio.sleep(rate_limit)
 

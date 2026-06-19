@@ -23,6 +23,17 @@ def get_theme() -> str:
     return _settings.get("theme", "modern")
 
 
+def get_hardcover_api_key() -> str:
+    """Return the persisted Hardcover API key, or empty string."""
+    return _settings.get("hardcover_api_key", "")
+
+
+def set_hardcover_api_key(value: str) -> None:
+    """Persist a Hardcover API key (empty string to clear)."""
+    _settings["hardcover_api_key"] = value
+    _save_settings()
+
+
 def _load_settings():
     global _settings
     try:
@@ -92,6 +103,7 @@ async def settings_page(
             saved=saved,
             new_token=new_token,
             username=request.session.get("username", ""),
+            hardcover_key=get_hardcover_api_key(),
         ),
     )
 
@@ -134,6 +146,51 @@ async def set_theme(
     _save_settings()
     request.session["theme"] = theme
     return {"ok": True, "theme": theme}
+
+
+@router.post("/settings/cover-source")
+async def set_cover_source(
+    request: Request,
+    csrf_token: str = Form(default=""),
+    hardcover_key: str = Form(default=""),
+    action: str = Form(default="set"),
+):
+    csrf_guard(request, csrf_token)
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+    if action == "clear":
+        set_hardcover_api_key("")
+        return {"ok": True, "message": "Hardcover API key removed"}
+
+    # Validate the key looks plausible
+    key = hardcover_key.strip()
+    if key and len(key) < 8:
+        raise HTTPException(status_code=400, detail="Key seems too short")
+    if len(key) > 256:
+        raise HTTPException(status_code=400, detail="Key too long")
+
+    set_hardcover_api_key(key)
+
+    # Test the connection if a key was provided
+    if key:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=10) as client:
+                test_resp = await client.post(
+                    "https://api.hardcover.app/v1/graphql",
+                    json={"query": "{ me { id } }"},
+                    headers={"Authorization": f"Bearer {key}"},
+                )
+            if test_resp.status_code == 200:
+                return {"ok": True, "connected": True, "message": "Key saved and verified"}
+            else:
+                return {"ok": True, "connected": False, "message": "Key saved but connection test failed"}
+        except Exception:
+            return {"ok": True, "connected": False, "message": "Key saved but could not reach Hardcover API"}
+
+    return {"ok": True, "connected": False, "message": "Key cleared"}
 
 
 # ── Password change ───────────────────────────────────────────────────────

@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models import Highlight, BookCover
 from app.services.book_covers import search_cover
 from app.csrf import template_context
+from app.routes.settings import get_hardcover_api_key
 from typing import Optional
 import math
 import os
@@ -129,7 +130,8 @@ async def books_page(
 @router.post("/api/books/cover/fetch")
 async def fetch_cover(title: str = Form(...), author: str = Form(default=""), source: str = Form(default="auto"), db: AsyncSession = Depends(get_db)):
     try:
-        url, cover_source = await search_cover(title, author)
+        hc_key = get_hardcover_api_key()
+        url, cover_source = await search_cover(title, author, hardcover_key=hc_key)
         if not url:
             return {"ok": False, "error": "No cover found on Open Library, Hardcover, or Goodreads"}
 
@@ -440,6 +442,7 @@ async def delete_book(
 
 @router.post("/api/books/cover/backfill")
 async def backfill_covers(db: AsyncSession = Depends(get_db)):
+    hc_key = get_hardcover_api_key()
     result = await db.execute(
         select(Highlight.book_title, Highlight.book_author)
         .distinct()
@@ -455,7 +458,7 @@ async def backfill_covers(db: AsyncSession = Depends(get_db)):
         )
         if existing.scalar_one_or_none():
             continue
-        url, cover_source = await search_cover(row.book_title, row.book_author or "")
+        url, cover_source = await search_cover(row.book_title, row.book_author or "", hardcover_key=hc_key)
         if url:
             db.add(BookCover(book_title=row.book_title, book_author=row.book_author or "", cover_url=url, cover_source=cover_source))
             fetched += 1
