@@ -117,16 +117,17 @@ async def startup():
             )
             all_books = [(r.book_title, r.book_author or "") for r in result.all()]
 
-            need_cover = []
-            for title, author in all_books:
-                existing = await db.execute(
-                    select(BookCover).where(
-                        BookCover.book_title == title,
-                        BookCover.book_author == author,
-                    )
-                )
-                if not existing.scalar_one_or_none():
-                    need_cover.append((title, author))
+            # Bulk check existing covers — one query, not N
+            existing_result = await db.execute(
+                select(BookCover.book_title, BookCover.book_author)
+            )
+            existing_covers = {
+                (r.book_title, r.book_author) for r in existing_result.all()
+            }
+
+            need_cover = [
+                (t, a) for t, a in all_books if (t, a) not in existing_covers
+            ]
 
             if need_cover:
                 print(f"  Fetching covers for {len(need_cover)} books...")

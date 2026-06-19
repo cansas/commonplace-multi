@@ -529,17 +529,33 @@ async def backfill_covers(db: AsyncSession = Depends(get_db)):
         .distinct()
     )
     books = result.all()
+
+    # Bulk check which books already have covers — one query, not N
+    existing_result = await db.execute(
+        select(BookCover.book_title, BookCover.book_author)
+    )
+    existing_covers = {
+        (r.book_title, r.book_author) for r in existing_result.all()
+    }
+
+    # Pre-load existing BookCover records that have hardcover_id
+    existing_detail = await db.execute(
+        select(BookCover)
+    )
+    cover_map = {
+        (c.book_title, c.book_author): c for c in existing_detail.scalars().all()
+    }
+
     fetched = 0
     for row in books:
-        existing = await db.execute(
-            select(BookCover).where(
-                BookCover.book_title == row.book_title,
-                BookCover.book_author == (row.book_author or ""),
-            )
-        )
-        cover_row = existing.scalar_one_or_none()
+        key = (row.book_title, row.book_author or "")
+        cover_row = cover_map.get(key)
+
         if cover_row and cover_row.hardcover_id is not None:
             continue  # Already has an ID, skip fuzzy search
+
+        if key in existing_covers and not cover_row:
+            continue  # Already has a basic cover (no row in map edge case)
 
         known_id = cover_row.hardcover_id if cover_row else None
         url, cover_source, hc_id, isbn = await search_cover(
