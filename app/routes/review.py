@@ -250,10 +250,10 @@ async def review_stats_page(
         select(
             func.date(ReviewLog.reviewed_at).label("day"),
             func.count(ReviewLog.id).label("count"),
-            func.sum(func.CASE((ReviewLog.rating == 0, 1), else_=0)).label("forgot"),
-            func.sum(func.CASE((ReviewLog.rating == 1, 1), else_=0)).label("hard"),
-            func.sum(func.CASE((ReviewLog.rating == 2, 1), else_=0)).label("good"),
-            func.sum(func.CASE((ReviewLog.rating == 3, 1), else_=0)).label("easy"),
+            func.sum(sqltext("CASE WHEN rating = 0 THEN 1 ELSE 0 END")).label("forgot"),
+            func.sum(sqltext("CASE WHEN rating = 1 THEN 1 ELSE 0 END")).label("hard"),
+            func.sum(sqltext("CASE WHEN rating = 2 THEN 1 ELSE 0 END")).label("good"),
+            func.sum(sqltext("CASE WHEN rating = 3 THEN 1 ELSE 0 END")).label("easy"),
         )
         .where(ReviewLog.reviewed_at >= thirty_days_ago)
         .group_by(func.date(ReviewLog.reviewed_at))
