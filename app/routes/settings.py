@@ -34,6 +34,17 @@ def set_hardcover_api_key(value: str) -> None:
     _save_settings()
 
 
+def get_settings() -> dict:
+    """Return the full settings dict (read-only snapshot)."""
+    return dict(_settings)
+
+
+def set_setting(key: str, value) -> None:
+    """Set a single setting key and persist."""
+    _settings[key] = value
+    _save_settings()
+
+
 def _load_settings():
     global _settings
     try:
@@ -99,7 +110,7 @@ async def settings_page(
             total_books=books,
             review_mode=_settings.get("review_mode", "random"),
             review_count=_settings.get("review_count", 10),
-            version="0.6.0",
+            version="0.6.1",
             saved=saved,
             new_token=new_token,
             username=request.session.get("username", ""),
@@ -166,9 +177,9 @@ async def set_cover_source(
 
     # Validate the key looks plausible
     key = hardcover_key.strip()
-    if key and len(key) < 8:
-        raise HTTPException(status_code=400, detail="Key seems too short")
-    if len(key) > 256:
+    if key and len(key) < 4:
+        raise HTTPException(status_code=400, detail="Key too short")
+    if len(key) > 2048:
         raise HTTPException(status_code=400, detail="Key too long")
 
     set_hardcover_api_key(key)

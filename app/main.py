@@ -16,9 +16,10 @@ from app.csrf import CSRFMiddleware, generate_csrf_token, template_context, Secu
 from app.routes import highlights, review, import_routes, settings as settings_routes, books, auth as auth_routes, share as share_routes, backup as backup_routes
 from app.services.resurface import get_dashboard_counts
 from app.services.book_covers import batch_search
+from app.services.streaks import calculate_streaks
 from app.routes.settings import get_hardcover_api_key
 
-app = FastAPI(title="commonplace", version="0.6.0")
+app = FastAPI(title="commonplace", version="0.6.1")
 
 # Ensure covers directory exists on the mounted volume
 COVERS_DIR = os.environ.get("COVERS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "covers"))
@@ -166,6 +167,9 @@ async def dashboard(
     from datetime import datetime
     today_str = datetime.now().strftime("%A, %B %-d, %Y")
 
+    # Streak tracking
+    streak = await calculate_streaks(db)
+
     # Recently read books — 6 most recent distinct books by last highlight date
     recent_books = []
     recent_rows = await db.execute(
@@ -206,6 +210,7 @@ async def dashboard(
             total_books=books,
             today_review_count=pending,
             today_date=today_str,
+            streak=streak,
             random_highlight={
                 "id": random_hl.id,
                 "text": random_hl.text,

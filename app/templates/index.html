@@ -28,7 +28,13 @@
                 <div>
                     <p class="text-xs font-medium text-muted uppercase tracking-wider">Review Queue</p>
                     <p class="text-3xl font-bold text-primary mt-1">{{ today_review_count }}</p>
-                    <p class="text-xs text-muted mt-1">Complete your daily review</p>
+                    <p class="text-xs text-muted mt-1">
+                        {% if streak and streak.current > 0 %}
+                        <span class="font-medium text-emerald-600">{{ streak.current }}-day streak</span> 🔥
+                        {% else %}
+                        Complete your daily review
+                        {% endif %}
+                    </p>
                 </div>
                 <div class="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-2xl shrink-0">📖</div>
             </div>
