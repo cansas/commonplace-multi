@@ -599,3 +599,28 @@ table {
         padding-bottom: env(safe-area-inset-bottom, 4px);
     }
 }
+
+/* ── Review Heatmap ─────────────────────────────────── */
+.heatmap-cell {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    transition: transform 0.1s ease, opacity 0.1s ease;
+    cursor: default;
+}
+.heatmap-cell:hover {
+    transform: scale(1.4);
+    z-index: 5;
+    position: relative;
+}
+.heatmap-cell.level-0 { background: var(--page-alt, #f1f5f9); }
+.heatmap-cell.level-1 { background: #bbf7d0; }
+.heatmap-cell.level-2 { background: #4ade80; }
+.heatmap-cell.level-3 { background: #16a34a; }
+.heatmap-cell.level-4 { background: #15803d; }
+/* Dark theme overrides */
+[data-theme="dark"] .heatmap-cell.level-0 { background: #1e293b; }
+[data-theme="dark"] .heatmap-cell.level-1 { background: #14532d; }
+[data-theme="dark"] .heatmap-cell.level-2 { background: #166534; }
+[data-theme="dark"] .heatmap-cell.level-3 { background: #15803d; }
+[data-theme="dark"] .heatmap-cell.level-4 { background: #22c55e; }

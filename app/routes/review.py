@@ -15,6 +15,7 @@ from app.dates import today_start_utc
 from datetime import datetime, timedelta
 import random
 import time
+from typing import Optional
 
 router = APIRouter(tags=["review"])
 
@@ -421,3 +422,105 @@ async def review_delete(
     await _log_review(db, hl_id)
     await db.commit()
     return RedirectResponse(url="/review", status_code=303)
+
+
+# ── Review Heatmap ──────────────────────────────────────────────────────────
+
+
+@router.get("/api/review/heatmap")
+async def review_heatmap_data(
+    year: Optional[int] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return daily review counts for a given year (default: this year)."""
+    now = datetime.utcnow()
+    target_year = year or now.year
+    start = datetime(target_year, 1, 1)
+    end = datetime(target_year + 1, 1, 1) - timedelta(seconds=1)
+
+    rows = await db.execute(
+        sqltext(
+            "SELECT DATE(reviewed_at) as day, COUNT(*) as cnt "
+            "FROM review_log "
+            "WHERE reviewed_at >= :start AND reviewed_at < :end "
+            "GROUP BY DATE(reviewed_at) "
+            "ORDER BY day"
+        ),
+        {"start": start, "end": end},
+    )
+    data = [{"date": r[0], "count": r[1]} for r in rows.fetchall()]
+    return {"data": data, "year": target_year, "total": sum(r["count"] for r in data)}
+
+
+@router.get("/review/heatmap", response_class=HTMLResponse)
+async def review_heatmap_page(
+    request: Request,
+    year: Optional[int] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    now = datetime.utcnow()
+    target_year = year or now.year
+    start = datetime(target_year, 1, 1)
+    end = datetime(target_year + 1, 1, 1) - timedelta(seconds=1)
+
+    rows = await db.execute(
+        sqltext(
+            "SELECT DATE(reviewed_at) as day, COUNT(*) as cnt "
+            "FROM review_log "
+            "WHERE reviewed_at >= :start AND reviewed_at < :end "
+            "GROUP BY DATE(reviewed_at) "
+            "ORDER BY day"
+        ),
+        {"start": start, "end": end},
+    )
+    counts_by_date = {r[0]: r[1] for r in rows.fetchall()}
+
+    # Build the grid: 7 rows (Sun-Sat) × up to 53 weeks
+    import calendar
+
+    first_day = datetime(target_year, 1, 1)
+    start_dow = first_day.weekday()
+    start_offset = (start_dow + 1) % 7  # Shift so Sunday=0
+
+    if target_year == now.year:
+        total_days = (now - first_day).days + 1
+    else:
+        total_days = (datetime(target_year + 1, 1, 1) - first_day).days
+
+    cells = []
+    max_count = max(counts_by_date.values()) if counts_by_date else 1
+
+    for day_offset in range(total_days):
+        d = first_day + timedelta(days=day_offset)
+        date_str = d.strftime("%Y-%m-%d")
+        count = counts_by_date.get(date_str, 0)
+        week = (day_offset + start_offset) // 7
+        dow = (day_offset + start_offset) % 7
+        level = min(4, int((count / max(1, max_count)) * 5)) if count > 0 else 0
+        cells.append({
+            "date": date_str,
+            "count": count,
+            "week": week,
+            "dow": dow,
+            "level": level,
+        })
+
+    weeks = max(53, (cells[-1]["week"] + 1)) if cells else 53
+    day_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+    return _jinja.TemplateResponse(
+        request,
+        "review_heatmap.html",
+        template_context(
+            request,
+            active_page="review",
+            cells=cells,
+            weeks=weeks,
+            year=target_year,
+            total_reviews=sum(counts_by_date.values()),
+            total_days=len(counts_by_date),
+            day_names=day_names,
+            prev_year=target_year - 1 if target_year > 2020 else None,
+            next_year=target_year + 1 if target_year < now.year else None,
+        ),
+    )

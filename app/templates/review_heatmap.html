@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Review Heatmap — commonplace{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold text-primary">🔥 Review Heatmap</h1>
+            <p class="text-sm text-muted mt-1">{{ total_reviews }} reviews on {{ total_days }} days in {{ year }}</p>
+        </div>
+        <div class="flex gap-2">
+            {% if prev_year %}
+            <a href="/review/heatmap?year={{ prev_year }}" class="px-3 py-2 bg-card border border-card text-sm text-primary rounded-lg hover:bg-page-alt transition-colors">&larr; {{ prev_year }}</a>
+            {% endif %}
+            <span class="px-3 py-2 bg-accent text-white text-sm font-medium rounded-lg">{{ year }}</span>
+            {% if next_year %}
+            <a href="/review/heatmap?year={{ next_year }}" class="px-3 py-2 bg-card border border-card text-sm text-primary rounded-lg hover:bg-page-alt transition-colors">{{ next_year }} &rarr;</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-card rounded-xl border border-card p-4 text-center">
+            <span class="block text-2xl font-bold text-accent">{{ total_reviews }}</span>
+            <span class="text-xs text-muted">Total Reviews</span>
+        </div>
+        <div class="bg-card rounded-xl border border-card p-4 text-center">
+            <span class="block text-2xl font-bold text-primary">{{ total_days }}</span>
+            <span class="text-xs text-muted">Active Days</span>
+        </div>
+        <div class="bg-card rounded-xl border border-card p-4 text-center">
+            <span class="block text-2xl font-bold text-primary">{{ "%.0f"|format(total_reviews / max(1, total_days)) }}</span>
+            <span class="text-xs text-muted">Avg / Day</span>
+        </div>
+        <div class="bg-card rounded-xl border border-card p-4 text-center">
+            <span class="block text-2xl font-bold text-accent">{{ "%.0f"|format(total_reviews / max(1, 365) * 365) }}</span>
+            <span class="text-xs text-muted">Projected Year</span>
+        </div>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="bg-card rounded-xl border border-card p-4 sm:p-6 overflow-x-auto">
+        <div class="flex gap-1" style="min-width: {{ weeks * 16 + 40 }}px;">
+            <!-- Day Labels -->
+            <div class="flex flex-col gap-1 pt-5 pr-2 text-[10px] text-muted text-right shrink-0">
+                <span class="h-3 leading-3">Mon</span>
+                <span class="h-3 leading-3"></span>
+                <span class="h-3 leading-3">Wed</span>
+                <span class="h-3 leading-3"></span>
+                <span class="h-3 leading-3">Fri</span>
+                <span class="h-3 leading-3"></span>
+                <span class="h-3 leading-3"></span>
+            </div>
+            <!-- Grid -->
+            <div class="grid grid-rows-7 grid-flow-col gap-1" style="grid-template-rows: repeat(7, 14px);">
+                {% for cell in cells %}
+                <div class="heatmap-cell level-{{ cell.level }}"
+                     title="{{ cell.count }} review{% if cell.count != 1 %}s{% endif %} on {{ cell.date }}"
+                     data-date="{{ cell.date }}"
+                     data-count="{{ cell.count }}">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex items-center gap-2 mt-4 text-xs text-muted justify-end">
+            <span>Less</span>
+            <div class="heatmap-cell level-0 w-3 h-3 rounded-sm"></div>
+            <div class="heatmap-cell level-1 w-3 h-3 rounded-sm"></div>
+            <div class="heatmap-cell level-2 w-3 h-3 rounded-sm"></div>
+            <div class="heatmap-cell level-3 w-3 h-3 rounded-sm"></div>
+            <div class="heatmap-cell level-4 w-3 h-3 rounded-sm"></div>
+            <span>More</span>
+        </div>
+    </div>
+
+    <!-- Nav links -->
+    <div class="flex gap-3 justify-center">
+        <a href="/review" class="px-5 py-2.5 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent-hover transition-colors shadow-sm">
+            📖 Back to Review
+        </a>
+        <a href="/review/today" class="px-5 py-2.5 bg-card border border-card text-primary text-sm font-medium rounded-lg hover:bg-page-alt transition-colors shadow-sm">
+            📋 Today's Log
+        </a>
+        <a href="/review/stats" class="px-5 py-2.5 bg-card border border-card text-primary text-sm font-medium rounded-lg hover:bg-page-alt transition-colors shadow-sm">
+            📊 Stats
+        </a>
+    </div>
+</div>
+{% endblock %}

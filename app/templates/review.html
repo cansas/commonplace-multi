@@ -19,6 +19,10 @@
                 <span class="block text-lg font-bold text-primary">{{ today_reviews|length if today_reviews is defined and highlight is none else current_index - 1 if highlight else current_index }}</span>
                 <span class="text-xs text-muted">📋 today</span>
             </a>
+            <a href="/review/heatmap" class="px-3 py-2 bg-card rounded-lg border border-card hover:border-accent/20 transition-colors text-center">
+                <span class="block text-lg font-bold text-primary">🔥</span>
+                <span class="text-xs text-muted">heatmap</span>
+            </a>
         </div>
         {% endif %}
     </div>
