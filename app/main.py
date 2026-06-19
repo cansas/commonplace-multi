@@ -1,5 +1,6 @@
 """commonplace — Self-hosted Readwise alternative."""
 
+from datetime import datetime
 from fastapi import FastAPI, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -7,7 +8,9 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+import asyncio
 import os
+import random
 
 from app.database import init_db, get_db, async_session
 from app.models import Highlight, Source, BookCover
@@ -108,7 +111,6 @@ async def startup():
     # Backfill book covers in the background (don't block startup)
     async def _backfill_covers():
         async with async_session() as db:
-            from sqlalchemy import select
             result = await db.execute(
                 select(Highlight.book_title, Highlight.book_author)
                 .distinct()
@@ -137,7 +139,6 @@ async def startup():
                 found = sum(1 for url, _ in covers.values() if url)
                 print(f"  Found covers for {found} of {len(need_cover)} books")
 
-    import asyncio
     asyncio.create_task(_backfill_covers())
 
 
@@ -157,14 +158,12 @@ async def dashboard(
     # Random highlight — use random offset instead of ORDER BY random() for efficiency
     random_hl = None
     if total > 0:
-        import random
         offset = random.randint(0, total - 1)
         random_hl_result = await db.execute(
             select(Highlight).offset(offset).limit(1)
         )
         random_hl = random_hl_result.scalar_one_or_none()
 
-    from datetime import datetime
     today_str = datetime.now().strftime("%A, %B %-d, %Y")
 
     # Streak tracking

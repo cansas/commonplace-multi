@@ -3,13 +3,14 @@
 from fastapi import APIRouter, Depends, Query, Request, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func as sa_func, or_
+from sqlalchemy import select, func as sa_func, or_, text as sqltext
 from app.database import get_db
 from app.models import Highlight, BookCover
 from app.services.book_covers import search_cover
 from app.csrf import template_context
 from app.routes.settings import get_hardcover_api_key
 from typing import Optional
+import hashlib
 import math
 import os
 import re
@@ -19,7 +20,8 @@ def _escape_ilike(s: str) -> str:
     return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 def _safe_filename(name: str) -> str:
-    return re.sub(r'[^\w.-]', '_', name)[:128]
+    """Hash the name to avoid collisions and special chars."""
+    return hashlib.md5(name.encode()).hexdigest()[:16]
 
 
 router = APIRouter(tags=["books"])
@@ -294,8 +296,6 @@ async def rename_book(
                        f"Merge {affected} highlight{'s' if affected != 1 else ''} into it?",
         }
 
-    from sqlalchemy import text as sqltext
-
     # Temporarily drop the FTS AU trigger
     await db.execute(sqltext("DROP TRIGGER IF EXISTS highlights_au"))
 
@@ -387,8 +387,6 @@ async def delete_book(
 
     if count == 0:
         return JSONResponse({"ok": False, "error": "No highlights found for that book"}, status_code=404)
-
-    from sqlalchemy import text as sqltext
 
     # Drop FTS triggers to avoid content-matching issues during bulk delete
     await db.execute(sqltext("DROP TRIGGER IF EXISTS highlights_ai"))

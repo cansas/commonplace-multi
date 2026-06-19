@@ -9,6 +9,7 @@ from app.routes.settings import _settings as review_settings
 from app.csrf import template_context, csrf_guard
 from app.dates import today_start_utc
 from datetime import datetime
+import random
 import time
 
 router = APIRouter(tags=["review"])
@@ -39,14 +40,30 @@ async def _reviewed_today_count(db) -> int:
 async def _get_unreviewed_highlight(db):
     """Pick one random highlight not yet logged in ReviewLog today."""
     today_start = _today_start()
-    reviewed_today = (
-        select(ReviewLog.highlight_id)
-        .where(ReviewLog.reviewed_at >= today_start)
+    # Count total unreviewed via LEFT JOIN anti-join
+    count_q = (
+        select(func.count(Highlight.id))
+        .outerjoin(
+            ReviewLog,
+            (ReviewLog.highlight_id == Highlight.id) &
+            (ReviewLog.reviewed_at >= today_start)
+        )
+        .where(ReviewLog.id.is_(None))
     )
+    count_result = await db.execute(count_q)
+    total = count_result.scalar() or 0
+    if total == 0:
+        return None
+    offset = random.randint(0, total - 1)
     result = await db.execute(
         select(Highlight)
-        .where(Highlight.id.notin_(reviewed_today))
-        .order_by(func.random())
+        .outerjoin(
+            ReviewLog,
+            (ReviewLog.highlight_id == Highlight.id) &
+            (ReviewLog.reviewed_at >= today_start)
+        )
+        .where(ReviewLog.id.is_(None))
+        .offset(offset)
         .limit(1)
     )
     return result.scalar_one_or_none()

@@ -101,6 +101,23 @@ async def init_db():
             "END"
         ))
 
+    # ── Database indexes ───────────────────────────────────────────────────
+    # Add indexes on common filter columns used in WHERE/ORDER BY clauses
+    async with engine.begin() as conn:
+        from sqlalchemy import text as sqltext
+        for idx_stmt in [
+            "CREATE INDEX IF NOT EXISTS ix_highlights_highlighted_at ON highlights(highlighted_at)",
+            "CREATE INDEX IF NOT EXISTS ix_highlights_book_title ON highlights(book_title)",
+            "CREATE INDEX IF NOT EXISTS ix_highlights_source_type ON highlights(source_type)",
+            "CREATE INDEX IF NOT EXISTS ix_highlights_favorite ON highlights(favorite)",
+            "CREATE INDEX IF NOT EXISTS ix_review_log_highlight_id ON review_log(highlight_id)",
+            "CREATE INDEX IF NOT EXISTS ix_review_log_reviewed_at ON review_log(reviewed_at)",
+        ]:
+            try:
+                await conn.execute(sqltext(idx_stmt))
+            except Exception:
+                pass  # Index may already exist or engine doesn't support
+
     # Backfill FTS index for existing highlights
     async with async_session() as session:
         from app.models import Highlight

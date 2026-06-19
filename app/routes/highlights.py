@@ -1,9 +1,9 @@
 """Highlight CRUD + search routes."""
 
 from fastapi import APIRouter, Depends, Query, Request, HTTPException, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func as sa_func
+from sqlalchemy import select, func as sa_func, text, text as sqltext
 from app.database import get_db
 from app.models import Highlight, Tag, BookCover
 from app.schemas import HighlightOut, HighlightCreate, HighlightUpdate
@@ -45,7 +45,6 @@ async def highlights_page(
     query = select(Highlight).order_by(Highlight.created_at.desc())
 
     if search:
-        from sqlalchemy import text
         fts_q = text(
             "SELECT rowid FROM highlights_fts WHERE highlights_fts MATCH :q ORDER BY rank"
         )
@@ -56,8 +55,9 @@ async def highlights_page(
                 query = query.where(Highlight.id.in_(ids))
             else:
                 query = query.where(Highlight.id == -1)  # No results
-        except Exception:
-            pass  # Fall back to no filter on bad query syntax
+        except Exception as e:
+            print(f"  FTS search error: {e}")
+            query = query.where(Highlight.id == -1)  # No results
     if source and source != "all":
         query = query.where(Highlight.source_type == source)
     if book:
@@ -155,7 +155,6 @@ async def list_highlights(
     db: AsyncSession = Depends(get_db),
 ):
     if search and search.strip():
-        from sqlalchemy import text
         fts_query = text(
             "SELECT rowid FROM highlights_fts WHERE highlights_fts MATCH :q ORDER BY rank"
         )
@@ -258,8 +257,6 @@ async def update_highlight(hl_id: int, data: HighlightUpdate, db: AsyncSession =
 
     update_data = data.model_dump(exclude_unset=True)
     tag_names = update_data.pop("tags", None)
-
-    from sqlalchemy import text as sqltext
 
     # Drop FTS AU trigger to avoid content-matching issues
     await db.execute(sqltext("DROP TRIGGER IF EXISTS highlights_au"))
@@ -368,5 +365,4 @@ async def highlight_card(hl_id: int, db: AsyncSession = Depends(get_db)):
         highlight_id=hl.id,
         cover_data_uri=cover_uri,
     )
-    from fastapi.responses import Response
     return Response(content=svg, media_type="image/svg+xml")

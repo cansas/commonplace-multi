@@ -2,16 +2,26 @@
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from app.models import Highlight, ReviewLog
+from app.models import Highlight, ReviewLog, Source
 from app.routes.settings import _settings as review_settings
 from app.dates import today_start_utc
 
 
 async def get_random_highlights(db: AsyncSession, count: int = 10, exclude_ids: list = None):
     """Random selection for simple daily review mode."""
-    query = select(Highlight).order_by(func.random()).limit(count)
+    # Count total matching, pick random offset
+    total_q = select(func.count(Highlight.id))
+    if exclude_ids:
+        total_q = total_q.where(Highlight.id.notin_(exclude_ids))
+    result = await db.execute(total_q)
+    total = result.scalar() or 0
+    if total == 0:
+        return []
+    offset = random.randint(0, max(0, total - count))
+    query = select(Highlight)
     if exclude_ids:
         query = query.where(Highlight.id.notin_(exclude_ids))
+    query = query.offset(offset).limit(count)
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -19,6 +29,22 @@ async def get_random_highlights(db: AsyncSession, count: int = 10, exclude_ids: 
 async def get_due_highlights(db: AsyncSession, count: int = 10):
     """SM-2 mode: highlights due for review today."""
     now = datetime.utcnow()
+    # Count due highlights first via a subquery, then pick random offset
+    count_query = select(func.count()).select_from(
+        select(Highlight.id)
+        .outerjoin(ReviewLog)
+        .group_by(Highlight.id)
+        .having(
+            func.max(ReviewLog.next_review_at).is_(None) |
+            (func.max(ReviewLog.next_review_at) <= now)
+        )
+        .subquery()
+    )
+    count_result = await db.execute(count_query)
+    total = count_result.scalar() or 0
+    if total == 0:
+        return []
+    offset = random.randint(0, max(0, total - count))
     query = (
         select(Highlight)
         .outerjoin(ReviewLog)
@@ -27,7 +53,7 @@ async def get_due_highlights(db: AsyncSession, count: int = 10):
             func.max(ReviewLog.next_review_at).is_(None) |
             (func.max(ReviewLog.next_review_at) <= now)
         )
-        .order_by(func.random())
+        .offset(offset)
         .limit(count)
     )
     result = await db.execute(query)
@@ -61,7 +87,6 @@ async def get_dashboard_counts(db: AsyncSession):
 
 async def get_recent_sources(db: AsyncSession, limit: int = 5):
     """Recent import sources."""
-    from app.models import Source
     result = await db.execute(
         select(Source)
         .order_by(Source.last_import_at.desc().nullslast())
