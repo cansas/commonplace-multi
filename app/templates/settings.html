@@ -241,7 +241,7 @@
 
             <div class="border-t border-card pt-4">
                 <p class="text-sm font-medium text-primary mb-2">Restore from Backup</p>
-                <form method="POST" action="/api/backup/restore" enctype="multipart/form-data"
+                <form id="restore-form" method="POST" action="/api/backup/restore" enctype="multipart/form-data"
                       onsubmit="return confirmRestore(event)" class="space-y-3">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                     <div>
@@ -299,7 +299,7 @@
         <div class="px-6 py-5 space-y-2 text-sm">
             <div class="flex items-center justify-between">
                 <span class="text-slate-500">Version</span>
-                <span class="font-medium text-slate-700">{{ version or '0.6.1' }}</span>
+                <span class="font-medium text-slate-700">{{ version or '0.6.2' }}</span>
             </div>
             <div class="flex items-center justify-between">
                 <span class="text-slate-500">Username</span>
@@ -336,15 +336,21 @@
     }
 
     function confirmRestore(event) {
-        var confirmed = confirm('⚠️ Restore will replace your current database and all covers. This cannot be undone. Continue?');
-        if (!confirmed) {
-            event.preventDefault();
+        event.preventDefault();
+        var fileInput = document.querySelector('[name=\"file\"]');
+        if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+            showToast('Select a backup file first', 'error');
             return false;
         }
-        var btn = document.getElementById('restore-btn');
-        btn.disabled = true;
-        btn.textContent = 'Restoring...';
-        return true;
+        var filename = fileInput.files[0].name;
+        confirmModal('Restore backup?', 'Replace your current database with "' + filename + '"? All current data will be replaced. A restart is required afterwards.').then(function(ok) {
+            if (!ok) return;
+            var btn = document.getElementById('restore-btn');
+            btn.disabled = true;
+            btn.textContent = 'Restoring...';
+            document.getElementById('restore-form').submit();
+        });
+        return false;
     }
 
     function saveCoverKey() {
@@ -372,28 +378,31 @@
     }
 
     function clearCoverKey() {
-        if (!confirm('Remove the Hardcover API key? Covers will fall back to Open Library.')) return;
-        var result = document.getElementById('hc-result');
-        var status = document.getElementById('hc-status');
-        document.getElementById('hardcover-key').value = '';
-        var fd = new FormData();
-        fd.append('csrf_token', '{{ csrf_token }}');
-        fd.append('action', 'clear');
-        fetch('/settings/cover-source', { method: 'POST', body: fd })
-            .then(function(r) { return r.json(); })
-            .then(function(d) {
-                if (d.ok) {
-                    status.textContent = '⬜ Empty';
-                    result.textContent = 'Key removed';
-                }
-            })
-            .catch(function(e) {
-                result.textContent = 'Network error';
-            });
+        confirmModal('Remove HardCover key?', 'Covers will fall back to Open Library.').then(function(ok) {
+            if (!ok) return;
+            var result = document.getElementById('hc-result');
+            var status = document.getElementById('hc-status');
+            document.getElementById('hardcover-key').value = '';
+            var fd = new FormData();
+            fd.append('csrf_token', '{{ csrf_token }}');
+            fd.append('action', 'clear');
+            fetch('/settings/cover-source', { method: 'POST', body: fd })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.ok) {
+                        status.textContent = '⬜ Empty';
+                        result.textContent = 'Key removed';
+                    }
+                })
+                .catch(function(e) {
+                    result.textContent = 'Network error';
+                });
+        });
     }
 
     function confirmReset() {
-        if (confirm('⚠️ Are you sure you want to reset the database? This will permanently delete all highlights, books, and review history. This action cannot be undone.')) {
+        confirmModal('Reset database?', 'This will permanently delete ALL highlights, books, and review history. This cannot be undone.').then(function(ok) {
+            if (!ok) return;
             var response = prompt('Type "reset" to confirm:');
             if (response === 'reset') {
                 var form = document.createElement('form');
@@ -412,7 +421,7 @@
                 document.body.appendChild(form);
                 form.submit();
             }
-        }
+        });
     }
 </script>
 {% endblock %}

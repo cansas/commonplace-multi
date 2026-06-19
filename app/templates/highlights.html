@@ -261,22 +261,24 @@
             if (result.ok) {
                 location.reload();
             } else {
-                alert('Save failed: ' + (result.error || 'unknown'));
+                showToast('Save failed: ' + (result.error || 'unknown'), 'error');
             }
         }).catch(function(e) {
-            alert('Save failed: ' + e.message);
+            showToast('Save failed: ' + e.message, 'error');
         });
     }
 
     function deleteHighlight(id) {
-        if (!confirm('Delete this highlight? This cannot be undone.')) return;
-        fetch('/api/highlights/' + id, { method: 'DELETE' })
+        confirmModal('Delete highlight?', 'This cannot be undone.').then(function(ok) {
+            if (!ok) return;
+            fetch('/api/highlights/' + id, { method: 'DELETE' })
             .then(function(r) { return r.json(); })
             .then(function(result) {
                 if (result.ok) {
                     location.reload();
                 }
             });
+        });
     }
 </script>
 {% endblock %}

@@ -166,30 +166,32 @@
           var card = el.closest('[data-hl-id]');
           if (card && d.cover_url) updateCoverImage(card, d.cover_url);
         } else {
-          alert('No cover found: ' + (d.error || 'Try a different search term'));
+          showToast(d.error || 'No cover found', 'error');
         }
       })
       .catch(function(e) {
         setLoading(el, false);
-        alert('Network error: ' + e.message);
+        showToast('Network error: ' + e.message, 'error');
       });
   }
 
   function backfillCovers() {
-    if (!confirm('Fetch covers for all books from Open Library? May take a minute.')) return;
-    var btn = document.querySelector('[onclick="backfillCovers()"]');
-    setLoading(btn, true);
-    fetch('/api/books/cover/backfill', { method: 'POST' })
+    confirmModal('Fetch covers?', 'Fetch covers for all books from online sources? This may take a minute.').then(function(ok) {
+      if (!ok) return;
+      var btn = document.querySelector('[onclick="backfillCovers()"]');
+      setLoading(btn, true);
+      fetch('/api/books/cover/backfill', { method: 'POST' })
       .then(function(r) { return r.json(); })
       .then(function(d) {
         setLoading(btn, false);
         if (d.ok) location.reload();
-        else alert('Error: ' + (d.error || 'unknown'));
+        else showToast('Error: ' + (d.error || 'unknown'), 'error');
       })
       .catch(function(e) {
         setLoading(btn, false);
-        alert('Network error: ' + e.message);
+        showToast('Network error: ' + e.message, 'error');
       });
+    });
   }
 
   function uploadCover(el) {
@@ -202,7 +204,7 @@
       if (!input.files || !input.files[0]) return;
       var file = input.files[0];
       if (file.size > 10 * 1024 * 1024) {
-        alert('File too large (' + Math.round(file.size / 1024 / 1024) + 'MB). Max is 10MB.');
+        showToast('File too large. Max 10MB.', 'error');
         return;
       }
       setLoading(el, true);
@@ -216,7 +218,7 @@
             var card = el.closest('[data-hl-id]');
             if (card && d.cover_url) updateCoverImage(card, d.cover_url);
           } else {
-            alert('Upload error: ' + (d.error || 'unknown'));
+            showToast('Error: ' + (d.error || 'unknown'), 'error');
           }
         })
         .catch(function(e) {
@@ -232,7 +234,7 @@
 
   function renameBook(el) {
     renameCard = el.closest('[data-hl-id]');
-    if (!renameCard) { alert('Could not find book data'); return; }
+    if (!renameCard) { showToast('Could not find book data', 'error'); return; }
     var oldTitle = renameCard.dataset.title;
     var oldAuthor = renameCard.dataset.author;
     var hlEl = renameCard.querySelector('.text-indigo-600');
@@ -243,7 +245,7 @@
     var warningEl = document.getElementById('rename-warning');
     var submitBtn = document.getElementById('rename-submit');
     var modal = document.getElementById('rename-modal');
-    if (!titleInput || !modal) { alert('Modal elements not found'); return; }
+    if (!titleInput || !modal) { showToast('Modal elements not found', 'error'); return; }
 
     document.getElementById('rename-old-title').value = oldTitle || '';
     document.getElementById('rename-old-author').value = oldAuthor || '';
@@ -291,13 +293,13 @@
               btn.textContent = 'Save Changes';
             }
           } else {
-            alert('Error: ' + (d.error || 'unknown'));
+            showToast('Error: ' + (d.error || 'unknown'), 'error');
             btn.disabled = false;
             btn.textContent = 'Save Changes';
           }
         })
         .catch(function(e) {
-          alert('Rename failed: ' + e.message);
+          showToast('Rename failed: ' + e.message, 'error');
           btn.disabled = false;
           btn.textContent = 'Save Changes';
         });
@@ -338,13 +340,13 @@
           closeRenameModal();
           location.reload();
         } else {
-          alert('Delete failed: ' + (d.error || 'unknown'));
+          showToast('Delete failed: ' + (d.error || 'unknown'), 'error');
           btn.disabled = false;
           btn.textContent = '🗑️ Delete book';
         }
       })
       .catch(function(e) {
-        alert('Delete failed: ' + e.message);
+      showToast('Delete failed: ' + e.message, 'error');
         btn.disabled = false;
         btn.textContent = '🗑️ Delete book';
       });

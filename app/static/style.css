@@ -312,7 +312,9 @@ table {
 @media print {
     #sidebar,
     #sidebar-toggle,
-    #sidebar-overlay {
+    #sidebar-overlay,
+    #toast-container,
+    #confirm-overlay {
         display: none !important;
     }
 
@@ -324,4 +326,31 @@ table {
     .no-print {
         display: none !important;
     }
+}
+
+/* ---------- Toast Animations ---------- */
+#toast-container > div {
+    will-change: transform, opacity;
+}
+
+/* ---------- Loading State ---------- */
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+}
+.btn-loading::after {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-left: 6px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: btn-spin 0.6s linear infinite;
+    vertical-align: middle;
+}
+@keyframes btn-spin {
+    to { transform: rotate(360deg); }
 }
