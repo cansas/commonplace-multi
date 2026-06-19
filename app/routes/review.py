@@ -9,6 +9,7 @@ from app.models import Highlight, ReviewLog
 from app.services.spaced_repetition import sm2_calc, get_next_review_date
 from app.routes.settings import _settings as review_settings
 from app.services.streaks import calculate_streaks
+from app.services.achievements import check_and_unlock
 from app.csrf import template_context, csrf_guard
 from app.dates import today_start_utc
 from datetime import datetime
@@ -269,6 +270,14 @@ async def review_rate(
         raise HTTPException(status_code=400, detail="Invalid rating")
     await _log_review(db, hl_id, rating)
     await db.commit()
+
+    # Check for newly unlocked achievements
+    streaks = await calculate_streaks(db)
+    new_achievements = await check_and_unlock(db, streaks["current"])
+    if new_achievements:
+        # Store in session so the redirect can show them
+        request.session["new_achievements"] = new_achievements
+
     return RedirectResponse(url="/review", status_code=303)
 
 

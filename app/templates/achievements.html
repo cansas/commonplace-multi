@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Achievements — commonplace{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold text-primary">🏆 Achievements</h1>
+        <p class="text-sm text-muted mt-1">{{ unlocked_count }} of {{ total_count }} unlocked</p>
+    </div>
+
+    {% if new_achievements %}
+    <!-- Toast for newly unlocked achievements -->
+    {% for ach in new_achievements %}
+    <div class="achievement-toast bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-6 text-center shadow-lg animate-bounce-in">
+        <p class="text-4xl mb-2">{{ ach.icon }}</p>
+        <p class="text-lg font-bold text-amber-800 dark:text-amber-200">🎉 Achievement Unlocked!</p>
+        <p class="text-base font-semibold text-primary mt-1">{{ ach.label }}</p>
+        <p class="text-sm text-secondary mt-1 italic">"{{ ach.message }}"</p>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if achievements %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {% for ach in achievements %}
+        <div class="rounded-xl border p-5 transition-all duration-200
+            {% if ach.unlocked %}
+                bg-card border-accent/30 shadow-sm
+            {% else %}
+                bg-page-alt border-card opacity-50
+            {% endif %}">
+            <div class="flex items-start gap-4">
+                <span class="text-3xl mt-1">{{ ach.icon if ach.unlocked else '🔒' }}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-semibold text-primary">{{ ach.label }}</h3>
+                        {% if ach.unlocked %}
+                        <span class="text-xs text-accent font-medium">✅</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-xs text-muted mt-1 italic">"{{ ach.message }}"</p>
+                    {% if ach.unlocked and ach.unlocked_at %}
+                    <p class="text-xs text-muted mt-2">
+                        🗓️ Unlocked {{ ach.unlocked_at[:10] }}
+                    </p>
+                    {% else %}
+                    <p class="text-xs text-muted mt-2">
+                        🔒 Keep reviewing to unlock
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if new_achievements %}
+<style>
+    @keyframes bounce-in {
+        0% { transform: scale(0.3); opacity: 0; }
+        50% { transform: scale(1.05); }
+        70% { transform: scale(0.95); }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    .achievement-toast {
+        animation: bounce-in 0.6s ease-out;
+    }
+</style>
+{% endif %}
+{% endblock %}

@@ -65,6 +65,23 @@ async def init_db():
             await conn.execute(sqltext("ALTER TABLE book_covers ADD COLUMN isbn VARCHAR(20)"))
             print("  Migration: added isbn to book_covers")
 
+    # ── UserAchievements table ─────────────────────────────────────────────
+    async with engine.begin() as conn:
+        from sqlalchemy import text as sqltext
+        pragma3 = await conn.execute(sqltext("SELECT name FROM sqlite_master WHERE type='table' AND name='user_achievements'"))
+        if not pragma3.fetchone():
+            await conn.execute(sqltext(
+                "CREATE TABLE user_achievements ("
+                "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "  user_id INTEGER NOT NULL DEFAULT 1 REFERENCES users(id),"
+                "  achievement_key VARCHAR(64) NOT NULL,"
+                "  message VARCHAR(255),"
+                "  unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+                "  UNIQUE(user_id, achievement_key)"
+                ")"
+            ))
+            print("  Migration: created user_achievements table")
+
     # Create dedup index (text + book_title + highlighted_at)
     async with engine.begin() as conn:
         from sqlalchemy import text as sqltext

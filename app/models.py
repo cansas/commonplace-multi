@@ -80,6 +80,20 @@ class User(Base):
     tokens = relationship("ApiToken", back_populates="user", cascade="all, delete-orphan")
 
 
+class UserAchievement(Base):
+    __tablename__ = "user_achievements"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, default=1)
+    achievement_key = Column(String(64), nullable=False)
+    message = Column(String(255), nullable=True)
+    unlocked_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "achievement_key", name="uq_user_achievement"),
+    )
+
+
 class ApiToken(Base):
     __tablename__ = "api_tokens"
 
