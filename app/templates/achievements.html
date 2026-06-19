@@ -11,9 +11,23 @@
     {% if new_achievements %}
     <!-- Toast for newly unlocked achievements -->
     {% for ach in new_achievements %}
-    <div class="achievement-toast bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-6 text-center shadow-lg animate-bounce-in">
-        <p class="text-4xl mb-2">{{ ach.icon }}</p>
-        <p class="text-lg font-bold text-amber-800 dark:text-amber-200">🎉 Achievement Unlocked!</p>
+    <div class="achievement-toast bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-6 text-center shadow-lg animate-bounce-in relative overflow-hidden">
+        <div class="confetti-container">
+            <div class="confetti-piece c1"></div>
+            <div class="confetti-piece c2"></div>
+            <div class="confetti-piece c3"></div>
+            <div class="confetti-piece c4"></div>
+            <div class="confetti-piece c5"></div>
+            <div class="confetti-piece c6"></div>
+            <div class="confetti-piece c7"></div>
+            <div class="confetti-piece c8"></div>
+            <div class="confetti-piece c9"></div>
+            <div class="confetti-piece c10"></div>
+            <div class="confetti-piece c11"></div>
+            <div class="confetti-piece c12"></div>
+        </div>
+        <p class="text-4xl mb-2 relative z-10">{{ ach.icon }}</p>
+        <p class="text-lg font-bold text-amber-800 dark:text-amber-200 relative z-10">🎉 Achievement Unlocked!</p>
         <p class="text-base font-semibold text-primary mt-1">{{ ach.label }}</p>
         <p class="text-sm text-secondary mt-1 italic">"{{ ach.message }}"</p>
     </div>
@@ -74,6 +88,41 @@
     .achievement-toast {
         animation: bounce-in 0.6s ease-out;
     }
+
+    /* ── Confetti ──────────────────────────────────── */
+    @keyframes confetti-fall {
+        0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(200px) rotate(720deg); opacity: 0; }
+    }
+    .confetti-container {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        overflow: hidden;
+    }
+    .confetti-piece {
+        position: absolute;
+        top: -10px;
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        animation: confetti-fall 2.5s ease-in forwards;
+    }
+    .confetti-piece:nth-child(odd) { border-radius: 50%; }
+    .confetti-piece:nth-child(3n) { width: 6px; height: 6px; }
+
+    .c1  { left: 5%;  background: #f59e0b; animation-delay: 0.0s; }
+    .c2  { left: 15%; background: #ef4444; animation-delay: 0.1s; }
+    .c3  { left: 25%; background: #3b82f6; animation-delay: 0.2s; }
+    .c4  { left: 35%; background: #10b981; animation-delay: 0.3s; }
+    .c5  { left: 45%; background: #8b5cf6; animation-delay: 0.15s; }
+    .c6  { left: 55%; background: #f97316; animation-delay: 0.25s; }
+    .c7  { left: 65%; background: #ec4899; animation-delay: 0.05s; }
+    .c8  { left: 75%; background: #14b8a6; animation-delay: 0.35s; }
+    .c9  { left: 82%; background: #eab308; animation-delay: 0.1s; }
+    .c10 { left: 90%; background: #6366f1; animation-delay: 0.2s; }
+    .c11 { left: 10%; background: #22c55e; animation-delay: 0.3s; }
+    .c12 { left: 70%; background: #f43f5e; animation-delay: 0.15s; }
 </style>
 {% endif %}
 {% endblock %}
