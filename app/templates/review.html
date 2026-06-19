@@ -4,20 +4,34 @@
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
     <!-- Page Header -->
-    <div class="text-center">
-        <h1 class="text-2xl font-bold text-slate-900">📖 Daily Review</h1>
-        <p class="text-sm text-slate-500 mt-1">Review your highlights and reinforce your learning.</p>
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-primary">📖 Daily Review</h1>
+            <p class="text-sm text-muted mt-1">Reinforce your learning with spaced repetition.</p>
+        </div>
+        {% if streaks %}
+        <div class="flex gap-4 text-center">
+            <div class="px-3 py-2 bg-card rounded-lg border border-card">
+                <span class="block text-lg font-bold text-accent">{{ streaks.current }}</span>
+                <span class="text-xs text-muted">🔥 streak</span>
+            </div>
+            <a href="/review/today" class="px-3 py-2 bg-card rounded-lg border border-card hover:border-accent/20 transition-colors text-center">
+                <span class="block text-lg font-bold text-primary">{{ today_reviews|length if today_reviews is defined and highlight is none else current_index - 1 if highlight else current_index }}</span>
+                <span class="text-xs text-muted">📋 today</span>
+            </a>
+        </div>
+        {% endif %}
     </div>
 
     {% if highlight %}
-    <!-- Flash Card -->
-    <div class="review-card bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8">
+    <!-- Flash Card with Rating -->
+    <div class="review-card bg-card rounded-xl border border-card shadow-sm p-6 sm:p-8">
         <!-- Book Info -->
         <div class="flex items-start justify-between mb-5">
             <div>
-                <h2 class="text-base font-semibold text-slate-800">{{ highlight.book_title }}</h2>
+                <h2 class="text-base font-semibold text-primary">{{ highlight.book_title }}</h2>
                 {% if highlight.book_author %}
-                <p class="text-sm text-slate-500">{{ highlight.book_author }}</p>
+                <p class="text-sm text-muted">{{ highlight.book_author }}</p>
                 {% endif %}
             </div>
             {% if highlight.source_type %}
@@ -26,19 +40,19 @@
         </div>
 
         <!-- Quote Block -->
-        <div class="review-quote relative pl-6 border-l-4 border-indigo-400 mb-5">
-            <span class="absolute -left-3 top-0 text-3xl text-indigo-300 font-serif leading-none">"</span>
-            <p class="text-xl sm:text-2xl font-serif italic text-slate-800 leading-relaxed">
+        <div class="review-quote relative pl-6 border-l-4 border-accent mb-5">
+            <span class="absolute -left-3 top-0 text-3xl text-accent/40 font-serif leading-none">"</span>
+            <p class="text-xl sm:text-2xl font-serif italic text-primary leading-relaxed">
                 {{ highlight.text }}
             </p>
-            <span class="block text-right text-3xl text-indigo-300 font-serif leading-none -mb-3">"</span>
+            <span class="block text-right text-3xl text-accent/40 font-serif leading-none -mb-3">"</span>
         </div>
 
         <!-- Note -->
         {% if highlight.note %}
-        <div class="mb-5 px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg">
-            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">💭 Note</span>
-            <p class="text-sm text-slate-600">{{ highlight.note }}</p>
+        <div class="mb-5 px-4 py-3 bg-page-alt border border-card rounded-lg">
+            <span class="text-xs font-semibold text-muted uppercase tracking-wider block mb-1">💭 Note</span>
+            <p class="text-sm text-secondary">{{ highlight.note }}</p>
         </div>
         {% endif %}
 
@@ -53,57 +67,95 @@
 
         <!-- Chapter / Page Info -->
         {% if highlight.chapter or highlight.page %}
-        <div class="text-xs text-slate-400 mb-5">
+        <div class="text-xs text-muted mb-5">
             {% if highlight.chapter %}Chapter: {{ highlight.chapter }}{% endif %}
             {% if highlight.chapter and highlight.page %} · {% endif %}
             {% if highlight.page %}Page: {{ highlight.page }}{% endif %}
         </div>
         {% endif %}
-    </div>
 
-    <!-- Action Buttons -->
-    <div class="flex gap-3 justify-center">
-        <form method="POST" action="/review/delete" class="contents"
-              onsubmit="return confirm('Delete this highlight? This cannot be undone.')">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-            <input type="hidden" name="hl_id" value="{{ highlight.id }}" />
-            <button type="submit" class="px-5 py-2.5 bg-red-50 border border-red-200 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors shadow-sm">
-                🗑️ Delete
-            </button>
-        </form>
-        <form method="POST" action="/review/favorite" class="contents">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-            <input type="hidden" name="hl_id" value="{{ highlight.id }}" />
-            <button type="submit" class="px-5 py-2.5 border border-slate-200 text-sm font-medium rounded-lg transition-colors shadow-sm
-                {% if highlight.favorite %}bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100{% else %}bg-white text-slate-600 hover:bg-slate-50{% endif %}">
-                {% if highlight.favorite %}⭐ Unfavorite{% else %}☆ Favorite{% endif %}
-            </button>
-        </form>
-        <form method="POST" action="/review/next" class="contents">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-            <input type="hidden" name="hl_id" value="{{ highlight.id }}" />
-            <button type="submit" class="px-6 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
-                Next →
-            </button>
-        </form>
+        <!-- SM-2 Rating Buttons -->
+        <div class="border-t border-card pt-5 mt-2">
+            <p class="text-xs text-muted text-center mb-3">How well did you remember this?</p>
+            <div class="grid grid-cols-4 gap-3">
+                <form method="POST" action="/review/rate" class="contents">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <input type="hidden" name="hl_id" value="{{ highlight.id }}" />
+                    <input type="hidden" name="rating" value="0" />
+                    <button type="submit" class="px-2 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-xs font-medium rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-center">
+                        <span class="block text-lg">😵</span>
+                        Forgot
+                    </button>
+                </form>
+                <form method="POST" action="/review/rate" class="contents">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <input type="hidden" name="hl_id" value="{{ highlight.id }}" />
+                    <input type="hidden" name="rating" value="1" />
+                    <button type="submit" class="px-2 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 text-xs font-medium rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors text-center">
+                        <span class="block text-lg">🤔</span>
+                        Hard
+                    </button>
+                </form>
+                <form method="POST" action="/review/rate" class="contents">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <input type="hidden" name="hl_id" value="{{ highlight.id }}" />
+                    <input type="hidden" name="rating" value="2" />
+                    <button type="submit" class="px-2 py-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 text-xs font-medium rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors text-center">
+                        <span class="block text-lg">😊</span>
+                        Good
+                    </button>
+                </form>
+                <form method="POST" action="/review/rate" class="contents">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <input type="hidden" name="hl_id" value="{{ highlight.id }}" />
+                    <input type="hidden" name="rating" value="3" />
+                    <button type="submit" class="px-2 py-3 bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400 text-xs font-medium rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors text-center">
+                        <span class="block text-lg">😎</span>
+                        Easy
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Secondary actions -->
+        <div class="flex gap-2 justify-center mt-4 pt-3 border-t border-card">
+            <form method="POST" action="/review/delete" class="contents"
+                  onsubmit="return confirm('Delete this highlight? This cannot be undone.')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="hl_id" value="{{ highlight.id }}" />
+                <button type="submit" class="px-3 py-1.5 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors">
+                    🗑️ Delete
+                </button>
+            </form>
+            <form method="POST" action="/review/favorite" class="contents">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="hl_id" value="{{ highlight.id }}" />
+                <button type="submit" class="px-3 py-1.5 text-xs text-muted hover:text-amber-500 hover:bg-page-alt rounded-md transition-colors">
+                    {% if highlight.favorite %}⭐ Unfavorite{% else %}☆ Favorite{% endif %}
+                </button>
+            </form>
+        </div>
     </div>
 
     <!-- Progress -->
     <div class="text-center space-y-2">
-        <p class="text-sm text-slate-500">
-            Highlight <span class="font-semibold text-slate-700">{{ current_index }}</span> of <span class="font-semibold text-slate-700">{{ total_count }}</span>
+        <p class="text-sm text-muted">
+            Highlight <span class="font-semibold text-primary">{{ current_index }}</span> of <span class="font-semibold text-primary">{{ total_count }}</span>
         </p>
-        <div class="w-full bg-slate-200 rounded-full h-2 max-w-xs mx-auto">
-            <div class="bg-indigo-500 h-2 rounded-full transition-all duration-500" style="width: {{ (current_index / total_count) * 100 if total_count else 0 }}%"></div>
+        <div class="w-full bg-page-alt rounded-full h-2 max-w-xs mx-auto">
+            <div class="bg-accent h-2 rounded-full transition-all duration-500" style="width: {{ (current_index / total_count) * 100 if total_count else 0 }}%"></div>
         </div>
     </div>
 
     <!-- Keyboard Shortcuts -->
     <div class="text-center">
-        <details class="inline-block text-xs text-slate-400">
-            <summary class="cursor-pointer hover:text-slate-600">⌨️ Keyboard shortcuts</summary>
-            <div class="mt-2 bg-white border border-slate-200 rounded-lg px-4 py-2 text-left shadow-sm">
-                <p><kbd class="shortcut-key">Space</kbd> Next</p>
+        <details class="inline-block text-xs text-muted">
+            <summary class="cursor-pointer hover:text-secondary">⌨️ Keyboard shortcuts</summary>
+            <div class="mt-2 bg-card border border-card rounded-lg px-4 py-2 text-left shadow-sm">
+                <p><kbd class="shortcut-key">1</kbd> Forgot</p>
+                <p><kbd class="shortcut-key">2</kbd> Hard</p>
+                <p><kbd class="shortcut-key">3</kbd> Good</p>
+                <p><kbd class="shortcut-key">4</kbd> Easy</p>
                 <p><kbd class="shortcut-key">F</kbd> Favorite</p>
                 <p><kbd class="shortcut-key">D</kbd> Delete</p>
             </div>
@@ -111,25 +163,49 @@
     </div>
 
     {% else %}
-    <!-- All Caught Up -->
-    <div class="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-sm">
+    <!-- All Caught Up — show today's log -->
+    <div class="bg-card rounded-xl border border-card p-8 text-center shadow-sm">
         <p class="text-5xl mb-4">🎉</p>
-        <h2 class="text-xl font-bold text-slate-800 mb-2">All caught up!</h2>
-        <p class="text-slate-500 mb-6">
+        <h2 class="text-xl font-bold text-primary mb-2">All caught up!</h2>
+        <p class="text-muted mb-2">
             {% if total_count %}
-            You've completed today's session. Come back tomorrow for more.
+            You've completed today's session.
             {% else %}
             No highlights to review. Import some highlights to get started.
             {% endif %}
         </p>
-        <div class="flex gap-3 justify-center">
-            <a href="/highlights" class="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
+        {% if streaks %}
+        <p class="text-sm text-muted mb-6">
+            🔥 {{ streaks.current }}-day streak · Best: {{ streaks.best }}
+        </p>
+        {% endif %}
+        <div class="flex gap-3 justify-center mb-6">
+            <a href="/review/today" class="px-5 py-2.5 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent-hover transition-colors shadow-sm">
+                📋 View today's review
+            </a>
+            <a href="/highlights" class="px-5 py-2.5 bg-card border border-card text-primary text-sm font-medium rounded-lg hover:bg-page-alt transition-colors shadow-sm">
                 📝 Browse Highlights
             </a>
-            <a href="/settings" class="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
-                ⚙️ Review Settings
-            </a>
         </div>
+
+        {% if today_reviews %}
+        <div class="border-t border-card pt-4 text-left max-w-md mx-auto">
+            <h3 class="text-sm font-semibold text-primary mb-3">📋 Reviewed today ({{ today_reviews|length }})</h3>
+            <div class="space-y-2 max-h-60 overflow-y-auto">
+                {% for r in today_reviews %}
+                <div class="flex items-start gap-2 px-3 py-2 bg-page-alt rounded-lg text-xs">
+                    <span class="shrink-0 mt-0.5">
+                        {% if r.rating == 0 %}😵{% elif r.rating == 1 %}🤔{% elif r.rating == 2 %}😊{% elif r.rating == 3 %}😎{% else %}👁️{% endif %}
+                    </span>
+                    <div class="min-w-0">
+                        <p class="text-secondary truncate">{{ r.text }}</p>
+                        <p class="text-muted truncate">{{ r.book_title }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 </div>
@@ -141,10 +217,12 @@
     document.addEventListener('keydown', function(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
 
-        if (e.key === ' ' || e.key === 'Space') {
-            e.preventDefault();
-            document.querySelector('form[action="/review/next"]')?.submit();
-        } else if (e.key === 'f' || e.key === 'F') {
+        var ratingForms = document.querySelectorAll('form[action="/review/rate"]');
+        if (e.key === '1') { e.preventDefault(); ratingForms[0]?.submit(); }
+        else if (e.key === '2') { e.preventDefault(); ratingForms[1]?.submit(); }
+        else if (e.key === '3') { e.preventDefault(); ratingForms[2]?.submit(); }
+        else if (e.key === '4') { e.preventDefault(); ratingForms[3]?.submit(); }
+        else if (e.key === 'f' || e.key === 'F') {
             e.preventDefault();
             document.querySelector('form[action="/review/favorite"]')?.submit();
         } else if (e.key === 'd' || e.key === 'D') {

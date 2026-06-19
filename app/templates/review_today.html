@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Today's Review — commonplace{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-primary">📋 Today's Review</h1>
+            <p class="text-sm text-muted mt-1">{{ done_today }} of {{ total_count }} reviewed</p>
+        </div>
+        {% if streaks %}
+        <div class="text-right">
+            <span class="block text-lg font-bold text-accent">{{ streaks.current }}</span>
+            <span class="text-xs text-muted">🔥 streak · Best: {{ streaks.best }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if today_reviews %}
+    <div class="space-y-2">
+        {% for r in today_reviews %}
+        <div class="flex items-start gap-3 px-4 py-3 bg-card rounded-lg border border-card hover:border-accent/20 transition-colors">
+            <span class="text-xl mt-0.5">
+                {% if r.rating == 0 %}😵{% elif r.rating == 1 %}🤔{% elif r.rating == 2 %}😊{% elif r.rating == 3 %}😎{% else %}👁️{% endif %}
+            </span>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm text-primary">{{ r.text }}</p>
+                <p class="text-xs text-muted mt-0.5">{{ r.book_title }}</p>
+            </div>
+            <span class="text-xs text-muted shrink-0">
+                {% if r.rating == 0 %}Forgot{% elif r.rating == 1 %}Hard{% elif r.rating == 2 %}Good{% elif r.rating == 3 %}Easy{% else %}Seen{% endif %}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-16 bg-card rounded-xl border border-card">
+        <p class="text-4xl mb-4">📭</p>
+        <p class="text-muted">Nothing reviewed yet today.</p>
+        <a href="/review" class="inline-block mt-4 px-5 py-2.5 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent-hover transition-colors">
+            📖 Start Review
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="text-center">
+        <a href="/review" class="text-sm text-accent hover:text-accent-hover">← Back to review</a>
+    </div>
+</div>
+{% endblock %}

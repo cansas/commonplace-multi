@@ -1,11 +1,14 @@
-"""Daily review — flash-card style. Respects daily limit from settings."""
+"""Daily review — SM-2 flash cards with daily lock and today's log."""
+
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, text as sqltext
 from app.database import get_db
 from app.models import Highlight, ReviewLog
-from app.services.resurface import get_random_highlights
+from app.services.spaced_repetition import sm2_calc, get_next_review_date
 from app.routes.settings import _settings as review_settings
+from app.services.streaks import calculate_streaks
 from app.csrf import template_context, csrf_guard
 from app.dates import today_start_utc
 from datetime import datetime
@@ -40,7 +43,6 @@ async def _reviewed_today_count(db) -> int:
 async def _get_unreviewed_highlight(db):
     """Pick one random highlight not yet logged in ReviewLog today."""
     today_start = _today_start()
-    # Count total unreviewed via LEFT JOIN anti-join
     count_q = (
         select(func.count(Highlight.id))
         .outerjoin(
@@ -69,15 +71,69 @@ async def _get_unreviewed_highlight(db):
     return result.scalar_one_or_none()
 
 
-async def _log_review(db, hl_id: int):
-    """Record that a highlight was reviewed (seen) right now.
+async def _log_review(db, hl_id: int, rating: int | None = None):
+    """Record a review with optional SM-2 rating.
     Does NOT commit — caller is responsible for committing."""
+    # Calculate SM-2 values
+    ease = 2.5
+    interval = 0
+    reps = 0
+    next_review = None
+
+    if rating is not None:
+        # Get previous review for this highlight
+        prev = await db.execute(
+            select(ReviewLog)
+            .where(ReviewLog.highlight_id == hl_id)
+            .order_by(ReviewLog.reviewed_at.desc())
+            .limit(1)
+        )
+        prev_log = prev.scalar_one_or_none()
+        if prev_log:
+            ease, interval, reps = sm2_calc(
+                rating, prev_log.ease_factor,
+                prev_log.interval, prev_log.repetitions
+            )
+        else:
+            ease, interval, reps = sm2_calc(rating, 2.5, 0, 0)
+
+        if reps > 0 and interval > 0:
+            next_review = get_next_review_date(interval)
+
     log = ReviewLog(
         highlight_id=hl_id,
-        rating=None,  # no SM-2 rating in flash-card mode
+        rating=rating,
+        ease_factor=ease,
+        interval=interval,
+        repetitions=reps,
+        next_review_at=next_review,
         reviewed_at=datetime.utcnow(),
     )
     db.add(log)
+
+
+async def _get_today_reviews(db):
+    """Return all reviews from today with their highlight data."""
+    today_start = _today_start()
+    result = await db.execute(
+        select(ReviewLog, Highlight)
+        .join(Highlight, ReviewLog.highlight_id == Highlight.id)
+        .where(ReviewLog.reviewed_at >= today_start)
+        .order_by(ReviewLog.reviewed_at.desc())
+    )
+    rows = []
+    for review, hl in result.all():
+        rows.append({
+            "hl_id": hl.id,
+            "text": hl.text[:200],
+            "book_title": hl.book_title,
+            "rating": review.rating,
+            "reviewed_at": review.reviewed_at,
+        })
+    return rows
+
+
+# ── Page routes ────────────────────────────────────────────────────────────
 
 
 @router.get("/review", response_class=HTMLResponse)
@@ -87,9 +143,11 @@ async def review_page(
 ):
     daily_limit = review_settings.get("review_count", 10)
     done_today = await _reviewed_today_count(db)
+    streaks = await calculate_streaks(db)
 
     # If at or over daily limit, you're done for the day
     if done_today >= daily_limit:
+        today_reviews = await _get_today_reviews(db)
         return _jinja.TemplateResponse(
             request,
             "review.html",
@@ -99,13 +157,16 @@ async def review_page(
                 highlight=None,
                 current_index=daily_limit,
                 total_count=daily_limit,
+                done=True,
+                today_reviews=today_reviews,
+                streaks=streaks,
             ),
         )
 
     hl = await _get_unreviewed_highlight(db)
 
     if not hl:
-        # All highlights have been reviewed — done for the day
+        today_reviews = await _get_today_reviews(db)
         return _jinja.TemplateResponse(
             request,
             "review.html",
@@ -115,6 +176,9 @@ async def review_page(
                 highlight=None,
                 current_index=done_today,
                 total_count=daily_limit,
+                done=True,
+                today_reviews=today_reviews,
+                streaks=streaks,
             ),
         )
 
@@ -140,11 +204,37 @@ async def review_page(
             highlight=highlight_data,
             current_index=done_today + 1,
             total_count=daily_limit,
+            done=False,
+            streaks=streaks,
         ),
     )
 
 
-# ── Rate limiting for review actions ──────────────────────────────────────
+@router.get("/review/today", response_class=HTMLResponse)
+async def review_today_page(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Display all reviews from today with their ratings."""
+    streaks = await calculate_streaks(db)
+    today_reviews = await _get_today_reviews(db)
+    daily_limit = review_settings.get("review_count", 10)
+
+    return _jinja.TemplateResponse(
+        request,
+        "review_today.html",
+        template_context(
+            request,
+            active_page="review",
+            today_reviews=today_reviews,
+            streaks=streaks,
+            done_today=len(today_reviews),
+            total_count=daily_limit,
+        ),
+    )
+
+
+# ── Rate limiting ──────────────────────────────────────────────────────────
 
 _REVIEW_LIMIT_ENTRIES: dict = {}
 _REVIEW_MAX_PER_MIN = 30
@@ -160,7 +250,29 @@ def _check_review_rate_limit(request: Request):
     _REVIEW_LIMIT_ENTRIES[ip].append(now)
 
 
-# ── Actions — each one logs the review and advances ──────────────────────
+# ── Rating action ──────────────────────────────────────────────────────────
+
+_RATING_LABELS = {0: "Forgot", 1: "Hard", 2: "Good", 3: "Easy"}
+
+
+@router.post("/review/rate")
+async def review_rate(
+    request: Request,
+    hl_id: int = Form(...),
+    rating: int = Form(...),
+    csrf_token: str = Form(default=""),
+    db: AsyncSession = Depends(get_db),
+):
+    csrf_guard(request, csrf_token)
+    _check_review_rate_limit(request)
+    if rating not in (0, 1, 2, 3):
+        raise HTTPException(status_code=400, detail="Invalid rating")
+    await _log_review(db, hl_id, rating)
+    await db.commit()
+    return RedirectResponse(url="/review", status_code=303)
+
+
+# ── Legacy actions (no rating — just log as "seen") ────────────────────────
 
 
 @router.post("/review/next")
@@ -209,6 +321,3 @@ async def review_delete(
     await _log_review(db, hl_id)
     await db.commit()
     return RedirectResponse(url="/review", status_code=303)
-
-
-from sqlalchemy import select, func
