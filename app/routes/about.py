@@ -9,7 +9,6 @@ from app.models import Highlight, Tag, UserAchievement
 from app.services.streaks import calculate_streaks
 from app.routes.settings import get_hardcover_api_key
 from app.csrf import template_context
-from app.main import app
 
 router = APIRouter(tags=["about"])
 
@@ -24,6 +23,11 @@ def init(templates):
 @router.get("/about", response_class=HTMLResponse)
 async def about_page(request: Request, db: AsyncSession = Depends(get_db)):
     """In-app about page with version, stats, and quick reference."""
+    # Defer import to avoid circular import (main.py imports this module)
+    from app.main import app
+
+    version = app.version
+
     # Stats
     hl_count = (await db.execute(select(func.count(Highlight.id)))).scalar() or 0
     book_count = (
@@ -42,7 +46,7 @@ async def about_page(request: Request, db: AsyncSession = Depends(get_db)):
         template_context(
             request,
             active_page="about",
-            version=app.version,
+            version=version,
             hl_count=hl_count,
             book_count=book_count,
             tag_count=tag_count,
