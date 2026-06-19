@@ -13,6 +13,7 @@ from typing import Optional, List
 from datetime import datetime
 import math
 import re
+import time
 
 
 def _escape_ilike(s: str) -> str:
@@ -351,6 +352,94 @@ async def get_highlight(hl_id: int, db: AsyncSession = Depends(get_db)):
         "book_author": hl.book_author,
         "tags": [t.name for t in hl.tags],
         "favorite": hl.favorite,
+    }
+
+
+# ── Rate limiting for context queries ──
+
+_CONTEXT_LIMIT: dict = {}
+_CONTEXT_MAX_PER_MIN = 30
+
+
+def _check_context_rate_limit(request: Request):
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    window = 60
+    _CONTEXT_LIMIT[ip] = [t for t in _CONTEXT_LIMIT.get(ip, []) if now - t < window]
+    if len(_CONTEXT_LIMIT[ip]) >= _CONTEXT_MAX_PER_MIN:
+        raise HTTPException(status_code=429, detail="Too many context requests.")
+    _CONTEXT_LIMIT[ip].append(now)
+
+
+@router.get("/api/highlights/{hl_id}/context")
+async def highlight_context(hl_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    """Return up to 5 highlights before and after the given highlight within the same book."""
+    _check_context_rate_limit(request)
+
+    hl = await db.get(Highlight, hl_id)
+    if not hl:
+        raise HTTPException(status_code=404, detail="Highlight not found")
+
+    title = hl.book_title or ""
+    author = hl.book_author or ""
+
+    # All highlights from the same book, ordered by highlighted_at then id
+    rows = await db.execute(
+        sqltext(
+            "SELECT id, text, note, book_title, book_author, page, chapter, "
+            "highlighted_at, favorite, share_token "
+            "FROM highlights "
+            "WHERE book_title = :title AND (book_author = :author OR (book_author IS NULL AND :author = '')) "
+            "ORDER BY highlighted_at ASC, id ASC"
+        ),
+        {"title": title, "author": author},
+    )
+    book_hls = rows.mappings().all()
+
+    # Find index of the requested highlight
+    idx = None
+    for i, row in enumerate(book_hls):
+        if row["id"] == hl_id:
+            idx = i
+            break
+
+    if idx is None:
+        return {"before": [], "current": _serialize_context_hl(hl), "after": []}
+
+    before = [_serialize_context_row(r) for r in book_hls[max(0, idx - 5) : idx]]
+    after = [_serialize_context_row(r) for r in book_hls[idx + 1 : idx + 6]]
+    current = _serialize_context_row(book_hls[idx])
+
+    return {"before": before, "current": current, "after": after}
+
+
+def _serialize_context_row(row) -> dict:
+    return {
+        "id": row["id"],
+        "text": row["text"],
+        "note": row["note"],
+        "book_title": row["book_title"],
+        "book_author": row["book_author"],
+        "page": row["page"],
+        "chapter": row["chapter"],
+        "favorite": bool(row["favorite"]),
+        "share_token": row["share_token"],
+        "highlighted_at": row["highlighted_at"].strftime("%Y-%m-%d %H:%M") if row["highlighted_at"] else None,
+    }
+
+
+def _serialize_context_hl(hl) -> dict:
+    return {
+        "id": hl.id,
+        "text": hl.text,
+        "note": hl.note,
+        "book_title": hl.book_title,
+        "book_author": hl.book_author,
+        "page": hl.page,
+        "chapter": hl.chapter,
+        "favorite": bool(hl.favorite),
+        "share_token": hl.share_token,
+        "highlighted_at": hl.highlighted_at.strftime("%Y-%m-%d %H:%M") if hl.highlighted_at else None,
     }
 
 

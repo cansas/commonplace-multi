@@ -125,7 +125,8 @@
                                         {% endfor %}
                                     </span>
                                     {% endif %}
-                                    <button onclick="event.stopPropagation(); toggleEdit({{ h.id }})" class="px-3 py-1 bg-white border border-slate-200 text-slate-600 rounded text-xs font-medium hover:bg-slate-50 transition-colors">✏️ Edit</button>
+                                    <button onclick="event.stopPropagation(); toggleEdit({{ h.id }}); scrollToEdit({{ h.id }})" class="px-3 py-1 bg-white border border-slate-200 text-slate-600 rounded text-xs font-medium hover:bg-slate-50 transition-colors">✏️ Edit</button>
+                                    <button onclick="event.stopPropagation(); loadContext({{ h.id }})" class="px-3 py-1 bg-white border border-slate-200 text-slate-600 rounded text-xs font-medium hover:bg-slate-50 transition-colors">📖 Context</button>
                                     <button onclick="event.stopPropagation(); deleteHighlight({{ h.id }})" class="px-3 py-1 bg-red-50 border border-red-200 text-red-600 rounded text-xs font-medium hover:bg-red-100 transition-colors">🗑️ Delete</button>
                                     {% if h.share_token %}
                                     <a href="/share/{{ h.share_token }}" target="_blank" class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded text-xs font-medium hover:bg-indigo-100 transition-colors">📤 Share</a>
@@ -163,6 +164,8 @@
                                     </div>
                                 </div>
                             </div>
+                            <!-- Context Container -->
+                            <div id="context-{{ h.id }}" class="hidden mt-4 ml-8 space-y-2"></div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -213,6 +216,7 @@
                                 </div>
                                 <div class="flex gap-2">
                                     <button onclick="event.stopPropagation(); toggleEdit({{ h.id }}); scrollToEdit({{ h.id }})" class="flex-1 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-50">✏️ Edit</button>
+                                    <button onclick="event.stopPropagation(); loadContext({{ h.id }})" class="flex-1 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-50">📖 Context</button>
                                     {% if h.share_token %}
                                     <a href="/share/{{ h.share_token }}" target="_blank" class="flex-1 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-medium hover:bg-indigo-100 text-center">📤 Share</a>
                                     {% endif %}
@@ -249,6 +253,8 @@
                                         </div>
                                     </div>
                                 </div>
+                                <!-- Context Container -->
+                                <div id="context-{{ h.id }}" class="hidden mt-3 space-y-2 pt-3 border-t border-slate-200"></div>
                             </div>
                         </div>
                     </div>
@@ -464,6 +470,75 @@
             }
         });
     })();
+
+    /* ── Context (surrounding highlights) ────────────── */
+    function loadContext(id) {
+        var container = document.getElementById('context-' + id);
+        if (!container) return;
+
+        // Toggle off if already open
+        if (!container.classList.contains('hidden')) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        container.classList.remove('hidden');
+        container.innerHTML = '<div class="text-sm text-slate-400 text-center py-2">Loading...</div>';
+
+        fetch('/api/highlights/' + id + '/context')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var html = '<div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">📖 Context from <span class="text-slate-700">' + escapeHtml(data.current.book_title) + '</span></div>';
+
+                if (data.before.length === 0 && data.after.length === 0) {
+                    html += '<div class="text-sm text-slate-400 italic py-2">No other highlights from this book.</div>';
+                    container.innerHTML = html;
+                    return;
+                }
+
+                data.before.forEach(function(hl) {
+                    html += contextItemHtml(hl, false, id);
+                });
+                html += contextItemHtml(data.current, true, id);
+                data.after.forEach(function(hl) {
+                    html += contextItemHtml(hl, false, id);
+                });
+
+                container.innerHTML = html;
+                container.querySelectorAll('.context-fav-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        var hlId = parseInt(btn.getAttribute('data-id'));
+                        toggleFav(hlId, btn);
+                    });
+                });
+            })
+            .catch(function(e) {
+                container.innerHTML = '<div class="text-sm text-red-500 py-2">Failed to load context: ' + e.message + '</div>';
+            });
+    }
+
+    function contextItemHtml(hl, isCurrent, highlightId) {
+        var cls = isCurrent ? 'bg-indigo-50 border-indigo-200 ring-1 ring-indigo-200' : 'bg-white border-slate-200';
+        var favStar = hl.favorite ? '⭐' : '☆';
+        var text = hl.text.length > 120 ? hl.text.substring(0, 120) + '…' : hl.text;
+        var pageInfo = '';
+        if (hl.chapter) pageInfo += ' <span class="text-slate-400">·</span> ' + hl.chapter;
+        if (hl.page) pageInfo += ' <span class="text-slate-400">·</span> p.' + hl.page;
+        return '<div class="flex items-start gap-2 px-3 py-2.5 rounded-lg text-sm border ' + cls + '">' +
+            '<button class="context-fav-btn shrink-0 mt-0.5 text-sm leading-none ' + (hl.favorite ? 'text-amber-400' : 'text-slate-300 hover:text-amber-300') + '" data-id="' + hl.id + '">' + favStar + '</button>' +
+            '<div class="min-w-0 flex-1">' +
+            '<p class="text-slate-700 leading-relaxed ' + (isCurrent ? 'font-medium' : '') + '">' + escapeHtml(text) + '</p>' +
+            '<div class="text-xs text-slate-400 mt-0.5">' +
+            (hl.highlighted_at || '') + pageInfo +
+            '</div></div></div>';
+    }
+
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str || ''));
+        return div.innerHTML;
+    }
 
     function toggleEdit(id) {
         var form = document.getElementById('edit-' + id);

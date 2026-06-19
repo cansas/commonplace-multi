@@ -119,6 +119,9 @@
 
         <!-- Secondary actions -->
         <div class="review-secondary-actions flex gap-2 justify-center mt-4 pt-3 border-t border-card">
+            <button type="button" onclick="event.preventDefault(); showReviewContext({{ highlight.id }})" class="px-3 py-1.5 text-xs text-muted hover:text-indigo-500 hover:bg-page-alt rounded-md transition-colors">
+                📖 Context
+            </button>
             <form method="POST" action="/review/delete" class="contents"
                   onsubmit="return confirm('Delete this highlight? This cannot be undone.')">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
@@ -216,11 +219,78 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Context Modal -->
+<div id="review-context-modal" class="fixed inset-0 z-50 hidden bg-black/40 flex items-end md:items-center justify-center" onclick="closeReviewContext(event)">
+    <div class="bg-card rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-lg mx-0 md:mx-4 max-h-[80vh] overflow-y-auto pointer-events-auto" onclick="event.stopPropagation()">
+        <div class="sticky top-0 bg-card border-b border-card px-5 py-3 flex items-center justify-between rounded-t-2xl">
+            <span class="text-sm font-semibold text-primary" id="review-context-title">📖 Context</span>
+            <button onclick="closeReviewContext()" class="text-muted hover:text-primary text-xl leading-none">&times;</button>
+        </div>
+        <div id="review-context-body" class="p-4 space-y-2">
+            <div class="text-sm text-muted text-center py-4">Loading...</div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 {% if highlight %}
 <script>
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str || ''));
+        return div.innerHTML;
+    }
+
+    function showReviewContext(id) {
+        var modal = document.getElementById('review-context-modal');
+        var body = document.getElementById('review-context-body');
+        var title = document.getElementById('review-context-title');
+        modal.classList.remove('hidden');
+        body.innerHTML = '<div class="text-sm text-muted text-center py-4">Loading...</div>';
+
+        fetch('/api/highlights/' + id + '/context')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                title.innerHTML = '📖 Context — ' + escapeHtml(data.current.book_title);
+                var html = '';
+                if (data.before.length === 0 && data.after.length === 0) {
+                    html += '<div class="text-sm text-muted italic py-4 text-center">No other highlights from this book.</div>';
+                } else {
+                    data.before.forEach(function(hl) {
+                        html += contextModalItem(hl, false);
+                    });
+                    html += contextModalItem(data.current, true);
+                    data.after.forEach(function(hl) {
+                        html += contextModalItem(hl, false);
+                    });
+                }
+                body.innerHTML = html;
+            })
+            .catch(function(e) {
+                body.innerHTML = '<div class="text-sm text-red-500 py-4 text-center">Error: ' + e.message + '</div>';
+            });
+    }
+
+    function contextModalItem(hl, isCurrent) {
+        var cls = isCurrent ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-700 ring-1 ring-indigo-200' : 'bg-page-alt border-card';
+        var text = hl.text.length > 150 ? hl.text.substring(0, 150) + '…' : hl.text;
+        var pageInfo = '';
+        if (hl.chapter) pageInfo += ' <span class="text-muted">·</span> ' + hl.chapter;
+        if (hl.page) pageInfo += ' <span class="text-muted">·</span> p.' + hl.page;
+        return '<div class="px-3 py-2.5 rounded-lg text-sm border ' + cls + '">' +
+            '<p class="text-primary leading-relaxed ' + (isCurrent ? 'font-medium' : '') + '">' + escapeHtml(text) + '</p>' +
+            '<div class="text-xs text-muted mt-0.5">' +
+            (hl.highlighted_at || '') + pageInfo +
+            '</div></div>';
+    }
+
+    function closeReviewContext(e) {
+        if (e && e.target !== e.currentTarget) return;
+        document.getElementById('review-context-modal').classList.add('hidden');
+    }
+
     document.addEventListener('keydown', function(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
 
