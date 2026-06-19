@@ -26,14 +26,7 @@ scratch: server, KOReader plugin, and Obsidian plugin.
 # 1. Create a directory
 mkdir -p /opt/commonplace && cd /opt/commonplace
 
-# 2. Create .env (fill in your values)
-cat > .env << 'EOF'
-COMMONPLACE_USERNAME=admin
-COMMONPLACE_PASSWORD=your-secure-password
-SESSION_SECRET=your-random-hex-string-at-least-32-chars
-EOF
-
-# 3. Create docker-compose.yml
+# 2. Create docker-compose.yml
 cat > docker-compose.yml << 'EOF'
 services:
   commonplace:
@@ -42,23 +35,33 @@ services:
       - "8765:8765"
     volumes:
       - ./data:/app/data
-    env_file:
-      - .env
     restart: unless-stopped
 EOF
 
-# 4. Start
+# 3. Start
 docker compose up -d
 ```
 
-The server is now running on `http://your-server:8765`.
+The server is now running on `http://your-server:8765`. Open it in a browser and the **setup wizard** will walk you through creating your admin account.
+
+### Advanced: pre-configure credentials via env vars
+
+If you want to skip the setup wizard, create a `.env` file alongside `docker-compose.yml`:
+
+```bash
+COMMONPLACE_USERNAME=admin
+COMMONPLACE_PASSWORD=your-secure-password
+SESSION_SECRET=your-random-hex-string-at-least-32-chars
+```
+
+And uncomment the `env_file` line in `docker-compose.yml`. On first run the admin account is created automatically.
 
 ### Environment variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `COMMONPLACE_USERNAME` | Yes (first run) | — | Admin username, created on first launch |
-| `COMMONPLACE_PASSWORD` | Yes (first run) | — | Admin password |
+| `COMMONPLACE_USERNAME` | No | — | Admin username (only used if you want to skip the setup wizard) |
+| `COMMONPLACE_PASSWORD` | No | — | Admin password (only used with COMMONPLACE_USERNAME) |
 | `SESSION_SECRET` | No | auto-generated | Secret key for session cookies |
 | `DATABASE_URL` | No | `sqlite+aiosqlite:////app/data/commonplace.db` | Database connection string |
 

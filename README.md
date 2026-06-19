@@ -14,12 +14,10 @@ A self-hosted Readwise alternative — capture, browse, review, and resurface yo
 ```bash
 docker run -d --name commonplace -p 8765:8765 \
   -v ./data:/app/data \
-  -e COMMONPLACE_USERNAME=admin \
-  -e COMMONPLACE_PASSWORD=your-password \
   ghcr.io/cansas/commonplace:latest
 ```
 
-Then open `http://localhost:8765` and log in.
+Then open `http://localhost:8765` and the setup wizard will walk you through creating your admin account.
 
 For full setup instructions, see [INSTALL.md](INSTALL.md).
 
