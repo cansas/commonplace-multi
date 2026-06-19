@@ -132,8 +132,18 @@ async def books_page(
 @router.post("/api/books/cover/fetch")
 async def fetch_cover(title: str = Form(...), author: str = Form(default=""), source: str = Form(default="auto"), db: AsyncSession = Depends(get_db)):
     try:
+        # Check for existing BookCover to pass known_id (skip fuzzy search)
+        existing = await db.execute(
+            select(BookCover).where(
+                BookCover.book_title == title,
+                BookCover.book_author == author,
+            )
+        )
+        existing_cover = existing.scalar_one_or_none()
+        known_id = existing_cover.hardcover_id if existing_cover else None
+
         hc_key = get_hardcover_api_key()
-        url, cover_source = await search_cover(title, author, hardcover_key=hc_key)
+        url, cover_source, hc_id, isbn = await search_cover(title, author, hardcover_key=hc_key, known_id=known_id)
         if not url:
             return {"ok": False, "error": "No cover found on Open Library, Hardcover, or Goodreads"}
 
@@ -147,8 +157,16 @@ async def fetch_cover(title: str = Form(...), author: str = Form(default=""), so
         if cover:
             cover.cover_url = url
             cover.cover_source = cover_source
+            if hc_id is not None:
+                cover.hardcover_id = hc_id
+            if isbn is not None:
+                cover.isbn = isbn
         else:
-            db.add(BookCover(book_title=title, book_author=author, cover_url=url, cover_source=cover_source))
+            db.add(BookCover(
+                book_title=title, book_author=author,
+                cover_url=url, cover_source=cover_source,
+                hardcover_id=hc_id, isbn=isbn,
+            ))
         await db.commit()
         return {"ok": True, "cover_url": url, "source": cover_source}
     except Exception as e:
@@ -232,6 +250,71 @@ async def upload_cover(title: str = Form(...), author: str = Form(default=""), f
         db.add(BookCover(book_title=title, book_author=author, cover_url=cover_url, cover_source="upload"))
     await db.commit()
     return {"ok": True, "cover_url": cover_url}
+
+
+@router.post("/api/books/metadata")
+async def set_book_metadata(
+    title: str = Form(...),
+    author: str = Form(default=""),
+    hardcover_id: str = Form(default=""),
+    isbn: str = Form(default=""),
+    db: AsyncSession = Depends(get_db),
+):
+    """Manually set or update HardCover ID and ISBN for a book.
+
+    Saves metadata to the BookCover record. If no BookCover exists yet,
+    creates one. If a HardCover ID was provided, triggers an immediate
+    cover lookup using that ID.
+    """
+    author = author or ""
+    hc_id = None
+    if hardcover_id.strip():
+        try:
+            hc_id = int(hardcover_id.strip())
+        except ValueError:
+            return {"ok": False, "error": "HardCover ID must be a number"}
+
+    isbn_val = isbn.strip() or None
+
+    result = await db.execute(
+        select(BookCover).where(
+            BookCover.book_title == title,
+            BookCover.book_author == author,
+        )
+    )
+    cover = result.scalar_one_or_none()
+    if cover:
+        cover.hardcover_id = hc_id
+        cover.isbn = isbn_val
+    else:
+        cover = BookCover(
+            book_title=title, book_author=author,
+            hardcover_id=hc_id, isbn=isbn_val,
+        )
+        db.add(cover)
+    await db.commit()
+
+    # If a HardCover ID was set, do an immediate look-up
+    url = cover.cover_url
+    source = cover.cover_source
+    if hc_id is not None:
+        hc_key = get_hardcover_api_key()
+        result = await search_cover(title, author, hardcover_key=hc_key, known_id=hc_id)
+        new_url, new_source, _, _ = result
+        if new_url:
+            cover.cover_url = new_url
+            cover.cover_source = new_source
+            url = new_url
+            source = new_source
+            await db.commit()
+
+    return {
+        "ok": True,
+        "hardcover_id": hc_id,
+        "isbn": isbn_val,
+        "cover_url": url,
+        "cover_source": source,
+    }
 
 
 @router.post("/api/books/rename")
@@ -454,11 +537,30 @@ async def backfill_covers(db: AsyncSession = Depends(get_db)):
                 BookCover.book_author == (row.book_author or ""),
             )
         )
-        if existing.scalar_one_or_none():
-            continue
-        url, cover_source = await search_cover(row.book_title, row.book_author or "", hardcover_key=hc_key)
+        cover_row = existing.scalar_one_or_none()
+        if cover_row and cover_row.hardcover_id is not None:
+            continue  # Already has an ID, skip fuzzy search
+
+        known_id = cover_row.hardcover_id if cover_row else None
+        url, cover_source, hc_id, isbn = await search_cover(
+            row.book_title, row.book_author or "",
+            hardcover_key=hc_key, known_id=known_id,
+        )
         if url:
-            db.add(BookCover(book_title=row.book_title, book_author=row.book_author or "", cover_url=url, cover_source=cover_source))
+            if cover_row:
+                cover_row.cover_url = url
+                cover_row.cover_source = cover_source
+                if hc_id is not None:
+                    cover_row.hardcover_id = hc_id
+                if isbn is not None:
+                    cover_row.isbn = isbn
+            else:
+                db.add(BookCover(
+                    book_title=row.book_title,
+                    book_author=row.book_author or "",
+                    cover_url=url, cover_source=cover_source,
+                    hardcover_id=hc_id, isbn=isbn,
+                ))
             fetched += 1
             await db.commit()
     return {"ok": True, "fetched": fetched}

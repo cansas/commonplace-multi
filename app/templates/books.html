@@ -58,6 +58,7 @@
             <div class="flex gap-1">
               <span onclick="event.preventDefault(); event.stopPropagation(); renameBook(this)" class="text-xs text-slate-400 hover:text-amber-500 cursor-pointer" title="Edit title">✏️</span>
               <span onclick="event.preventDefault(); event.stopPropagation(); fetchCover(this)" class="text-xs text-slate-400 hover:text-indigo-500 cursor-pointer" title="Fetch cover from Goodreads">🔍</span>
+              <span onclick="event.preventDefault(); event.stopPropagation(); openMetadata(this)" class="text-xs text-slate-400 hover:text-purple-500 cursor-pointer" title="Edit HardCover ID / ISBN">🏷️</span>
               <span onclick="event.preventDefault(); event.stopPropagation(); uploadCover(this)" class="text-xs text-slate-400 hover:text-emerald-500 cursor-pointer" title="Upload custom cover">📤</span>
             </div>
         </div>
@@ -117,6 +118,36 @@
         <button type="button" onclick="closeRenameModal()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
         <button type="button" onclick="deleteBook()" id="rename-delete-btn" class="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100">🗑️ Delete book</button>
         <button type="submit" id="rename-submit" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Metadata Modal -->
+<div id="metadata-modal" class="fixed inset-0 z-50 hidden bg-black/40 flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden" onclick="event.stopPropagation()">
+    <div class="px-6 py-4 border-b border-slate-100">
+      <h3 class="text-lg font-semibold text-slate-900">🏷️ Book Metadata</h3>
+    </div>
+    <form id="metadata-form" class="p-6 space-y-4" onsubmit="return submitMetadata(event)">
+      <input type="hidden" id="meta-title" name="title" />
+      <input type="hidden" id="meta-author" name="author" />
+      <div>
+        <label for="meta-hardcover-id" class="block text-sm font-medium text-slate-700 mb-1">HardCover ID</label>
+        <input type="number" id="meta-hardcover-id" name="hardcover_id"
+               class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+               placeholder="e.g. 12345" />
+        <p class="text-xs text-slate-400 mt-1">Found in the URL: hardcover.app/books/<strong>12345</strong>/title</p>
+      </div>
+      <div>
+        <label for="meta-isbn" class="block text-sm font-medium text-slate-700 mb-1">ISBN</label>
+        <input type="text" id="meta-isbn" name="isbn"
+               class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+               placeholder="e.g. 9780140449242" />
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" onclick="closeMetadataModal()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
+        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Save</button>
       </div>
     </form>
   </div>
@@ -351,5 +382,55 @@
         btn.textContent = '🗑️ Delete book';
       });
   }
+
+  /* ── Metadata Modal ─────────────────────────────────────── */
+  var metaCard = null;
+
+  function openMetadata(el) {
+    metaCard = el.closest('[data-hl-id]');
+    if (!metaCard) { showToast('Could not find book data', 'error'); return; }
+    var title = metaCard.dataset.title;
+    var author = metaCard.dataset.author;
+
+    document.getElementById('meta-title').value = title || '';
+    document.getElementById('meta-author').value = (author === 'Unknown' ? '' : (author || ''));
+    document.getElementById('meta-hardcover-id').value = '';
+    document.getElementById('meta-isbn').value = '';
+    document.getElementById('metadata-modal').classList.remove('hidden');
+  }
+
+  function closeMetadataModal() {
+    document.getElementById('metadata-modal').classList.add('hidden');
+    metaCard = null;
+  }
+
+  function submitMetadata(event) {
+    event.preventDefault();
+    var btn = event.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    var fd = new FormData(document.getElementById('metadata-form'));
+    fetch('/api/books/metadata', { method: 'POST', body: fd })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.ok) {
+          if (d.cover_url && metaCard) updateCoverImage(metaCard, d.cover_url);
+          showToast('Metadata saved', 'success');
+          closeMetadataModal();
+        } else {
+          showToast('Error: ' + (d.error || 'unknown'), 'error');
+        }
+      })
+      .catch(function(e) {
+        showToast('Network error: ' + e.message, 'error');
+      })
+      .finally(function() {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      });
+  }
+
+  document.getElementById('metadata-modal')?.addEventListener('click', closeMetadataModal);
 </script>
 {% endblock %}

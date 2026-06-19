@@ -53,6 +53,18 @@ async def init_db():
             await session.commit()
             print(f"  Backfilled share_token for {len(missing)} highlights")
 
+    # ── BookCover metadata columns ──────────────────────────────────────────
+    async with engine.begin() as conn:
+        from sqlalchemy import text as sqltext
+        pragma2 = await conn.execute(sqltext("PRAGMA table_info('book_covers')"))
+        bc_cols = {row[1] for row in pragma2.fetchall()}
+        if "hardcover_id" not in bc_cols:
+            await conn.execute(sqltext("ALTER TABLE book_covers ADD COLUMN hardcover_id INTEGER"))
+            print("  Migration: added hardcover_id to book_covers")
+        if "isbn" not in bc_cols:
+            await conn.execute(sqltext("ALTER TABLE book_covers ADD COLUMN isbn VARCHAR(20)"))
+            print("  Migration: added isbn to book_covers")
+
     # Create dedup index (text + book_title + highlighted_at)
     async with engine.begin() as conn:
         from sqlalchemy import text as sqltext

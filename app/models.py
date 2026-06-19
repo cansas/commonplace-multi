@@ -102,6 +102,8 @@ class BookCover(Base):
     book_author = Column(String(511), nullable=False, default="")
     cover_source = Column(String(16), nullable=False, default="none")
     cover_url = Column(String(1024), nullable=True)
+    hardcover_id = Column(Integer, nullable=True)
+    isbn = Column(String(20), nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (

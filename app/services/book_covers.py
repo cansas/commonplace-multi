@@ -49,10 +49,43 @@ async def _open_library_search(title: str, author: str, client: httpx.AsyncClien
     return None
 
 
-async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient, api_key: str = "") -> Optional[str]:
-    """Search Hardcover.app for a book cover using GraphQL API."""
+async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient, api_key: str = "", known_id: int | None = None) -> tuple[str, int | None, str | None] | None:
+    """Search Hardcover.app for a book cover using GraphQL API.
+
+    Returns (cover_url, hardcover_id, isbn) or None if no cover found.
+    If known_id is provided, skips the fuzzy search and queries by ID directly.
+    """
     key = api_key or HARDCOVER_API_KEY
     if not key:
+        return None
+
+    # If we already have a known HardCover ID, skip fuzzy search entirely
+    if known_id is not None:
+        book_query = """
+        query BookById($id: Int!) {
+          book: books_by_pk(id: $id) {
+            id title slug isbn image { url }
+          }
+        }
+        """
+        payload = {"query": book_query, "variables": {"id": known_id}}
+        try:
+            resp = await client.post(
+                "https://api.hardcover.app/v1/graphql",
+                json=payload,
+                headers={"Authorization": f"Bearer {key}"},
+            )
+            if resp.status_code == 200:
+                book_data = resp.json().get("data", {}).get("book", {})
+                if book_data:
+                    img = book_data.get("image")
+                    if img and isinstance(img, dict) and img.get("url"):
+                        return (img["url"], book_data.get("id"), book_data.get("isbn"))
+                    slug = book_data.get("slug")
+                    if slug:
+                        return (f"https://hardcovercdn.com/books/{slug}.jpg", book_data.get("id"), book_data.get("isbn"))
+        except Exception as e:
+            print(f"  [covers] HardCover books_by_pk({known_id}) error: {e}")
         return None
 
     query = """query SearchBooks($query: String!) {
@@ -108,8 +141,9 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient, 
                 if isinstance(cover, dict):
                     cover = cover.get("url")
                 if cover:
+                    first_id = ids_list[0] if ids_list else None
                     print(f"  [covers] Hardcover cover from image field: {cover}")
-                    return cover
+                    return (cover, first_id, book.get("isbn"))
 
             # Note: slug-based URL construction (~hardcovercdn.com) is unreliable
             # and often blocked by hotlink protection. Fall through to Open Library.
@@ -117,7 +151,7 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient, 
         # Fallback: try querying books by ID
         if ids_list:
             bid = ids_list[0]
-            book_query = "{ book: books_by_pk(id: " + str(bid) + ") { id title slug image { url } } }"
+            book_query = "{ book: books_by_pk(id: " + str(bid) + ") { id title slug isbn image { url } } }"
             book_resp = await client.post(
                 "https://api.hardcover.app/v1/graphql",
                 json={"query": book_query},
@@ -126,13 +160,12 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient, 
             if book_resp.status_code == 200:
                 book_data = book_resp.json().get("data", {}).get("book", {})
                 if book_data:
-                    # Prefer explicit image URL over slug-based construction
                     img = book_data.get("image")
                     if img and isinstance(img, dict) and img.get("url"):
-                        return img["url"]
+                        return (img["url"], book_data.get("id"), book_data.get("isbn"))
                     slug = book_data.get("slug")
                     if slug:
-                        return f"https://hardcovercdn.com/books/{slug}.jpg"
+                        return (f"https://hardcovercdn.com/books/{slug}.jpg", book_data.get("id"), book_data.get("isbn"))
 
         if results_list:
             print(f"  [covers] Hardcover first result keys: {list(results_list[0].keys())[:10] if isinstance(results_list[0], dict) else results_list[0]}")
@@ -146,29 +179,31 @@ async def _hardcover_search(title: str, author: str, client: httpx.AsyncClient, 
     return None
 
 
-async def search_cover(title: str, author: str = "", client: httpx.AsyncClient = None, hardcover_key: str = "") -> tuple[Optional[str], str]:
+async def search_cover(title: str, author: str = "", client: httpx.AsyncClient = None, hardcover_key: str = "", known_id: int | None = None) -> tuple[str | None, str, int | None, str | None]:
     """Search for a book cover across multiple sources with fallback.
 
-    Returns (cover_url, source_name) or (None, "") if no source has a cover.
+    Returns (cover_url, source_name, hardcover_id, isbn) or (None, "", None, None) if no source has a cover.
+    known_id skips the HardCover fuzzy search and queries by ID directly.
     """
     _owns_client = client is None
     if _owns_client:
         client = httpx.AsyncClient(timeout=REQUEST_TIMEOUT)
     try:
         # 1. Hardcover.app (needs API key, best for newer/modern books)
-        url = await _hardcover_search(title, author, client, api_key=hardcover_key)
-        if url:
-            return url, "hardcover"
+        result = await _hardcover_search(title, author, client, api_key=hardcover_key, known_id=known_id)
+        if result:
+            url, hc_id, isbn = result
+            return url, "hardcover", hc_id, isbn
 
         # 2. Open Library (free, largest catalog)
         url = await _open_library_search(title, author, client)
         if url:
-            return url, "openlibrary"
+            return url, "openlibrary", None, None
 
     finally:
         if _owns_client:
             await client.aclose()
-    return None, ""
+    return None, "", None, None
 
 
 async def batch_search(books: list[tuple[str, str]], rate_limit: float = 1.0, concurrency: int = 3, hardcover_key: str = "") -> dict:
@@ -181,7 +216,7 @@ async def batch_search(books: list[tuple[str, str]], rate_limit: float = 1.0, co
 
     async def _fetch(client, title, author):
         async with sem:
-            url, source = await search_cover(title, author, client=client, hardcover_key=hardcover_key)
+            url, source, hc_id, isbn = await search_cover(title, author, client=client, hardcover_key=hardcover_key)
             results[(title, author)] = (url, source)
             await asyncio.sleep(rate_limit)
 
