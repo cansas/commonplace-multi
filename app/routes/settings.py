@@ -17,14 +17,36 @@ _jinja = None
 
 _SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", ".settings.json")
 _settings = {"review_mode": "random", "review_count": 10, "theme": "modern"}
+_last_mtime: float = 0.0
+
+
+def _ensure_fresh():
+    """Reload _settings from disk if the file's mtime has changed.
+
+    Allows external edits to .settings.json to take effect without a
+    server restart. Checks are cheap (one stat() call) when the file
+    hasn't changed.
+    """
+    global _settings, _last_mtime
+    try:
+        current = os.path.getmtime(_SETTINGS_FILE)
+        if current > _last_mtime:
+            with open(_SETTINGS_FILE) as f:
+                _settings = json.load(f)
+            _last_mtime = current
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        pass
+
 
 def get_theme() -> str:
     """Return the persisted theme preference ('modern' or 'reader')."""
+    _ensure_fresh()
     return _settings.get("theme", "modern")
 
 
 def get_hardcover_api_key() -> str:
     """Return the persisted Hardcover API key, or empty string."""
+    _ensure_fresh()
     return _settings.get("hardcover_api_key", "")
 
 
@@ -36,6 +58,7 @@ def set_hardcover_api_key(value: str) -> None:
 
 def get_settings() -> dict:
     """Return the full settings dict (read-only snapshot)."""
+    _ensure_fresh()
     return dict(_settings)
 
 
@@ -46,20 +69,23 @@ def set_setting(key: str, value) -> None:
 
 
 def _load_settings():
-    global _settings
+    global _settings, _last_mtime
     try:
         if os.path.isfile(_SETTINGS_FILE):
             with open(_SETTINGS_FILE) as f:
                 _settings = json.load(f)
+            _last_mtime = os.path.getmtime(_SETTINGS_FILE)
     except Exception:
         pass
 
 
 def _save_settings():
+    global _last_mtime
     try:
         os.makedirs(os.path.dirname(_SETTINGS_FILE), exist_ok=True)
         with open(_SETTINGS_FILE, "w") as f:
             json.dump(_settings, f)
+        _last_mtime = os.path.getmtime(_SETTINGS_FILE)
     except Exception:
         pass
 
@@ -79,6 +105,7 @@ async def settings_page(
     saved: str = "",
     new_token: str = "",
 ):
+    _ensure_fresh()
     # Read new_token from session (more secure than URL param)
     if not new_token:
         new_token = request.session.pop("new_token", "")
@@ -110,7 +137,7 @@ async def settings_page(
             total_books=books,
             review_mode=_settings.get("review_mode", "random"),
             review_count=_settings.get("review_count", 10),
-            version="0.6.4",
+            version="0.6.7",
             saved=saved,
             new_token=new_token,
             username=request.session.get("username", ""),
