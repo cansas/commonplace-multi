@@ -56,6 +56,9 @@
             <table class="min-w-full divide-y divide-slate-200">
                 <thead class="bg-slate-50">
                     <tr>
+                        <th class="px-2 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider w-10">
+                            <input type="checkbox" id="select-all" onchange="toggleSelectAll()" class="rounded border-slate-300" />
+                        </th>
                         <th class="px-2 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider w-10">⭐</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Highlight</th>
                         <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Book</th>
@@ -67,7 +70,10 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     {% for h in highlights %}
-                    <tr class="highlight-row hover:bg-slate-50 transition-colors cursor-pointer" data-target="detail-{{ h.id }}">
+                    <tr class="highlight-row hover:bg-slate-50 transition-colors cursor-pointer" data-target="detail-{{ h.id }}" data-hl-id="{{ h.id }}">
+                        <td class="px-2 py-3 text-center">
+                            <input type="checkbox" class="hl-select rounded border-slate-300" value="{{ h.id }}" onchange="updateBatchBar()" onclick="event.stopPropagation()" />
+                        </td>
                         <td class="px-2 py-3 text-center">
                             <button onclick="event.stopPropagation(); toggleFav({{ h.id }}, this)" class="text-lg leading-none hover:scale-110 transition-transform {% if h.favorite %}text-amber-400{% else %}text-slate-300 hover:text-amber-300{% endif %}">
                                 {% if h.favorite %}⭐{% else %}☆{% endif %}
@@ -186,6 +192,19 @@
         </div>
     </div>
 
+    <!-- Batch Action Bar -->
+    <div id="batch-bar" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 hidden">
+        <div class="bg-slate-900 text-white rounded-xl shadow-2xl px-5 py-3 flex items-center gap-4 text-sm">
+            <span id="batch-count" class="font-medium whitespace-nowrap">0 selected</span>
+            <span class="text-slate-400">|</span>
+            <button onclick="batchAddTag()" class="hover:text-emerald-400 transition-colors whitespace-nowrap">🏷️ Add Tag</button>
+            <span class="text-slate-600">|</span>
+            <button onclick="batchDelete()" class="hover:text-red-400 transition-colors whitespace-nowrap">🗑️ Delete</button>
+            <span class="text-slate-600">|</span>
+            <button onclick="clearSelection()" class="text-slate-400 hover:text-white transition-colors">Cancel</button>
+        </div>
+    </div>
+
     {% else %}
     <!-- Empty State -->
     <div class="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-sm">
@@ -278,6 +297,80 @@
                     location.reload();
                 }
             });
+        });
+    }
+
+    /* ── Batch Operations ─────────────────────────────────── */
+    function getSelectedIds() {
+        var checks = document.querySelectorAll('.hl-select:checked');
+        return Array.from(checks).map(function(c) { return c.value; });
+    }
+
+    function toggleSelectAll() {
+        var checked = document.getElementById('select-all').checked;
+        document.querySelectorAll('.hl-select').forEach(function(c) { c.checked = checked; });
+        updateBatchBar();
+    }
+
+    function updateBatchBar() {
+        var ids = getSelectedIds();
+        var bar = document.getElementById('batch-bar');
+        var count = document.getElementById('batch-count');
+        if (ids.length > 0) {
+            bar.classList.remove('hidden');
+            count.textContent = ids.length + ' selected';
+        } else {
+            bar.classList.add('hidden');
+        }
+    }
+
+    function clearSelection() {
+        document.querySelectorAll('.hl-select').forEach(function(c) { c.checked = false; });
+        document.getElementById('select-all').checked = false;
+        updateBatchBar();
+    }
+
+    function batchAddTag() {
+        var ids = getSelectedIds();
+        if (ids.length === 0) return;
+        var tagName = prompt('Enter tag name to add to ' + ids.length + ' highlights:');
+        if (!tagName || !tagName.trim()) return;
+        tagName = tagName.trim();
+
+        Promise.all(ids.map(function(id) {
+            // Fetch current tags, append new one
+            return fetch('/api/highlights/' + id)
+                .then(function(r) { return r.json(); })
+                .then(function(hl) {
+                    var tags = (hl.tags || []).concat([tagName]);
+                    return fetch('/api/highlights/' + id, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tags: tags })
+                    });
+                });
+        })).then(function() {
+            showToast('Tag added to ' + ids.length + ' highlights', 'success');
+            clearSelection();
+            location.reload();
+        }).catch(function(e) {
+            showToast('Error: ' + e.message, 'error');
+        });
+    }
+
+    function batchDelete() {
+        var ids = getSelectedIds();
+        if (ids.length === 0) return;
+        if (!confirm('Delete ' + ids.length + ' highlights? This cannot be undone.')) return;
+
+        Promise.all(ids.map(function(id) {
+            return fetch('/api/highlights/' + id, { method: 'DELETE' });
+        })).then(function() {
+            showToast('Deleted ' + ids.length + ' highlights', 'success');
+            clearSelection();
+            location.reload();
+        }).catch(function(e) {
+            showToast('Error: ' + e.message, 'error');
         });
     }
 </script>

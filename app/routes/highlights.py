@@ -338,6 +338,22 @@ async def update_highlight(hl_id: int, data: HighlightUpdate, db: AsyncSession =
     return {"ok": True, "id": hl_id}
 
 
+@router.get("/api/highlights/{hl_id}")
+async def get_highlight(hl_id: int, db: AsyncSession = Depends(get_db)):
+    """Return a single highlight with its tags."""
+    hl = await db.get(Highlight, hl_id)
+    if not hl:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Highlight not found")
+    return {
+        "id": hl.id,
+        "text": hl.text,
+        "book_title": hl.book_title,
+        "book_author": hl.book_author,
+        "tags": [t.name for t in hl.tags],
+        "favorite": hl.favorite,
+    }
+
+
 @router.get("/api/highlights/{hl_id}/card")
 async def highlight_card(hl_id: int, db: AsyncSession = Depends(get_db)):
     hl = await db.get(Highlight, hl_id)
