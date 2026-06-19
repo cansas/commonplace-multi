@@ -221,6 +221,45 @@
         </div>
     </section>
 
+    <!-- Backup & Restore -->
+    <section class="bg-card rounded-xl border border-card shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-card">
+            <h2 class="text-base font-semibold text-primary">💾 Backup & Restore</h2>
+            <p class="text-xs text-muted mt-0.5">Download or restore your entire commonplace database including cover images.</p>
+        </div>
+        <div class="px-6 py-5 space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-primary">Download Backup</p>
+                    <p class="text-xs text-muted mt-0.5">ZIP file containing your SQLite database and cover images.</p>
+                </div>
+                <a href="/api/backup"
+                   class="px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg btn-primary hover:bg-accent-hover transition shadow-sm">
+                    📦 Download
+                </a>
+            </div>
+
+            <div class="border-t border-card pt-4">
+                <p class="text-sm font-medium text-primary mb-2">Restore from Backup</p>
+                <form method="POST" action="/api/backup/restore" enctype="multipart/form-data"
+                      onsubmit="return confirmRestore(event)" class="space-y-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <div>
+                        <input type="file" name="file" accept=".zip" required
+                               class="w-full text-sm text-primary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-accent-light file:text-accent hover:file:bg-accent-lighter file:cursor-pointer border border-card rounded-lg p-2" />
+                    </div>
+                    <p class="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        ⚠️ Restore replaces your current database. You'll need to restart the container afterwards for FTS index consistency.
+                    </p>
+                    <button type="submit" id="restore-btn"
+                            class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                        🔄 Restore
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
     <!-- About -->
     <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-100">
@@ -229,7 +268,7 @@
         <div class="px-6 py-5 space-y-2 text-sm">
             <div class="flex items-center justify-between">
                 <span class="text-slate-500">Version</span>
-                <span class="font-medium text-slate-700">{{ version or '0.5.10' }}</span>
+                <span class="font-medium text-slate-700">{{ version or '0.6.0' }}</span>
             </div>
             <div class="flex items-center justify-between">
                 <span class="text-slate-500">Username</span>
@@ -263,6 +302,18 @@
             var current = localStorage.getItem('commonplace-theme') || document.body.getAttribute('data-theme') || 'modern';
             if (current !== theme) window.toggleTheme();
         }
+    }
+
+    function confirmRestore(event) {
+        var confirmed = confirm('⚠️ Restore will replace your current database and all covers. This cannot be undone. Continue?');
+        if (!confirmed) {
+            event.preventDefault();
+            return false;
+        }
+        var btn = document.getElementById('restore-btn');
+        btn.disabled = true;
+        btn.textContent = 'Restoring...';
+        return true;
     }
 
     function confirmReset() {
