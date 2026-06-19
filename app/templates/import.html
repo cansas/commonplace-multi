@@ -3,131 +3,177 @@
 
 {% block content %}
 <div class="space-y-8">
+
     <!-- Page Header -->
     <div>
-        <h1 class="text-2xl font-bold text-slate-900">📥 Import Highlights</h1>
-        <p class="text-sm text-slate-500 mt-1">Upload your highlights from Readwise or KOReader.</p>
+        <h1 class="text-2xl font-bold text-primary">📥 Import Highlights</h1>
+        <p class="text-sm text-secondary mt-1">Upload your highlights from Readwise or KOReader.</p>
     </div>
+
+    {% if import_result %}
+    <!-- Import Results -->
+    <div class="rounded-xl border overflow-hidden shadow-sm
+        {% if import_result.success %}bg-emerald-50 border-emerald-200{% else %}bg-red-50 border-red-200{% endif %}">
+        <div class="px-5 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    {% if import_result.errors %}
+                    <span class="text-2xl">⚠️</span>
+                    {% elif import_result.dry_run %}
+                    <span class="text-2xl">🔍</span>
+                    {% else %}
+                    <span class="text-2xl">✅</span>
+                    {% endif %}
+                    <div>
+                        {% if import_result.errors %}
+                        <p class="text-sm font-semibold text-red-800">Import completed with errors</p>
+                        {% elif import_result.dry_run %}
+                        <p class="text-sm font-semibold text-amber-800">Dry Run Preview</p>
+                        {% else %}
+                        <p class="text-sm font-semibold text-emerald-800">Import successful</p>
+                        {% endif %}
+                        <p class="text-xs text-secondary mt-0.5">{{ import_result.source_name }}</p>
+                    </div>
+                </div>
+                <span class="text-sm font-medium {% if import_result.errors %}text-red-700{% else %}text-emerald-700{% endif %}">
+                    {{ import_result.imported }} new · {{ import_result.skipped }} skipped
+                </span>
+            </div>
+            {% if import_result.errors %}
+            <div class="mt-3 space-y-1">
+                {% for err in import_result.errors %}
+                <p class="text-xs text-red-600">• {{ err }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if import_result.dry_run and import_result.imported > 0 and not import_result.errors %}
+            <form method="POST" action="{{ import_result.action }}" class="mt-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                {% if import_result.source_type == 'readwise' and import_result.pasted_content %}
+                <input type="hidden" name="content" value="{{ import_result.pasted_content }}" />
+                {% endif %}
+                <button type="submit" class="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm">
+                    ✅ Looks good — Import {{ import_result.imported }} highlights
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Import Cards Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Card 1: Readwise Obsidian Export -->
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <div class="bg-card rounded-xl border border-card shadow-sm p-6">
             <div class="flex items-center gap-3 mb-4">
                 <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-lg">📝</div>
                 <div>
-                    <h2 class="text-base font-semibold text-slate-800">Readwise Obsidian Export</h2>
-                    <p class="text-xs text-slate-500">Upload <code class="text-indigo-600 bg-indigo-50 px-1 rounded">.md</code> files from the Readwise/Books/ folder.</p>
+                    <h2 class="text-base font-semibold text-primary">Readwise Obsidian Export</h2>
+                    <p class="text-xs text-secondary">Upload <code class="text-indigo-600 bg-indigo-50 px-1 rounded">.md</code> files from the Readwise/Books/ folder.</p>
                 </div>
             </div>
 
             <form method="POST" action="/import/readwise" enctype="multipart/form-data" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                <div class="border-2 border-dashed border-slate-200 rounded-lg p-5 text-center hover:border-indigo-300 transition-colors">
+                <div class="border-2 border-dashed border-card rounded-lg p-5 text-center hover:border-indigo-300 transition-colors">
                     <label for="readwise-file" class="cursor-pointer block">
                         <span class="text-3xl block mb-2">📄</span>
                         <span class="text-sm text-indigo-600 font-medium hover:text-indigo-800">Choose .md file</span>
-                        <span class="block text-xs text-slate-400 mt-1">or drag and drop</span>
+                        <span class="block text-xs text-secondary mt-1">or drag and drop</span>
                         <input type="file" id="readwise-file" name="file" accept=".md" class="hidden" onchange="updateFileName(this, 'readwise-file-name')" />
                     </label>
-                    <p id="readwise-file-name" class="text-xs text-slate-500 mt-2"></p>
+                    <p id="readwise-file-name" class="text-xs text-secondary mt-2"></p>
                 </div>
 
                 <div class="relative">
                     <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-slate-200"></div>
+                        <div class="w-full border-t border-card"></div>
                     </div>
-                    <div class="relative flex justify-center text-xs text-slate-400">
-                        <span class="bg-white px-2">or paste content</span>
+                    <div class="relative flex justify-center text-xs text-secondary">
+                        <span class="bg-card px-2">or paste content</span>
                     </div>
                 </div>
 
                 <div>
                     <textarea name="content" rows="6" placeholder="Paste your Readwise markdown content here..." 
-                              class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-shadow"></textarea>
+                              class="w-full px-4 py-3 bg-page border border-card rounded-lg text-sm text-primary placeholder-secondary focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-shadow"></textarea>
                 </div>
 
-                <button type="submit" class="w-full px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
-                    📥 Import from Readwise
-                </button>
+                <div class="flex items-center gap-3">
+                    <label class="flex items-center gap-2 text-sm text-secondary cursor-pointer">
+                        <input type="checkbox" name="dry_run" value="true" class="rounded border-card text-indigo-600 focus:ring-indigo-400" />
+                        Dry run (preview only)
+                    </label>
+                    <button type="submit" class="flex-1 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
+                        📥 Import from Readwise
+                    </button>
+                </div>
             </form>
         </div>
 
         <!-- Card 2: KOReader JSON Export -->
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <div class="bg-card rounded-xl border border-card shadow-sm p-6">
             <div class="flex items-center gap-3 mb-4">
                 <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-lg">📱</div>
                 <div>
-                    <h2 class="text-base font-semibold text-slate-800">KOReader JSON Export</h2>
-                    <p class="text-xs text-slate-500">Upload <code class="text-emerald-600 bg-emerald-50 px-1 rounded">.json</code> files exported from KOReader.</p>
+                    <h2 class="text-base font-semibold text-primary">KOReader JSON Export</h2>
+                    <p class="text-xs text-secondary">Upload <code class="text-emerald-600 bg-emerald-50 px-1 rounded">.json</code> files exported from KOReader.</p>
                 </div>
             </div>
 
-            <form method="POST" action="/import/koreader" enctype="multipart/form-data" class="space-y-4">
+            <form method="POST" action="/import/koreader-json" enctype="multipart/form-data" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                <div class="border-2 border-dashed border-slate-200 rounded-lg p-5 text-center hover:border-emerald-300 transition-colors">
+                <div class="border-2 border-dashed border-card rounded-lg p-5 text-center hover:border-emerald-300 transition-colors">
                     <label for="koreader-file" class="cursor-pointer block">
                         <span class="text-3xl block mb-2">📁</span>
                         <span class="text-sm text-emerald-600 font-medium hover:text-emerald-800">Choose .json file</span>
-                        <span class="block text-xs text-slate-400 mt-1">or drag and drop</span>
+                        <span class="block text-xs text-secondary mt-1">or drag and drop</span>
                         <input type="file" id="koreader-file" name="file" accept=".json" class="hidden" onchange="updateFileName(this, 'koreader-file-name')" />
                     </label>
-                    <p id="koreader-file-name" class="text-xs text-slate-500 mt-2"></p>
+                    <p id="koreader-file-name" class="text-xs text-secondary mt-2"></p>
                 </div>
 
-                <button type="submit" class="w-full px-5 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm">
-                    📥 Import from KOReader
-                </button>
+                <div class="flex items-center gap-3">
+                    <label class="flex items-center gap-2 text-sm text-secondary cursor-pointer">
+                        <input type="checkbox" name="dry_run" value="true" class="rounded border-card text-emerald-600 focus:ring-emerald-400" />
+                        Dry run (preview only)
+                    </label>
+                    <button type="submit" class="flex-1 px-5 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm">
+                        📥 Import from KOReader
+                    </button>
+                </div>
             </form>
         </div>
     </div>
 
     <!-- Recent Imports -->
     <div>
-        <h2 class="text-lg font-semibold text-slate-800 mb-3">Import History</h2>
+        <h2 class="text-lg font-semibold text-primary mb-3">Import History</h2>
         {% if recent_imports %}
-        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-            <table class="min-w-full divide-y divide-slate-200">
-                <thead class="bg-slate-50">
+        <div class="bg-card rounded-xl border border-card overflow-hidden shadow-sm">
+            <table class="min-w-full divide-y divide-card">
+                <thead class="bg-page-alt">
                     <tr>
-                        <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Source</th>
-                        <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
-                        <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Items</th>
-                        <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">Source</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">Date</th>
+                        <th class="px-5 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">Items</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody class="divide-y divide-card">
                     {% for imp in recent_imports %}
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-5 py-3 text-sm font-medium text-slate-800">{{ imp.source }}</td>
-                        <td class="px-5 py-3 text-sm text-slate-500">{{ imp.date }}</td>
-                        <td class="px-5 py-3 text-sm text-slate-700">
-                            {% if imp.count is not none %}{{ imp.count }} highlight{% if imp.count != 1 %}s{% endif %}{% else %}—{% endif %}
-                        </td>
-                        <td class="px-5 py-3">
-                            {% if imp.status == 'success' %}
-                            <span class="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                                ✅ Success
-                            </span>
-                            {% elif imp.status == 'partial' %}
-                            <span class="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                                ⚠️ Partial
-                            </span>
-                            {% else %}
-                            <span class="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 px-2 py-0.5 rounded-full">
-                                ❌ Failed
-                            </span>
-                            {% endif %}
-                        </td>
+                    <tr class="hover:bg-page-alt transition-colors">
+                        <td class="px-5 py-3 text-sm font-medium text-primary">{{ imp.name }}</td>
+                        <td class="px-5 py-3 text-sm text-secondary">{{ imp.last_import_at }}</td>
+                        <td class="px-5 py-3 text-sm text-primary">{{ imp.count }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
         {% else %}
-        <div class="bg-white rounded-xl border border-slate-200 p-8 text-center shadow-sm">
-            <p class="text-slate-400 text-lg mb-1">📥</p>
-            <p class="text-slate-500">No imports yet. Upload your first file above.</p>
+        <div class="bg-card rounded-xl border border-card p-8 text-center shadow-sm">
+            <p class="text-2xl mb-1">📥</p>
+            <p class="text-secondary text-sm">No imports yet. Upload your first file above.</p>
         </div>
         {% endif %}
     </div>

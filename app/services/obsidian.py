@@ -41,7 +41,7 @@ def parse_readwise_md(content: str, filename: str = "") -> List[Dict]:
     # Find the ## Highlights section
     highlights_section = re.split(r"^##\s+Highlights", content, flags=re.MULTILINE)
     if len(highlights_section) < 2:
-        return highlights
+        raise ValueError("No '## Highlights' section found in file")
 
     body = highlights_section[1]
 

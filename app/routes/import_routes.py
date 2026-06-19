@@ -1,17 +1,16 @@
 """Import routes — Readwise Obsidian files, KOReader JSON, Readwise API format."""
 
 from fastapi import APIRouter, Depends, Request, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
 from app.models import Highlight, Source
 from app.services.obsidian import parse_readwise_md
 from app.services.koreader_json import parse_koreader_json
-from app.schemas import HighlightCreate, ReadwiseBatchImport
+from app.schemas import ReadwiseBatchImport
 from app.routes.share import get_share_token
 from app.csrf import template_context, csrf_guard
-from typing import List
 from datetime import datetime
 import json
 
@@ -25,11 +24,8 @@ def init(templates):
     _jinja = templates
 
 
-@router.get("/import", response_class=HTMLResponse)
-async def import_page(
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
+async def _render_import(request, db, import_result=None):
+    """Render the import page with recent imports and optional import result."""
     result = await db.execute(
         select(Source).order_by(Source.last_import_at.desc().nullslast()).limit(10)
     )
@@ -41,6 +37,7 @@ async def import_page(
         template_context(
             request,
             active_page="import",
+            import_result=import_result,
             recent_imports=[
                 {
                     "name": s.name,
@@ -54,10 +51,20 @@ async def import_page(
     )
 
 
-async def _save_highlights(db, highlights_list, source_name, source_type):
-    """Bulk-save highlights and record source. Skips duplicates."""
-    from sqlalchemy import and_
+@router.get("/import", response_class=HTMLResponse)
+async def import_page(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    return await _render_import(request, db)
 
+
+async def _save_highlights(db, highlights_list, source_name, source_type, dry_run=False):
+    """Bulk-save highlights and record source. Skips duplicates.
+
+    In dry_run mode, counts what would be imported/skipped without writing.
+    Returns (count, skipped).
+    """
     # Pre-fetch existing highlights to avoid N+1 queries
     existing_set = set()
     if highlights_list:
@@ -78,6 +85,10 @@ async def _save_highlights(db, highlights_list, source_name, source_type):
             skipped += 1
             continue
 
+        if dry_run:
+            count += 1
+            continue
+
         hl = Highlight(
             text=text,
             note=item.get("note"),
@@ -95,16 +106,20 @@ async def _save_highlights(db, highlights_list, source_name, source_type):
         existing_set.add((text, book_title, highlighted_at))
         count += 1
 
-    # Record the import source
-    src = Source(
-        name=source_name,
-        source_type=source_type,
-        last_import_at=datetime.utcnow(),
-        highlights_imported=count,
-    )
-    db.add(src)
-    await db.commit()
-    return count
+    if not dry_run and count > 0:
+        # Record the import source
+        src = Source(
+            name=source_name,
+            source_type=source_type,
+            last_import_at=datetime.utcnow(),
+            highlights_imported=count,
+        )
+        db.add(src)
+
+    if not dry_run:
+        await db.commit()
+
+    return count, skipped
 
 
 @router.post("/import/readwise")
@@ -113,30 +128,61 @@ async def import_readwise(
     csrf_token: str = Form(default=""),
     file: UploadFile = File(...),
     content: str = Form(default=""),
+    dry_run: str = Form(default=""),
     db: AsyncSession = Depends(get_db),
 ):
     csrf_guard(request, csrf_token)
     all_highlights = []
+    errors = []
+    is_dry_run = dry_run == "true"
 
     if content.strip():
         # Pasted content mode
-        parsed = parse_readwise_md(content, "pasted-content")
-        all_highlights.extend(parsed)
+        try:
+            parsed = parse_readwise_md(content, "pasted-content")
+            all_highlights.extend(parsed)
+        except Exception as e:
+            errors.append(f"Failed to parse pasted content: {e}")
         source_name = "Pasted Readwise content"
     else:
         # File upload mode
-        raw = (await file.read()).decode("utf-8", errors="replace")
-        parsed = parse_readwise_md(raw, file.filename or "")
-        all_highlights.extend(parsed)
+        try:
+            raw = (await file.read()).decode("utf-8", errors="replace")
+        except Exception as e:
+            errors.append(f"Failed to read file {file.filename}: {e}")
+            raw = ""
+
+        if raw and not errors:
+            try:
+                parsed = parse_readwise_md(raw, file.filename or "")
+                all_highlights.extend(parsed)
+            except Exception as e:
+                errors.append(f"Failed to parse {file.filename}: {e}")
+
         source_name = file.filename or "unknown"
 
-    count = await _save_highlights(
+    count, skipped = await _save_highlights(
         db, all_highlights,
         source_name=source_name,
         source_type="readwise",
+        dry_run=is_dry_run,
     )
 
-    return RedirectResponse(url=f"/?imported={count}", status_code=303)
+    result = {
+        "success": len(errors) == 0,
+        "imported": count,
+        "skipped": skipped,
+        "errors": errors,
+        "dry_run": is_dry_run,
+        "source_name": source_name,
+        "source_type": "readwise",
+        "action": "/import/readwise",
+    }
+
+    if is_dry_run and content.strip():
+        result["pasted_content"] = content
+
+    return await _render_import(request, db, result)
 
 
 @router.post("/import/koreader-json")
@@ -144,19 +190,48 @@ async def import_koreader_json(
     request: Request,
     csrf_token: str = Form(default=""),
     file: UploadFile = File(...),
+    dry_run: str = Form(default=""),
     db: AsyncSession = Depends(get_db),
 ):
     csrf_guard(request, csrf_token)
-    content = json.loads(await file.read())
+    is_dry_run = dry_run == "true"
+
+    try:
+        content = json.loads(await file.read())
+    except json.JSONDecodeError as e:
+        result = {
+            "success": False,
+            "imported": 0,
+            "skipped": 0,
+            "errors": [f"Invalid JSON: {e}"],
+            "dry_run": False,
+            "source_name": file.filename or "unknown",
+            "source_type": "koreader",
+            "action": "/import/koreader-json",
+        }
+        return await _render_import(request, db, result)
+
     parsed = parse_koreader_json(content)
 
-    count = await _save_highlights(
+    count, skipped = await _save_highlights(
         db, parsed,
         source_name=file.filename or "koreader-export.json",
         source_type="koreader",
+        dry_run=is_dry_run,
     )
 
-    return RedirectResponse(url=f"/?imported={count}", status_code=303)
+    result = {
+        "success": True,
+        "imported": count,
+        "skipped": skipped,
+        "errors": [],
+        "dry_run": is_dry_run,
+        "source_name": file.filename or "koreader-export.json",
+        "source_type": "koreader",
+        "action": "/import/koreader-json",
+    }
+
+    return await _render_import(request, db, result)
 
 
 # Readwise-compatible API endpoint (what KOReader Readwise plugin sends)
