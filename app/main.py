@@ -114,6 +114,13 @@ async def startup():
     async with async_session() as db:
         await ensure_admin(db)
 
+    # Start the digest scheduler (checks every 5 min for email delivery)
+    try:
+        from app.services.digest_scheduler import start_scheduler
+        start_scheduler()
+    except Exception as e:
+        print(f"  WARNING: Digest scheduler failed to start: {e}")
+
     # Backfill book covers in the background (don't block startup)
     async def _backfill_covers():
         async with async_session() as db:
