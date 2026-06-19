@@ -19,7 +19,7 @@ from app.services.book_covers import batch_search
 from app.services.streaks import calculate_streaks
 from app.routes.settings import get_hardcover_api_key
 
-app = FastAPI(title="commonplace", version="0.6.2")
+app = FastAPI(title="commonplace", version="0.6.3")
 
 # Ensure covers directory exists on the mounted volume
 COVERS_DIR = os.environ.get("COVERS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "covers"))
@@ -170,36 +170,6 @@ async def dashboard(
     # Streak tracking
     streak = await calculate_streaks(db)
 
-    # Recently read books — 6 most recent distinct books by last highlight date
-    recent_books = []
-    recent_rows = await db.execute(
-        select(
-            Highlight.book_title,
-            Highlight.book_author,
-            func.max(Highlight.highlighted_at).label("last_read"),
-            func.count(Highlight.id).label("hl_count"),
-        )
-        .group_by(Highlight.book_title, Highlight.book_author)
-        .order_by(func.max(Highlight.highlighted_at).desc().nulls_last())
-        .limit(4)
-    )
-    if recent_rows:
-        from app.models import BookCover
-        for row in recent_rows:
-            cover = await db.execute(
-                select(BookCover.cover_url).where(
-                    BookCover.book_title == row.book_title,
-                    BookCover.book_author == (row.book_author or ""),
-                )
-            )
-            cover_url = cover.scalar_one_or_none()
-            recent_books.append({
-                "title": row.book_title,
-                "author": row.book_author or "",
-                "cover_url": cover_url,
-                "hl_count": row.hl_count,
-            })
-
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -220,6 +190,5 @@ async def dashboard(
                 "share_token": random_hl.share_token,
             } if random_hl else None,
             imported=imported,
-            recent_books=recent_books,
         ),
     )

@@ -127,46 +127,5 @@
             </div>
         </div>
     </div>
-
-    <!-- Recently Read Books -->
-    <div>
-        <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-semibold text-primary">📚 Recently Read</h2>
-            <a href="/books" class="text-xs link-accent font-medium">View all →</a>
-        </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {% for book in recent_books %}
-            <a href="/highlights?book={{ book.title | urlencode }}" class="group block">
-                <div class="aspect-[2/3] bg-page-alt rounded-xl border border-card overflow-hidden flex items-center justify-center">
-                    {% if book.cover_url %}
-                    <img src="{{ book.cover_url }}" alt="{{ book.title }}" class="w-full h-full object-cover" loading="lazy">
-                    {% else %}
-                    <div class="text-center p-2">
-                        <div class="text-muted-lighter text-lg mb-1">📚</div>
-                        <p class="text-[10px] text-muted leading-tight line-clamp-3">{{ book.title }}</p>
-                    </div>
-                    {% endif %}
-                </div>
-                <p class="text-xs font-medium text-primary mt-1.5 truncate group-hover:text-accent transition-colors">{{ book.title }}</p>
-                {% if book.author %}
-                <p class="text-[10px] text-muted truncate">{{ book.author }}</p>
-                {% endif %}
-            </a>
-            {% else %}
-            <div class="aspect-[2/3] bg-page-alt rounded-xl border border-card flex items-center justify-center">
-                <span class="text-muted-lighter text-xs">📚</span>
-            </div>
-            <div class="aspect-[2/3] bg-page-alt rounded-xl border border-card flex items-center justify-center">
-                <span class="text-muted-lighter text-xs">📚</span>
-            </div>
-            <div class="aspect-[2/3] bg-page-alt rounded-xl border border-card flex items-center justify-center">
-                <span class="text-muted-lighter text-xs">📚</span>
-            </div>
-            <div class="aspect-[2/3] bg-page-alt rounded-xl border border-card flex items-center justify-center">
-                <span class="text-muted-lighter text-xs">📚</span>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
 </div>
 {% endblock %}
