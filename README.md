@@ -68,7 +68,7 @@ GHCR. Branch pushes to `main` build `:latest` only.
 | **Home** — recent & favorite highlights at a glance | **Daily Review** — SM-2 spaced repetition with 4 rating levels |
 | ![Home](screenshots/homescreen.png) | ![Daily Review](screenshots/daily_review.png) |
 | **Settings (Modern theme)** | **Settings (Reader theme)** |
-| ![Modern Theme](screenshots/settings_modern_theme.png) | ![Reader Theme](screenshots/settings_reader_theme.png) |
+| ![Modern Theme](screenshots/setting_modern_theme.png) | ![Reader Theme](screenshots/settings_reader_theme.png) |
 | **Settings (Dark theme)** | **Import** — KOReader, Kindle, Readwise, Obsidian |
 | ![Dark Theme](screenshots/settings_dark_theme.png) | ![Import](screenshots/settings_import.png) |
 
