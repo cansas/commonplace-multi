@@ -180,16 +180,5 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
-<script>
-    function updateFileName(input, displayId) {
-        var display = document.getElementById(displayId);
-        if (input.files && input.files.length > 0) {
-            display.textContent = '📎 ' + input.files[0].name;
-            display.className = 'text-xs text-indigo-600 font-medium mt-2';
-        } else {
-            display.textContent = '';
-        }
-    }
-</script>
 {% endblock %}
+

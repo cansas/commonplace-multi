@@ -8,6 +8,7 @@
     <link rel="icon" type="image/png" sizes="128x128" href="/static/logo-128.png">
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#1e293b">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <script src="/static/tailwind.min.js"></script>
     <link rel="stylesheet" href="/static/style.css" />
     <link rel="stylesheet" href="/static/themes.css" />
@@ -143,11 +144,7 @@
     </nav>
 
     <!-- PWA service worker -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/static/sw.js').catch(function() {});
-        }
-    </script>
+    <script src="/static/commonplace.js"></script>
 
     <!-- Confirm dialog -->
     <div id="confirm-overlay" class="fixed inset-0 z-50 hidden bg-black/40 flex items-center justify-center">
@@ -163,150 +160,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Mobile sidebar toggle JS -->
-    <script>
-        (function() {
-            const toggle = document.getElementById('sidebar-toggle');
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
-
-            if (toggle && sidebar && overlay) {
-                function open() {
-                    sidebar.classList.remove('-translate-x-full');
-                    overlay.classList.remove('hidden');
-                    document.body.style.overflow = 'hidden';
-                }
-                function close() {
-                    sidebar.classList.add('-translate-x-full');
-                    overlay.classList.add('hidden');
-                    document.body.style.overflow = '';
-                }
-                toggle.addEventListener('click', open);
-                overlay.addEventListener('click', close);
-            }
-        })();
-    </script>
-
-    <!-- Theme Switcher -->
-    <script>
-        (function() {
-            const THEME_STORAGE_KEY = 'commonplace-theme';
-            const body = document.body;
-
-            function getStoredTheme() {
-                // Server-set theme (data attribute) takes precedence on first load
-                const serverTheme = body.getAttribute('data-theme');
-                const stored = localStorage.getItem(THEME_STORAGE_KEY);
-                return stored || serverTheme || 'modern';
-            }
-
-            function applyTheme(theme) {
-                body.classList.remove('theme-modern', 'theme-reader', 'theme-dark');
-                if (theme === 'reader') {
-                    body.classList.add('theme-reader');
-                } else if (theme === 'dark') {
-                    body.classList.add('theme-dark');
-                } else {
-                    body.classList.add('theme-modern');
-                }
-                localStorage.setItem(THEME_STORAGE_KEY, theme);
-                body.setAttribute('data-theme', theme);
-
-                // Update toggle button text
-                const icon = document.getElementById('theme-toggle-icon');
-                const label = document.getElementById('theme-toggle-label');
-                if (icon && label) {
-                    if (theme === 'reader') {
-                        icon.textContent = '🌙';
-                        label.textContent = 'Switch to Dark';
-                    } else if (theme === 'dark') {
-                        icon.textContent = '☀️';
-                        label.textContent = 'Switch to Modern';
-                    } else {
-                        icon.textContent = '📖';
-                        label.textContent = 'Switch to Reader';
-                    }
-                }
-            }
-
-            // Apply on load
-            applyTheme(getStoredTheme());
-
-            // Expose toggle function globally
-            window.toggleTheme = function() {
-                const current = localStorage.getItem(THEME_STORAGE_KEY) || body.getAttribute('data-theme') || 'modern';
-                const order = ['modern', 'reader', 'dark'];
-                const idx = order.indexOf(current);
-                const next = order[(idx + 1) % order.length];
-                applyTheme(next);
-
-                // Persist to server if logged in
-                fetch('/settings/theme', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: 'theme=' + next + '&csrf_token={{ csrf_token }}',
-                }).catch(function() {
-                    // Server persistence is optional — theme still works locally
-                });
-            };
-        })();
-    </script>
-
-    <!-- Global UI helpers (toasts, confirm, loading) -->
-    <script>
-        function showToast(message, type) {
-            type = type || 'info';
-            var container = document.getElementById('toast-container');
-            if (!container) return;
-            var colors = { success: 'bg-emerald-600', error: 'bg-red-600', info: 'bg-sidebar text-sidebar' };
-            var icons = { success: '✅', error: '❌', info: 'ℹ️' };
-            var el = document.createElement('div');
-            el.className = (colors[type] || colors.info) + ' text-white text-sm px-4 py-2.5 rounded-lg shadow-lg pointer-events-auto transition-all duration-300 flex items-center gap-2 max-w-sm';
-            el.style.transform = 'translateX(120%)';
-            el.innerHTML = '<span>' + (icons[type] || icons.info) + '</span><span>' + message + '</span>';
-            container.appendChild(el);
-            requestAnimationFrame(function() { el.style.transform = 'translateX(0)'; });
-            setTimeout(function() {
-                el.style.transform = 'translateX(120%)';
-                el.style.opacity = '0';
-                setTimeout(function() { el.remove(); }, 300);
-            }, 3500);
-        }
-
-        window.confirmModal = function(title, message) {
-            return new Promise(function(resolve) {
-                var overlay = document.getElementById('confirm-overlay');
-                var titleEl = document.getElementById('confirm-title');
-                var msgEl = document.getElementById('confirm-message');
-                var cancelBtn = document.getElementById('confirm-cancel');
-                var actionBtn = document.getElementById('confirm-action');
-                if (!overlay || !titleEl || !msgEl) { resolve(true); return; }
-                titleEl.textContent = title;
-                msgEl.textContent = message;
-                overlay.classList.remove('hidden');
-                function cleanup(result) { overlay.classList.add('hidden'); resolve(result); }
-                cancelBtn.onclick = function() { cleanup(false); };
-                actionBtn.onclick = function() { cleanup(true); };
-                overlay.onclick = function(e) { if (e.target === overlay) cleanup(false); };
-            });
-        };
-    </script>
-    <script>
-        /* Achievement count badge in sidebar */
-        fetch('/api/achievements').then(function(r) { return r.json(); }).then(function(data) {
-            var count = data.filter(function(a) { return a.unlocked; }).length;
-            var link = document.querySelector('a[href="/achievements"]');
-            if (link && count > 0) {
-                var badge = document.createElement('span');
-                badge.className = 'ml-auto text-xs bg-accent text-white rounded-full px-1.5 py-0.5 font-bold min-w-[20px] text-center';
-                badge.textContent = count;
-                link.appendChild(badge);
-            }
-        }).catch(function() {});
-    </script>
 
     {% block scripts %}{% endblock %}
 </body>
