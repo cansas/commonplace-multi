@@ -1,7 +1,7 @@
 """Settings page routes + API token management."""
 import json
 import os
-from fastapi import APIRouter, Depends, Request, Form, HTTPException, status
+from fastapi import APIRouter, Depends, Request, Form, HTTPException, status, Header
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
@@ -445,6 +445,21 @@ async def reset_database(
 
 
 # ── Email Settings ─────────────────────────────────────────────────────────
+
+
+@router.post("/api/digest/trigger")
+async def trigger_digest(
+    request: Request,
+    x_digest_secret: str = Header(default=""),
+):
+    """Trigger a digest check on-demand (for external cron)."""
+    expected = os.environ.get("DIGEST_SECRET", "")
+    if expected and x_digest_secret != expected:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid digest secret")
+
+    from app.services.digest_scheduler import check_and_send_digest
+    await check_and_send_digest()
+    return {"ok": True}
 
 
 @router.post("/api/settings/email")

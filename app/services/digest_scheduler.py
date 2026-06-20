@@ -37,7 +37,7 @@ def _write_settings(s: dict):
         logger.warning("Failed to write settings: %s", e)
 
 
-async def _check_and_send():
+async def check_and_send_digest():
     """Check if it's time to send the digest and send if so."""
     settings = _read_settings()
 
@@ -111,7 +111,7 @@ def start_scheduler():
 
     _SCHEDULER = AsyncIOScheduler()
     # Check every 5 minutes
-    _SCHEDULER.add_job(_check_and_send, "interval", minutes=5, id="digest_check")
+    _SCHEDULER.add_job(check_and_send_digest, "interval", minutes=5, id="digest_check")
     _SCHEDULER.start()
     logger.info("Digest scheduler started (checking every 5 minutes)")
 
