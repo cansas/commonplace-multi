@@ -18,11 +18,9 @@ A KOReader plugin that sends your book highlights to your **commonplace** server
 7. Toggle **Export to commonplace** on
 8. Use the standard **Export** submenu to send highlights
 
-> **Note:** The old installation method (dropping `commonkore.lua` into `exporter.koplugin/target/`) no longer works. KOReader's exporter plugin uses a hardcoded target list, not dynamic file scanning. The plugin registers itself via KOReader's Provider system instead.
-
 ## Usage
 
-Same as the built-in Readwise exporter — export highlights for the current book or all books from the Export menu.
+Use the built-in exporter — export highlights for the current book or all books from the Export menu.
 
 ## Cloudflare Tunnel
 
