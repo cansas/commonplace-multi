@@ -52,7 +52,9 @@
                         <span class="text-xs text-accent font-medium">✅</span>
                         {% endif %}
                     </div>
+                    {% if ach.unlocked %}
                     <p class="text-xs text-muted mt-1 italic">"{{ ach.message }}"</p>
+                    {% endif %}
                     {% if ach.unlocked and ach.unlocked_at %}
                     <p class="text-xs text-muted mt-2">
                         🗓️ Unlocked {{ ach.unlocked_at[:10] }}
