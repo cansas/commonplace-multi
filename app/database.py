@@ -38,6 +38,13 @@ async def init_db():
             print(f"  Running migration: {stmt}")
             await conn.execute(sqltext(stmt))
 
+        # Fingerprint column for import dedup
+        if "fingerprint" not in existing:
+            await conn.execute(sqltext(
+                "ALTER TABLE highlights ADD COLUMN fingerprint VARCHAR(64)"
+            ))
+            print("  Migration: added fingerprint to highlights")
+
     # Backfill share_token for highlights that don't have one
     async with async_session() as session:
         from app.models import Highlight
@@ -52,6 +59,30 @@ async def init_db():
         if missing:
             await session.commit()
             print(f"  Backfilled share_token for {len(missing)} highlights")
+
+    # Backfill fingerprints for existing rows (one-time)
+    async with async_session() as session:
+        from app.services.import_service import highlight_fingerprint
+        from sqlalchemy import select
+        result = await session.execute(
+            select(Highlight).where(Highlight.fingerprint.is_(None))
+        )
+        missing = result.scalars().all()
+        if missing:
+            print(f"  Backfilling fingerprints for {len(missing)} highlights...")
+            for hl in missing:
+                hl.fingerprint = highlight_fingerprint(hl.text, hl.book_title or "")
+            await session.commit()
+
+    # Create fingerprint index
+    async with engine.begin() as conn:
+        try:
+            await conn.execute(sqltext(
+                "CREATE INDEX IF NOT EXISTS ix_highlights_fingerprint "
+                "ON highlights(fingerprint)"
+            ))
+        except Exception:
+            pass
 
     # ── BookCover metadata columns ──────────────────────────────────────────
     async with engine.begin() as conn:
@@ -155,40 +186,6 @@ async def init_db():
                 await conn.execute(sqltext(idx_stmt))
             except Exception:
                 pass  # Index may already exist or engine doesn't support
-
-    # ── Fingerprint column for import dedup ──────────────────────────
-    async with engine.begin() as conn:
-        from sqlalchemy import text as sqltext
-        pragma = await conn.execute(sqltext("PRAGMA table_info('highlights')"))
-        hl_cols = {row[1] for row in pragma.fetchall()}
-        if "fingerprint" not in hl_cols:
-            await conn.execute(sqltext(
-                "ALTER TABLE highlights ADD COLUMN fingerprint VARCHAR(64)"
-            ))
-            print("  Migration: added fingerprint to highlights")
-
-    # Backfill fingerprints for existing rows (one-time)
-    async with async_session() as session:
-        from app.services.import_service import highlight_fingerprint
-        result = await session.execute(
-            select(Highlight).where(Highlight.fingerprint.is_(None))
-        )
-        missing = result.scalars().all()
-        if missing:
-            print(f"  Backfilling fingerprints for {len(missing)} highlights...")
-            for hl in missing:
-                hl.fingerprint = highlight_fingerprint(hl.text, hl.book_title or "")
-            await session.commit()
-
-    # Create fingerprint index
-    async with engine.begin() as conn:
-        try:
-            await conn.execute(sqltext(
-                "CREATE INDEX IF NOT EXISTS ix_highlights_fingerprint "
-                "ON highlights(fingerprint)"
-            ))
-        except Exception:
-            pass
 
     # Backfill FTS index for existing highlights
     async with async_session() as session:
