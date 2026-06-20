@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="20" fill="#6366f1"/>
+  <g fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- open book -->
+    <path d="M24 96V32a8 8 0 0 1 8-8h64a8 8 0 0 1 8 8v64"/>
+    <path d="M24 96a8 8 0 0 1 8-8h64a8 8 0 0 1 8 8H24z"/>
+    <!-- bookmark ribbon -->
+    <path d="M64 28v48l12-10 12 10V28"/>
+    <!-- highlight underline -->
+    <path d="M38 52h12M38 62h20M38 72h16" stroke-width="3"/>
+  </g>
+</svg>
