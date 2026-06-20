@@ -10,7 +10,7 @@ import json
 import glob
 import urllib.request
 
-VAULT_PATH = os.path.expanduser("~/obsidianvault")
+DEFAULT_VAULT_PATH = os.path.expanduser("~/obsidianvault")
 
 
 def parse_readwise_directory(vault_path):
@@ -123,15 +123,15 @@ def send_highlights(highlights, api_url, api_token):
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python3 seed_from_obsidian.py <api_url> <api_token>")
-        print(f"Example: python3 seed_from_obsidian.py http://localhost:8765 change-me")
+        print("Usage: python3 seed_from_obsidian.py <api_url> <api_token> [vault_path]")
+        print(f"Example: python3 seed_from_obsidian.py http://localhost:8765 change-me ~/obsidianvault")
         sys.exit(1)
 
     api_url = sys.argv[1]
     api_token = sys.argv[2]
+    vault_path = os.path.expanduser(sys.argv[3] if len(sys.argv) > 3 else DEFAULT_VAULT_PATH)
 
-    print(f"🔍 Scanning Obsidian vault at {VAULT_PATH}")
-    vault_path = os.path.expanduser(VAULT_PATH)
+    print(f"🔍 Scanning Obsidian vault at {vault_path}")
 
     if not os.path.isdir(vault_path):
         print(f"❌ Vault path {vault_path} not found")
