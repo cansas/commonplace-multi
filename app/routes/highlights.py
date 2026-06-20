@@ -9,6 +9,7 @@ from app.models import Highlight, Tag, BookCover
 from app.schemas import HighlightOut, HighlightCreate, HighlightUpdate
 from app.services.highlight_card import generate_card, fetch_cover_data
 from app.csrf import template_context
+from app.template import render
 from typing import Optional, List
 from datetime import datetime
 import math
