@@ -49,7 +49,7 @@
             {% if import_result.dry_run and import_result.imported > 0 and not import_result.errors %}
             <form method="POST" action="{{ import_result.action }}" class="mt-3">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                {% if import_result.source_type == 'readwise' and import_result.pasted_content %}
+                {% if import_result.pasted_content %}
                 <input type="hidden" name="content" value="{{ import_result.pasted_content }}" />
                 {% endif %}
                 <button type="submit" class="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm">
