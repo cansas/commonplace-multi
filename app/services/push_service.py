@@ -1,7 +1,9 @@
 """Push notification delivery — VAPID config and send-to-all."""
 
+import asyncio
 import json
 import os
+import warnings
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -13,6 +15,10 @@ try:
 except ImportError:
     webpush = None
     WebPushException = Exception
+    warnings.warn(
+        "pywebpush is not installed — push notifications are disabled. "
+        "Install with: pip install pywebpush"
+    )
 
 _VAPID_KEYS = None
 _VAPID_CLAIMS = None
@@ -77,6 +83,10 @@ async def send_push_to_all(
 ) -> dict:
     """Send a push notification to every active subscription.
 
+    webpush.send() is synchronous — each call is offloaded to a thread
+    via asyncio.to_thread() to avoid blocking the event loop.
+    Expired subscriptions are cleaned up atomically after delivery.
+
     Returns a summary dict: {sent, expired, errors}.
     """
     if webpush is None:
@@ -88,7 +98,7 @@ async def send_push_to_all(
     subs = result.scalars().all()
 
     sent = 0
-    expired = 0
+    expired_subs = []
     errors = []
 
     payload = json.dumps({
@@ -100,7 +110,8 @@ async def send_push_to_all(
 
     for sub in subs:
         try:
-            webpush(
+            await asyncio.to_thread(
+                webpush,
                 subscription_info=_build_subscription_info(sub),
                 data=payload,
                 vapid_private_key=vapid_keys["private_key"],
@@ -109,13 +120,24 @@ async def send_push_to_all(
             sent += 1
         except WebPushException as e:
             if getattr(e, "response", None) and e.response.status_code == 410:
-                # Subscription expired — remove it
-                await db.delete(sub)
-                expired += 1
+                expired_subs.append(sub)
             else:
                 errors.append(str(e))
+        except Exception as e:
+            errors.append(str(e))
 
-    if expired:
-        await db.commit()
+    # Clean up expired subscriptions — always commit if any were found
+    if expired_subs:
+        try:
+            for sub in expired_subs:
+                await db.delete(sub)
+            await db.commit()
+        except Exception as e:
+            errors.append(f"Failed to clean up expired subscriptions: {e}")
+            await db.rollback()
 
-    return {"sent": sent, "expired": expired, "errors": errors}
+    return {
+        "sent": sent,
+        "expired": len(expired_subs),
+        "errors": errors,
+    }
