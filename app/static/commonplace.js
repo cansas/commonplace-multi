@@ -194,7 +194,7 @@
 
     // PWA service worker
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/static/sw.js').catch(function(e) {
+        navigator.serviceWorker.register('/static/sw.js', { scope: '/' }).catch(function(e) {
             console.warn('SW registration failed (push disabled):', e.message);
         });
     }
