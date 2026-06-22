@@ -53,8 +53,26 @@ def _ensure_vapid_keys():
     if not _VAPID_KEYS:
         if webpush is None:
             raise ImportError("pywebpush is not installed — cannot generate VAPID keys")
-        from pywebpush import generate_vapid_keys
-        _VAPID_KEYS = generate_vapid_keys()
+        from cryptography.hazmat.primitives import serialization
+        from base64 import urlsafe_b64encode
+        from pywebpush import Vapid
+        v = Vapid()
+        v.generate_keys()
+        # Public key for browser: raw 65-byte uncompressed EC point, base64url
+        pub_bytes = v.public_key.public_bytes(
+            serialization.Encoding.X962,
+            serialization.PublicFormat.UncompressedPoint,
+        )
+        # Private key for server: PEM format (what webpush() accepts)
+        private_key_pem = v.private_key.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        ).decode()
+        _VAPID_KEYS = {
+            "public_key": urlsafe_b64encode(pub_bytes).decode().rstrip("="),
+            "private_key": private_key_pem.strip(),
+        }
         os.makedirs(os.path.dirname(VAPID_KEYS_FILE), exist_ok=True)
         with open(VAPID_KEYS_FILE, "w") as f:
             json.dump(_VAPID_KEYS, f)
