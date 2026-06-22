@@ -99,6 +99,93 @@
         });
     };
 
+    /* ── Push notification subscribe/unsubscribe ─────────── */
+
+    window.subscribePush = function() {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            window.showToast('Push notifications not supported in this browser', 'error');
+            return Promise.resolve(false);
+        }
+        if (Notification.permission === 'denied') {
+            window.showToast('Notifications blocked in browser settings', 'error');
+            return Promise.resolve(false);
+        }
+        var vapidMeta = document.querySelector('meta[name="vapid-public-key"]');
+        if (!vapidMeta || !vapidMeta.content) {
+            window.showToast('VAPID public key not configured', 'error');
+            return Promise.resolve(false);
+        }
+        return navigator.serviceWorker.ready.then(function(reg) {
+            return reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: window.urlBase64ToUint8Array(vapidMeta.content),
+            });
+        }).then(function(sub) {
+            var body = JSON.stringify({
+                endpoint: sub.endpoint,
+                keys: sub.toJSON().keys,
+            });
+            return fetch('/api/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: body,
+            });
+        }).then(function(r) {
+            if (r.ok) {
+                window.showToast('Notifications enabled', 'success');
+                return true;
+            }
+            return r.json().then(function(d) {
+                window.showToast('Subscribe failed: ' + (d.error || 'unknown'), 'error');
+                return false;
+            });
+        }).catch(function(e) {
+            if (e.name === 'NotAllowedError') {
+                window.showToast('Notification permission denied', 'error');
+            } else {
+                window.showToast('Subscribe failed: ' + e.message, 'error');
+            }
+            return false;
+        });
+    };
+
+    window.unsubscribePush = function() {
+        return navigator.serviceWorker.ready.then(function(reg) {
+            return reg.pushManager.getSubscription();
+        }).then(function(sub) {
+            if (!sub) return true;
+            var endpoint = sub.endpoint;
+            return sub.unsubscribe().then(function() {
+                return fetch('/api/push/subscribe', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: endpoint }),
+                });
+            });
+        }).then(function(r) {
+            if (r && !r.ok) return r.json().then(function(d) {
+                window.showToast('Unsubscribe failed: ' + (d.error || 'unknown'), 'error');
+                return false;
+            });
+            window.showToast('Notifications disabled', 'success');
+            return true;
+        }).catch(function(e) {
+            window.showToast('Unsubscribe failed: ' + e.message, 'error');
+            return false;
+        });
+    };
+
+    window.urlBase64ToUint8Array = function(base64String) {
+        var padding = '='.repeat((4 - base64String.length % 4) % 4);
+        var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        var rawData = window.atob(base64);
+        var output = new Uint8Array(rawData.length);
+        for (var i = 0; i < rawData.length; ++i) {
+            output[i] = rawData.charCodeAt(i);
+        }
+        return output;
+    };
+
     /* ── Base page initialisation ──────────────────── */
 
     // PWA service worker
@@ -1162,6 +1249,9 @@
             // ── Review page actions ──
             else if (action === 'review-context' && hlId && window.showReviewContext) { e.preventDefault(); window.showReviewContext(hlId); }
             else if (action === 'close-review-context' && window.closeReviewContext) { window.closeReviewContext(e); }
+            // ── Push notification actions ──
+            else if (action === 'subscribe-push' && window.subscribePush) { e.preventDefault(); window.subscribePush().then(function(ok) { if (ok) { var btn = document.querySelector('[data-action=\"subscribe-push\"]'); if (btn) btn.style.display = 'none'; var ubtn = document.querySelector('[data-action=\"unsubscribe-push\"]'); if (ubtn) ubtn.style.display = ''; }}); }
+            else if (action === 'unsubscribe-push' && window.unsubscribePush) { e.preventDefault(); window.unsubscribePush().then(function(ok) { if (ok) { var btn = document.querySelector('[data-action=\"unsubscribe-push\"]'); if (btn) btn.style.display = 'none'; var sbtn = document.querySelector('[data-action=\"subscribe-push\"]'); if (sbtn) sbtn.style.display = ''; }}); }
             // ── Theme selection ──
             else if (action === 'set-theme' && window.setTheme) { e.preventDefault(); window.setTheme(btn.getAttribute('data-theme')); }
         });

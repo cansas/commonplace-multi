@@ -13,8 +13,8 @@ Usage::
         "total_highlights": total,
     })
 
-CSRF token and user theme are injected automatically (via setdefault
-so explicit template_context() calls are not overwritten).
+CSRF token, user theme, and VAPID public key are injected automatically
+(via setdefault so explicit template_context() calls are not overwritten).
 """
 
 import os
@@ -23,6 +23,20 @@ from fastapi.templating import Jinja2Templates
 from app.csrf import generate_csrf_token
 
 _templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
+
+# Lazy-load VAPID public key — only imported when render() is first called
+_vapid_public_key = None
+
+def _get_vapid_public_key() -> str:
+    global _vapid_public_key
+    if _vapid_public_key is not None:
+        return _vapid_public_key
+    try:
+        from app.services.push_service import get_vapid_public_key
+        _vapid_public_key = get_vapid_public_key() or ""
+    except Exception:
+        _vapid_public_key = ""
+    return _vapid_public_key
 
 
 def render(request, template_name: str, context: dict = None, **kwargs):
@@ -42,4 +56,5 @@ def render(request, template_name: str, context: dict = None, **kwargs):
     ctx = dict(context or {})
     ctx.setdefault("csrf_token", getattr(request.state, "csrf_token", None) or generate_csrf_token(request.session))
     ctx.setdefault("user_theme", request.session.get("theme", "modern"))
+    ctx.setdefault("vapid_public_key", _get_vapid_public_key())
     return _templates.TemplateResponse(request, template_name, ctx, **kwargs)

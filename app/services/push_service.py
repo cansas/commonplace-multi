@@ -74,6 +74,12 @@ def _build_subscription_info(sub: PushSubscription) -> dict:
     }
 
 
+def get_vapid_public_key() -> str:
+    """Return the VAPID public key, loading or generating as needed."""
+    keys, _ = _ensure_vapid_keys()
+    return keys.get("public_key", "")
+
+
 async def send_push_to_all(
     title: str,
     body: str,
