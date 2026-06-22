@@ -5,6 +5,7 @@ independent session secret. See commonplace Hardening Prompt.md for the full spe
 import hashlib
 import os
 import secrets
+import time
 from datetime import datetime
 
 import bcrypt
@@ -79,6 +80,35 @@ async def ensure_admin(db: AsyncSession):
     await db.commit()
 
 
+# ── API token cache ──────────────────────────────────────────────────────────
+# Validated tokens are cached in-memory for TOKEN_CACHE_TTL seconds to avoid
+# opening a DB session in the middleware AND another in the route handler on
+# every API request. last_used_at is still written, but lazily (only on
+# cache miss, which is every TOKEN_CACHE_TTL seconds per token).
+_TOKEN_CACHE: dict[str, tuple[int, float]] = {}
+_TOKEN_CACHE_TTL = 300  # 5 minutes
+
+
+def _cached_token_check(raw_token: str) -> int | None:
+    """Return token_id from cache, or None if missing/expired."""
+    entry = _TOKEN_CACHE.get(raw_token)
+    if entry is None:
+        return None
+    tid, cached_at = entry
+    if time.time() - cached_at > _TOKEN_CACHE_TTL:
+        del _TOKEN_CACHE[raw_token]
+        return None
+    return tid
+
+
+def _cache_token(raw_token: str, token_id: int):
+    _TOKEN_CACHE[raw_token] = (token_id, time.time())
+
+
+def _invalidate_token_cache(raw_token: str):
+    _TOKEN_CACHE.pop(raw_token, None)
+
+
 # ── Middleware ─────────────────────────────────────────────────────────────
 
 PUBLIC_PATHS = {"/login", "/health", "/setup"}
@@ -151,6 +181,13 @@ class AuthMiddleware:
                 return
 
             raw_token = auth[6:]
+
+            # Check cache first — avoids a DB session on most requests
+            cached_tid = _cached_token_check(raw_token)
+            if cached_tid is not None:
+                await self.app(scope, receive, send)
+                return
+
             async with async_session() as db:
                 tok = await verify_api_token(raw_token, db)
                 if tok is None:
@@ -161,13 +198,14 @@ class AuthMiddleware:
                     )
                     await response(scope, receive, send)
                     return
-                # Stamp last_used_at
+                # Stamp last_used_at (only on cache refresh)
                 await db.execute(
                     update(ApiToken)
                     .where(ApiToken.id == tok.id)
                     .values(last_used_at=datetime.utcnow())
                 )
                 await db.commit()
+                _cache_token(raw_token, tok.id)
 
             await self.app(scope, receive, send)
             return
