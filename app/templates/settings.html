@@ -34,6 +34,7 @@
         <button data-tab="data" id="tab-data" class="px-5 py-3 text-sm font-medium border-b-2 border-transparent hover:text-accent transition tab-btn">💾 Data</button>
         <button data-tab="api-keys" id="tab-api-keys" class="px-5 py-3 text-sm font-medium border-b-2 border-transparent hover:text-accent transition tab-btn">🔑 API Keys</button>
         <button data-tab="email" id="tab-email" class="px-5 py-3 text-sm font-medium border-b-2 border-transparent hover:text-accent transition tab-btn">📬 Email</button>
+        <button data-tab="notifications" id="tab-notifications" class="px-5 py-3 text-sm font-medium border-b-2 border-transparent hover:text-accent transition tab-btn">🔔 Notifications</button>
         <button data-tab="appearance" id="tab-appearance" class="px-5 py-3 text-sm font-medium border-b-2 border-transparent hover:text-accent transition tab-btn">🎨 Appearance</button>
     </div>
 
@@ -316,6 +317,30 @@
                     </button>
                     <span id="email-result" class="text-xs text-muted"></span>
                 </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ════════════ NOTIFICATIONS TAB ════════════ -->
+    <div id="panel-notifications" class="tab-panel space-y-6">
+        <section class="bg-card rounded-xl border border-card shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-card">
+                <h2 class="text-base font-semibold text-primary">🔔 Push Notifications</h2>
+                <p class="text-xs text-muted mt-0.5">Get notified when it's time for your daily review.</p>
+            </div>
+            <div class="px-6 py-5 space-y-4">
+                <div>
+                    <button data-action="subscribe-push" class="px-5 py-2.5 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent-hover transition shadow-sm">
+                        🔔 Enable Notifications
+                    </button>
+                    <button data-action="unsubscribe-push" class="px-5 py-2.5 border border-card text-secondary text-sm font-medium rounded-lg hover:bg-page-alt transition shadow-sm" style="display:none">
+                        🔕 Disable Notifications
+                    </button>
+                </div>
+                <p class="text-xs text-muted">
+                    Your browser will ask for permission the first time you enable notifications.
+                    If you previously blocked notifications, you'll need to allow them in your browser settings.
+                </p>
             </div>
         </section>
     </div>

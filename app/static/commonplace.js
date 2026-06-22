@@ -918,7 +918,7 @@
     };
 
     (function() {
-        var valid = ['data', 'api-keys', 'email', 'appearance'];
+        var valid = ['data', 'api-keys', 'email', 'notifications', 'appearance'];
         var tab = location.hash.slice(1) || 'data';
         if (!valid.includes(tab)) tab = 'data';
         window.switchTab(tab);
