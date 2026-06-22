@@ -52,7 +52,7 @@
                 — self-hosted highlight library
             </p>
             <div class="mt-4 text-center">
-                <button onclick="navigator.clipboard.writeText('{{ highlight.text|e('js') }}').then(function(){var e=document.getElementById('copy-msg');e.textContent='Copied!';setTimeout(function(){e.textContent=''},2000);})"
+                <button onclick="navigator.clipboard.writeText('{{ highlight.text|replace("'", "\\'")|replace("\n", "\\n") }}').then(function(){var e=document.getElementById('copy-msg');e.textContent='Copied!';setTimeout(function(){e.textContent=''},2000);})"
                         class="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm cursor-pointer">
                     📋 Copy Text
                 </button>

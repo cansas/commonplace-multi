@@ -377,7 +377,8 @@
             '<button class="text-xs text-indigo-500 hover:text-indigo-700" onclick="event.stopPropagation(); window.copyText(\'' +
             jsSafe + '\', \'Highlight\')">\uD83D\uDCCB Copy</button>';
         if (hl.share_token) {
-            actions += ' <a href="/share/' + hl.share_token + '" target="_blank" class="text-xs text-indigo-500 hover:text-indigo-700">\uD83D\uDCE4 Share</a>';
+            actions += ' <a href="/share/' + hl.share_token + '" class="text-xs text-indigo-500 hover:text-indigo-700">\uD83D\uDCE4 Open</a>' +
+                       ' <a href="/share/' + hl.share_token + '" target="_blank" class="text-xs text-indigo-500 hover:text-indigo-700">\uD83D\uDCE4 Share</a>';
         }
         actions += '</div>';
         return '<div class="flex items-start gap-2 px-3 py-2.5 rounded-lg text-sm border ' + cls + '">' +
@@ -1047,7 +1048,8 @@
             '<button class="text-xs text-indigo-500 hover:text-indigo-700" onclick="event.stopPropagation(); window.copyText(\'' +
             jsSafe + '\', \'Highlight\')">\uD83D\uDCCB Copy</button>';
         if (hl.share_token) {
-            actions += ' <a href="/share/' + hl.share_token + '" target="_blank" class="text-xs text-indigo-500 hover:text-indigo-700">\uD83D\uDCE4 Share</a>';
+            actions += ' <a href="/share/' + hl.share_token + '" class="text-xs text-indigo-500 hover:text-indigo-700">\uD83D\uDCE4 Open</a>' +
+                       ' <a href="/share/' + hl.share_token + '" target="_blank" class="text-xs text-indigo-500 hover:text-indigo-700">\uD83D\uDCE4 Share</a>';
         }
         actions += '</div>';
         return '<div class="px-3 py-2.5 rounded-lg text-sm border ' + cls + '">' +
