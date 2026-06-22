@@ -110,6 +110,17 @@ class ApiToken(Base):
     user = relationship("User", back_populates="tokens")
 
 
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    endpoint = Column(String(512), nullable=False, unique=True)
+    p256dh_key = Column(String(256), nullable=False)
+    auth_key = Column(String(256), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class BookCover(Base):
     __tablename__ = "book_covers"
 
