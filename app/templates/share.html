@@ -51,6 +51,13 @@
                 <img src="/static/logo-32.png" class="inline-block w-4 h-4 mr-1 align-text-bottom" alt=""> <a href="https://github.com/cansas/commonplace" class="hover:text-slate-400 transition-colors">commonplace</a>
                 — self-hosted highlight library
             </p>
+            <div class="mt-4 text-center">
+                <button onclick="navigator.clipboard.writeText('{{ highlight.text|e('js') }}').then(function(){var e=document.getElementById('copy-msg');e.textContent='Copied!';setTimeout(function(){e.textContent=''},2000);})"
+                        class="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm cursor-pointer">
+                    📋 Copy Text
+                </button>
+                <p id="copy-msg" class="text-xs text-slate-400 mt-2"></p>
+            </div>
         </div>
         {% endif %}
     </div>

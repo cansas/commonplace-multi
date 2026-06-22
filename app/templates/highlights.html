@@ -125,6 +125,7 @@
                                         {% endfor %}
                                     </span>
                                     {% endif %}
+                                    <button data-action="copy-text" data-text="{{ h.text }}" data-label="Highlight" class="px-3 py-1 bg-white border border-slate-200 text-slate-600 rounded text-xs font-medium hover:bg-slate-50 transition-colors">📋 Copy</button>
                                     <button data-action="toggle-edit" data-hl-id="{{ h.id }}" class="px-3 py-1 bg-white border border-slate-200 text-slate-600 rounded text-xs font-medium hover:bg-slate-50 transition-colors">✏️ Edit</button>
                                     <button data-action="load-context" data-hl-id="{{ h.id }}" class="px-3 py-1 bg-white border border-slate-200 text-slate-600 rounded text-xs font-medium hover:bg-slate-50 transition-colors">📖 Context</button>
                                     <button data-action="delete-hl" data-hl-id="{{ h.id }}" class="px-3 py-1 bg-red-50 border border-red-200 text-red-600 rounded text-xs font-medium hover:bg-red-100 transition-colors">🗑️ Delete</button>
@@ -215,6 +216,7 @@
                                     <span>📅 {{ h.highlighted_at }}</span>
                                 </div>
                                 <div class="flex gap-2">
+                                    <button data-action="copy-text" data-text="{{ h.text }}" data-label="Highlight" class="flex-1 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-50">📋 Copy</button>
                                     <button data-action="toggle-edit" data-hl-id="{{ h.id }}" class="flex-1 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-50">✏️ Edit</button>
                                     <button data-action="load-context" data-hl-id="{{ h.id }}" class="flex-1 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-50">📖 Context</button>
                                     {% if h.share_token %}

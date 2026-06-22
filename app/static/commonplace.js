@@ -86,6 +86,19 @@
         }
     };
 
+    window.copyText = function(text, label) {
+        label = label || 'Text';
+        if (!navigator.clipboard || !navigator.clipboard.writeText) {
+            window.showToast('Clipboard not available', 'error');
+            return;
+        }
+        navigator.clipboard.writeText(text).then(function() {
+            window.showToast(label + ' copied!', 'success');
+        }).catch(function(e) {
+            window.showToast('Copy failed: ' + e.message, 'error');
+        });
+    };
+
     /* ── Base page initialisation ──────────────────── */
 
     // PWA service worker
@@ -359,13 +372,22 @@
         var pageInfo = '';
         if (hl.chapter) pageInfo += ' <span class="text-slate-400">\xb7</span> ' + hl.chapter;
         if (hl.page) pageInfo += ' <span class="text-slate-400">\xb7</span> p.' + hl.page;
+        var jsSafe = hl.text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+        var actions = '<div class="flex gap-2 mt-1.5 pt-1.5 border-t border-slate-100">' +
+            '<button class="text-xs text-indigo-500 hover:text-indigo-700" onclick="event.stopPropagation(); window.copyText(\'' +
+            jsSafe + '\', \'Highlight\')">\uD83D\uDCCB Copy</button>';
+        if (hl.share_token) {
+            actions += ' <a href="/share/' + hl.share_token + '" target="_blank" class="text-xs text-indigo-500 hover:text-indigo-700">\uD83D\uDCE4 Share</a>';
+        }
+        actions += '</div>';
         return '<div class="flex items-start gap-2 px-3 py-2.5 rounded-lg text-sm border ' + cls + '">' +
             '<button class="context-fav-btn shrink-0 mt-0.5 text-sm leading-none ' + (hl.favorite ? 'text-amber-400' : 'text-slate-300 hover:text-amber-300') + '" data-id="' + hl.id + '">' + favStar + '</button>' +
             '<div class="min-w-0 flex-1">' +
             '<p class="text-slate-700 leading-relaxed ' + (isCurrent ? 'font-medium' : '') + '">' + window.escapeHtml(text) + '</p>' +
             '<div class="text-xs text-slate-400 mt-0.5">' +
             (hl.highlighted_at || '') + pageInfo +
-            '</div></div></div>';
+            '</div>' + actions +
+            '</div></div>';
     }
 
     window.toggleEdit = function(id) {
@@ -1020,11 +1042,20 @@
         var pageInfo = '';
         if (hl.chapter) pageInfo += ' <span class="text-muted">\xb7</span> ' + hl.chapter;
         if (hl.page) pageInfo += ' <span class="text-muted">\xb7</span> p.' + hl.page;
+        var jsSafe = hl.text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+        var actions = '<div class="flex gap-2 mt-1.5 pt-1 border-t border-card">' +
+            '<button class="text-xs text-indigo-500 hover:text-indigo-700" onclick="event.stopPropagation(); window.copyText(\'' +
+            jsSafe + '\', \'Highlight\')">\uD83D\uDCCB Copy</button>';
+        if (hl.share_token) {
+            actions += ' <a href="/share/' + hl.share_token + '" target="_blank" class="text-xs text-indigo-500 hover:text-indigo-700">\uD83D\uDCE4 Share</a>';
+        }
+        actions += '</div>';
         return '<div class="px-3 py-2.5 rounded-lg text-sm border ' + cls + '">' +
             '<p class="text-primary leading-relaxed ' + (isCurrent ? 'font-medium' : '') + '">' + window.escapeHtml(text) + '</p>' +
             '<div class="text-xs text-muted mt-0.5">' +
             (hl.highlighted_at || '') + pageInfo +
-            '</div></div>';
+            '</div>' + actions +
+            '</div>';
     }
 
     window.closeReviewContext = function(e) {
@@ -1104,6 +1135,7 @@
                 }
             }
             // ── Highlights page actions ──
+            else if (action === 'copy-text') { e.preventDefault(); var t = btn.getAttribute('data-text'); var l = btn.getAttribute('data-label') || 'Highlight'; if (window.copyText) window.copyText(t, l); }
             else if (action === 'toggle-fav' && hlId && window.toggleFav) { e.preventDefault(); window.toggleFav(hlId, btn); }
             else if (action === 'toggle-edit' && hlId && window.toggleEdit) { e.preventDefault(); window.toggleEdit(hlId); window.scrollToEdit(hlId); }
             else if (action === 'save-edit' && hlId && window.saveEdit) { e.preventDefault(); window.saveEdit(hlId); }
