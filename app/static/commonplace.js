@@ -372,10 +372,9 @@
         var pageInfo = '';
         if (hl.chapter) pageInfo += ' <span class="text-slate-400">\xb7</span> ' + hl.chapter;
         if (hl.page) pageInfo += ' <span class="text-slate-400">\xb7</span> p.' + hl.page;
-        var jsSafe = hl.text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+        var escapedText = window.escapeHtml(hl.text);
         var actions = '<div class="flex gap-2 mt-1.5 pt-1.5 border-t border-slate-100">' +
-            '<button class="text-xs text-indigo-500 hover:text-indigo-700" onclick="event.stopPropagation(); window.copyText(\'' +
-            jsSafe + '\', \'Highlight\')">\uD83D\uDCCB Copy</button>';
+            '<button data-action="copy-text" data-text="' + escapedText + '" data-label="Highlight" class="text-xs text-indigo-500 hover:text-indigo-700">\uD83D\uDCCB Copy</button>';
         if (hl.share_token) {
             actions += ' <a href="/share/' + hl.share_token + '" class="text-xs text-indigo-500 hover:text-indigo-700">\uD83D\uDCE4 Open</a>' +
                        ' <a href="/share/' + hl.share_token + '" target="_blank" class="text-xs text-indigo-500 hover:text-indigo-700">\uD83D\uDCE4 Share</a>';
@@ -1043,10 +1042,9 @@
         var pageInfo = '';
         if (hl.chapter) pageInfo += ' <span class="text-muted">\xb7</span> ' + hl.chapter;
         if (hl.page) pageInfo += ' <span class="text-muted">\xb7</span> p.' + hl.page;
-        var jsSafe = hl.text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+        var escapedText = window.escapeHtml(hl.text);
         var actions = '<div class="flex gap-2 mt-1.5 pt-1 border-t border-card">' +
-            '<button class="text-xs text-indigo-500 hover:text-indigo-700" onclick="event.stopPropagation(); window.copyText(\'' +
-            jsSafe + '\', \'Highlight\')">\uD83D\uDCCB Copy</button>';
+            '<button data-action="copy-text" data-text="' + escapedText + '" data-label="Highlight" class="text-xs text-indigo-500 hover:text-indigo-700">\uD83D\uDCCB Copy</button>';
         if (hl.share_token) {
             actions += ' <a href="/share/' + hl.share_token + '" class="text-xs text-indigo-500 hover:text-indigo-700">\uD83D\uDCE4 Open</a>' +
                        ' <a href="/share/' + hl.share_token + '" target="_blank" class="text-xs text-indigo-500 hover:text-indigo-700">\uD83D\uDCE4 Share</a>';
@@ -1137,7 +1135,7 @@
                 }
             }
             // ── Highlights page actions ──
-            else if (action === 'copy-text') { e.preventDefault(); var t = btn.getAttribute('data-text'); var l = btn.getAttribute('data-label') || 'Highlight'; if (window.copyText) window.copyText(t, l); }
+            else if (action === 'copy-text') { e.preventDefault(); e.stopPropagation(); var t = btn.getAttribute('data-text'); var l = btn.getAttribute('data-label') || 'Highlight'; if (window.copyText) window.copyText(t, l); }
             else if (action === 'toggle-fav' && hlId && window.toggleFav) { e.preventDefault(); window.toggleFav(hlId, btn); }
             else if (action === 'toggle-edit' && hlId && window.toggleEdit) { e.preventDefault(); window.toggleEdit(hlId); window.scrollToEdit(hlId); }
             else if (action === 'save-edit' && hlId && window.saveEdit) { e.preventDefault(); window.saveEdit(hlId); }
