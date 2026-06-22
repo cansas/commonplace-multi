@@ -41,6 +41,13 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"  WARNING: Digest scheduler failed to start: {e}")
 
+    # Start the push scheduler (checks every 5 min for review reminders)
+    try:
+        from app.services.push_scheduler import start_scheduler as start_push_scheduler
+        start_push_scheduler()
+    except Exception as e:
+        print(f"  WARNING: Push scheduler failed to start: {e}")
+
     # Backfill book covers in the background (don't block startup)
     async def _backfill_covers():
         async with async_session() as db:
@@ -95,6 +102,12 @@ async def lifespan(app: FastAPI):
             stop_scheduler()
         except Exception:
             pass
+
+    try:
+        from app.services.push_scheduler import stop_scheduler as stop_push_scheduler
+        stop_push_scheduler()
+    except Exception:
+        pass
 
 
 app = FastAPI(title="commonplace", version="1.0.2", lifespan=lifespan)
