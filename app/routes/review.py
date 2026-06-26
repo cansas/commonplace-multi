@@ -9,11 +9,11 @@ from app.models import Highlight, ReviewLog
 from app.services.settings_service import get_review_count
 from app.services.streaks import calculate_streaks
 from app.services.achievements import check_and_unlock
+from app.services.review_queue import get_or_create_queue, mark_reviewed
 from app.csrf import template_context, csrf_guard
 from app.dates import today_start_utc
 from app.template import render
 from datetime import datetime, timedelta
-import random
 import time
 from typing import Optional
 
@@ -35,37 +35,6 @@ async def _reviewed_today_count(db) -> int:
         .where(ReviewLog.reviewed_at >= today_start)
     )
     return result.scalar() or 0
-
-
-async def _get_unreviewed_highlight(db):
-    """Pick one random highlight not yet logged in ReviewLog today."""
-    today_start = _today_start()
-    count_q = (
-        select(func.count(Highlight.id))
-        .outerjoin(
-            ReviewLog,
-            (ReviewLog.highlight_id == Highlight.id) &
-            (ReviewLog.reviewed_at >= today_start)
-        )
-        .where(ReviewLog.id.is_(None))
-    )
-    count_result = await db.execute(count_q)
-    total = count_result.scalar() or 0
-    if total == 0:
-        return None
-    offset = random.randint(0, total - 1)
-    result = await db.execute(
-        select(Highlight)
-        .outerjoin(
-            ReviewLog,
-            (ReviewLog.highlight_id == Highlight.id) &
-            (ReviewLog.reviewed_at >= today_start)
-        )
-        .where(ReviewLog.id.is_(None))
-        .offset(offset)
-        .limit(1)
-    )
-    return result.scalar_one_or_none()
 
 
 async def _log_review(db, hl_id: int, rating: int | None = None):
@@ -109,11 +78,20 @@ async def review_page(
     db: AsyncSession = Depends(get_db),
 ):
     daily_limit = get_review_count()
-    done_today = await _reviewed_today_count(db)
     streaks = await calculate_streaks(db)
+    queue = await get_or_create_queue(daily_limit)
 
-    # If at or over daily limit, you're done for the day
-    if done_today >= daily_limit:
+    # Find the first not-yet-reviewed entry
+    current_entry = None
+    current_idx = 0
+    for i, entry in enumerate(queue):
+        if not entry["reviewed"]:
+            current_entry = entry
+            current_idx = i + 1  # 1-based
+            break
+
+    # If no unreviewed entries left, you're done
+    if not current_entry:
         today_reviews = await _get_today_reviews(db)
         return render(
             request,
@@ -122,45 +100,13 @@ async def review_page(
                 request,
                 active_page="review",
                 highlight=None,
-                current_index=daily_limit,
+                current_index=len(queue),
                 total_count=daily_limit,
                 done=True,
                 today_reviews=today_reviews,
                 streaks=streaks,
             ),
         )
-
-    hl = await _get_unreviewed_highlight(db)
-
-    if not hl:
-        today_reviews = await _get_today_reviews(db)
-        return render(
-            request,
-            "review.html",
-            template_context(
-                request,
-                active_page="review",
-                highlight=None,
-                current_index=done_today,
-                total_count=daily_limit,
-                done=True,
-                today_reviews=today_reviews,
-                streaks=streaks,
-            ),
-        )
-
-    highlight_data = {
-        "id": hl.id,
-        "text": hl.text,
-        "note": hl.note,
-        "page": hl.page,
-        "chapter": hl.chapter,
-        "book_title": hl.book_title,
-        "book_author": hl.book_author,
-        "source_type": hl.source_type,
-        "tags": [t.name for t in hl.tags],
-        "favorite": hl.favorite,
-    }
 
     return render(
         request,
@@ -168,8 +114,8 @@ async def review_page(
         template_context(
             request,
             active_page="review",
-            highlight=highlight_data,
-            current_index=done_today + 1,
+            highlight=current_entry,
+            current_index=current_idx,
             total_count=daily_limit,
             done=False,
             streaks=streaks,
@@ -304,6 +250,7 @@ async def review_rate(
         raise HTTPException(status_code=400, detail="Invalid rating")
     await _log_review(db, hl_id, rating)
     await db.commit()
+    await mark_reviewed(hl_id)
 
     # Check for newly unlocked achievements
     streaks = await calculate_streaks(db)
@@ -331,6 +278,7 @@ async def review_next(
     _check_review_rate_limit(request)
     await _log_review(db, hl_id)
     await db.commit()
+    await mark_reviewed(hl_id)
 
     # Check for newly unlocked achievements
     streaks = await calculate_streaks(db)
@@ -357,6 +305,7 @@ async def review_favorite(
         hl.favorite = 0 if hl.favorite else 1
     await _log_review(db, hl_id)
     await db.commit()
+    await mark_reviewed(hl_id)
 
     streaks = await calculate_streaks(db)
     daily_limit = get_review_count()
@@ -382,6 +331,7 @@ async def review_delete(
         await db.delete(hl)
     await _log_review(db, hl_id)
     await db.commit()
+    await mark_reviewed(hl_id)
 
     streaks = await calculate_streaks(db)
     daily_limit = get_review_count()

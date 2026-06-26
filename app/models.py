@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey, Table, Boolean, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey, Table, Boolean, UniqueConstraint, Date
 from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import datetime
@@ -119,6 +119,22 @@ class PushSubscription(Base):
     auth_key = Column(String(256), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, default=1)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class DailyReviewQueue(Base):
+    __tablename__ = "daily_review_queue"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    highlight_id = Column(Integer, ForeignKey("highlights.id"), nullable=False)
+    queue_date = Column(Date, nullable=False)
+    position = Column(Integer, nullable=False)
+    reviewed = Column(Boolean, default=False)
+
+    highlight = relationship("Highlight")
+
+    __table_args__ = (
+        UniqueConstraint("queue_date", "position", name="uq_queue_date_position"),
+    )
 
 
 class BookCover(Base):

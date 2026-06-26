@@ -107,30 +107,33 @@ async def send_email_via_mailjet(
 
 
 async def build_digest_html(db) -> str:
-    """Query random highlights and build an HTML email body."""
-    from sqlalchemy import select, func, text as sqltext
-    from app.models import Highlight
+    """Query the daily review queue and build an HTML email body.
 
-    rows = await db.execute(
-        select(Highlight)
-        .order_by(func.random())
-        .limit(3)
-    )
-    highlights = rows.scalars().all()
+    Uses the same queue as the review page so the email matches
+    what the user will see when they open /review.
+    """
+    from app.services.review_queue import get_or_create_queue
+    from app.services.settings_service import get_review_count
+
+    queue = await get_or_create_queue(get_review_count())
+    # Show up to 3 un-reviewed entries from the queue
+    highlights = [h for h in queue if not h["reviewed"]][:3]
 
     if not highlights:
         return "<p>No highlights to review today. Import some highlights to get started!</p>"
 
     items_html = ""
     for hl in highlights[:3]:
-        text = hl.text or ""
-        note = hl.note or ""
+        text = hl.get("text") or ""
+        note = hl.get("note") or ""
+        book_title = hl.get("book_title") or ""
+        book_author = hl.get("book_author") or ""
         items_html += f"""
         <div style="margin-bottom:24px;padding:16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">
             <p style="margin:0 0 4px;font-size:14px;line-height:1.6;color:#1e293b;font-style:italic;">{_escape_html(text)}</p>
             <div style="margin-top:8px;font-size:12px;color:#64748b;">
-                <span>📖 {_escape_html(hl.book_title or "")}</span>
-                {f'<span style="margin:0 4px;">·</span><span>✍️ {_escape_html(hl.book_author or "")}</span>' if hl.book_author else ''}
+                <span>📖 {_escape_html(book_title)}</span>
+                {f'<span style="margin:0 4px;">·</span><span>✍️ {_escape_html(book_author)}</span>' if book_author else ''}
             </div>
         </div>
         """
