@@ -514,14 +514,12 @@ async def delete_book(
     ))
     await db.execute(sqltext(
         "CREATE TRIGGER IF NOT EXISTS highlights_ad AFTER DELETE ON highlights BEGIN "
-        "  INSERT INTO highlights_fts(highlights_fts, rowid, text, note, book_title, book_author) "
-        "  VALUES ('delete', old.id, old.text, old.note, old.book_title, old.book_author); "
+        "  DELETE FROM highlights_fts WHERE rowid = old.id; "
         "END"
     ))
     await db.execute(sqltext(
         "CREATE TRIGGER highlights_au AFTER UPDATE OF text, note, book_title, book_author ON highlights BEGIN "
-        "  INSERT INTO highlights_fts(highlights_fts, rowid, text, note, book_title, book_author) "
-        "  VALUES ('delete', old.id, old.text, old.note, old.book_title, old.book_author); "
+        "  DELETE FROM highlights_fts WHERE rowid = old.id; "
         "  INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
         "  VALUES (new.id, new.text, new.note, new.book_title, new.book_author); "
         "END"

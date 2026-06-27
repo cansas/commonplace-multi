@@ -1264,7 +1264,7 @@
 
         // Universal data-action change delegation
         document.addEventListener('change', function(e) {
-            var el = e.target.closest('[data-action]');
+            var el = e.target.closest('[data-action], [data-auto-submit]');
             if (!el) return;
             var action = el.getAttribute('data-action');
 

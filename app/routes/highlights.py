@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sa_func, text, text as sqltext
 from app.database import get_db
-from app.models import Highlight, Tag, BookCover
+from app.models import Highlight, Tag, BookCover, ReviewLog, DailyReviewQueue
 from app.schemas import HighlightOut, HighlightCreate, HighlightUpdate
 from app.services.highlight_card import generate_card, fetch_cover_data
 from app.csrf import template_context
@@ -228,7 +228,21 @@ async def export_highlights(
 async def delete_highlight(hl_id: int, db: AsyncSession = Depends(get_db)):
     hl = await db.get(Highlight, hl_id)
     if hl:
-        await db.delete(hl)
+        # Detach hl and its loaded reviews from the session so ORM flush
+        # doesn't try to cascade or update child rows (all FKs are NOT NULL).
+        db.expunge(hl)
+        for r in list(hl.reviews):
+            db.expunge(r)
+        # Delete child rows first, then the highlight itself
+        await db.execute(
+            ReviewLog.__table__.delete().where(ReviewLog.highlight_id == hl_id)
+        )
+        await db.execute(
+            DailyReviewQueue.__table__.delete().where(DailyReviewQueue.highlight_id == hl_id)
+        )
+        await db.execute(
+            Highlight.__table__.delete().where(Highlight.__table__.c.id == hl_id)
+        )
         await db.commit()
     return {"ok": True}
 

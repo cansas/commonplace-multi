@@ -35,7 +35,18 @@ async def get_or_create_queue(daily_limit: int) -> list[dict]:
         rows = existing.scalars().all()
 
         if rows:
-            # Queue exists — fetch highlights and return in order
+            # Queue exists — truncate if daily_limit was lowered since creation
+            if len(rows) > daily_limit:
+                excess = rows[daily_limit:]
+                excess_ids = [r.id for r in excess]
+                await db.execute(
+                    DailyReviewQueue.__table__.delete()
+                    .where(DailyReviewQueue.id.in_(excess_ids))
+                )
+                await db.commit()
+                rows = rows[:daily_limit]
+
+            # Fetch highlights and return in order
             hl_ids = [r.highlight_id for r in rows]
             hls = await db.execute(
                 select(Highlight).where(Highlight.id.in_(hl_ids))
