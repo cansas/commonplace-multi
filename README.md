@@ -28,7 +28,7 @@ For full setup instructions, see [INSTALL.md](INSTALL.md).
 | [API.md](API.md) | Full API reference — all 62 endpoints with auth, params, and examples |
 | [ENV.md](ENV.md) | Environment variables reference |
 | [INSTALL.md](INSTALL.md) | Server, KOReader plugin, and Obsidian plugin setup |
-
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Bug reports, PR workflow, AI code policy |
 ## Features
 
 - **Highlights** — add, edit, delete, search, filter by source/favorites/book
