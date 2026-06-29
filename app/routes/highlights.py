@@ -173,23 +173,41 @@ async def list_highlights(
 async def export_highlights(
     since: Optional[str] = "",
     offset: int = 0,
-    limit: int = 500,
+    limit: int = 10000,
     db: AsyncSession = Depends(get_db),
 ):
-    """Export highlights grouped by book for Obsidian sync. Paginated."""
-    query = select(Highlight).order_by(Highlight.book_title, Highlight.highlighted_at)
+    """Export highlights grouped by book for Obsidian sync.
+    
+    When ``since`` is provided, returns ALL highlights for books that have
+    ANY highlights created after that timestamp — not just the new ones.
+    This lets client plugins overwrite per-book files safely without losing
+    previously synced highlights.
+    """
+    base_q = select(Highlight).order_by(Highlight.book_title, Highlight.highlighted_at)
+
     if since:
         try:
             since_dt = datetime.fromisoformat(since)
-            query = query.where(Highlight.created_at >= since_dt)
+            # Find books with any highlights after since_dt
+            changed_books_q = (
+                select(Highlight.book_title)
+                .where(Highlight.created_at >= since_dt)
+                .distinct()
+            )
+            result = await db.execute(changed_books_q)
+            changed_titles = [row[0] for row in result.fetchall()]
+            if changed_titles:
+                base_q = base_q.where(Highlight.book_title.in_(changed_titles))
+            else:
+                base_q = base_q.where(sqltext("1=0"))
         except (ValueError, TypeError):
             pass
 
-    count_q = select(sa_func.count()).select_from(query.subquery())
+    count_q = select(sa_func.count()).select_from(base_q.subquery())
     total_result = await db.execute(count_q)
     total = total_result.scalar() or 0
 
-    result = await db.execute(query.offset(offset).limit(limit))
+    result = await db.execute(base_q.offset(offset).limit(limit))
     all_highlights = result.scalars().all()
 
     # Group by book
