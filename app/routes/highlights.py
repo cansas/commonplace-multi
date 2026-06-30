@@ -146,6 +146,7 @@ async def list_highlights(
     limit: int = 50,
     since: Optional[str] = "",
     search: Optional[str] = "",
+    book_title: Optional[str] = "",
     db: AsyncSession = Depends(get_db),
 ):
     if search and search.strip():
@@ -159,6 +160,8 @@ async def list_highlights(
         query = select(Highlight).where(Highlight.id.in_(ids)).order_by(Highlight.created_at.desc())
     else:
         query = select(Highlight).order_by(Highlight.created_at.desc())
+    if book_title:
+        query = query.where(Highlight.book_title == book_title)
     if since:
         try:
             since_dt = datetime.fromisoformat(since)
