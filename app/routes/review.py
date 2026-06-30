@@ -230,10 +230,23 @@ async def review_stats(db: AsyncSession = Depends(get_db)):
     return {
         "streak": streaks["current"],
         "best_streak": streaks["best"],
-        "reviewed_today": done_today,
-        "daily_limit": daily_limit,
+        "todayReviewCount": done_today,
+        "dailyLimit": daily_limit,
         "remaining": remaining,
     }
+
+
+@router.get("/api/review/today")
+async def api_review_today(db: AsyncSession = Depends(get_db)):
+    """Return today's reviewed highlights as JSON (for review log / sharing)."""
+    rows = await _get_today_reviews(db)
+    return [{
+        "highlight_id": r["hl_id"],
+        "text": r["text"],
+        "book_title": r["book_title"],
+        "rating": r["rating"],
+        "reviewed_at": r["reviewed_at"].isoformat() if r["reviewed_at"] else None,
+    } for r in rows]
 
 
 @router.post("/review/rate")
@@ -449,3 +462,56 @@ async def review_heatmap_page(
             next_year=target_year + 1 if target_year < now.year else None,
         ),
     )
+
+
+@router.get("/api/review/next")
+async def api_review_next(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the next unreviewed highlight from today's queue as JSON."""
+    daily_limit = get_review_count()
+    queue = await get_or_create_queue(daily_limit)
+
+    for entry in queue:
+        if not entry["reviewed"]:
+            return _review_entry_to_json(entry)
+
+    return {"highlight_id": None, "done": True}
+
+
+def _review_entry_to_json(entry: dict) -> dict:
+    """Convert a queue entry to the JSON shape the iOS app expects."""
+    return {
+        "highlight_id": entry["id"],
+        "text": entry.get("text", ""),
+        "note": entry.get("note"),
+        "page": entry.get("page"),
+        "chapter": entry.get("chapter"),
+        "book_title": entry.get("book_title", ""),
+        "book_author": entry.get("book_author"),
+        "source_type": entry.get("source_type", "manual"),
+    }
+
+
+@router.post("/api/review/rate")
+async def api_review_rate(
+    request: Request,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """Rate a highlight (JSON API). Body: {\"highlight_id\": int, \"rating\": 0-3}"""
+    hl_id = body.get("highlight_id")
+    rating = body.get("rating")
+
+    if not hl_id:
+        raise HTTPException(status_code=400, detail="highlight_id is required")
+    if rating is not None and rating not in (0, 1, 2, 3):
+        raise HTTPException(status_code=400, detail="rating must be 0-3")
+
+    _check_review_rate_limit(request)
+    await _log_review(db, hl_id, rating)
+    await db.commit()
+    await mark_reviewed(hl_id)
+
+    return {"ok": True, "highlight_id": hl_id, "rating": rating}

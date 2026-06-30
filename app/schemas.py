@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional, List
 from datetime import datetime
 
@@ -40,6 +40,16 @@ class HighlightOut(BaseModel):
     favorite: int = 0
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def coerce_tags(cls, v):
+        """Convert Tag ORM objects to their name strings."""
+        if v is None:
+            return []
+        if isinstance(v, list) and v and hasattr(v[0], 'name'):
+            return [t.name for t in v]
+        return v if isinstance(v, list) else []
 
 
 class HighlightUpdate(BaseModel):

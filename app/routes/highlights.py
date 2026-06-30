@@ -507,3 +507,39 @@ async def highlight_card(hl_id: int, db: AsyncSession = Depends(get_db)):
     )
     return Response(content=svg, media_type="image/svg+xml",
                     headers={"Cache-Control": "public, max-age=86400"})
+
+
+@router.get("/api/highlights/{hl_id}/cover-image")
+async def highlight_cover_image(hl_id: int, db: AsyncSession = Depends(get_db)):
+    """Return the book cover image for a highlight (raw bytes)."""
+    hl = await db.get(Highlight, hl_id)
+    if not hl:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    if not hl.book_title:
+        raise HTTPException(status_code=404, detail="No book title")
+
+    cover_result = await db.execute(
+        select(BookCover).where(
+            BookCover.book_title == hl.book_title,
+            BookCover.book_author == (hl.book_author or ""),
+        )
+    )
+    cover = cover_result.scalar_one_or_none()
+    if not cover or not cover.cover_url:
+        raise HTTPException(status_code=404, detail="No cover")
+
+    uri = await fetch_cover_data(cover.cover_url)
+    if not uri or not uri.startswith("data:image/"):
+        raise HTTPException(status_code=404, detail="Cover not available")
+
+    # Decode the data URI to raw bytes
+    import base64
+    mime = uri.split(";")[0].split(":")[1] if ";" in uri else "image/png"
+    b64 = uri.split(",")[1] if "," in uri else ""
+    try:
+        raw = base64.b64decode(b64)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to decode cover")
+
+    return Response(content=raw, media_type=mime)

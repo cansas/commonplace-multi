@@ -625,3 +625,69 @@ async def upload_cover_by_hl(hl_id: int, file: UploadFile = File(...), db: Async
     if not hl:
         return JSONResponse({"ok": False, "error": "Highlight not found"}, status_code=404)
     return await upload_cover(title=hl.book_title, author=hl.book_author or "", file=file, db=db)
+
+
+@router.get("/api/books")
+async def api_books(
+    request: Request,
+    search: Optional[str] = Query(default=""),
+    sort: str = Query(default="highlights"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return books with highlight counts and cover info as JSON."""
+
+    query = (
+        select(
+            Highlight.book_title,
+            Highlight.book_author,
+            sa_func.count(Highlight.id).label("highlight_count"),
+            sa_func.max(Highlight.highlighted_at).label("last_highlighted"),
+            sa_func.max(Highlight.id).label("sample_hl_id"),
+        )
+        .group_by(Highlight.book_title, Highlight.book_author)
+    )
+
+    if search:
+        query = query.where(
+            or_(
+                Highlight.book_title.ilike(f"%{search}%"),
+                Highlight.book_author.ilike(f"%{search}%"),
+            )
+        )
+
+    if sort == "title":
+        query = query.order_by(Highlight.book_title.asc())
+    elif sort == "author":
+        query = query.order_by(Highlight.book_author.asc().nullslast())
+    else:
+        query = query.order_by(sa_func.count(Highlight.id).desc())
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    cover_keys = [(row.book_title, row.book_author or "") for row in rows]
+    cover_map = {}
+    if cover_keys:
+        cover_result = await db.execute(
+            select(BookCover).where(
+                or_(*[
+                    (BookCover.book_title == t) & (BookCover.book_author == a)
+                    for t, a in cover_keys
+                ])
+            )
+        )
+        for cover in cover_result.scalars().all():
+            cover_map[(cover.book_title, cover.book_author)] = cover
+
+    books = []
+    for row in rows:
+        cover = cover_map.get((row.book_title, row.book_author or ""))
+        books.append({
+            "title": row.book_title,
+            "author": row.book_author or "Unknown",
+            "highlight_count": row.highlight_count,
+            "cover_url": cover.cover_url if cover else None,
+            "sample_highlight_id": row.sample_hl_id,
+        })
+
+    return {"books": books}
