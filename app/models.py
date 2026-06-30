@@ -33,8 +33,8 @@ class Highlight(Base):
     share_token = Column(String(64), unique=True, nullable=True)
     fingerprint = Column(String(64), nullable=True, index=True)  # SHA256 dedup hash
 
-    tags = relationship("Tag", secondary=highlight_tags, lazy="selectin")
-    reviews = relationship("ReviewLog", back_populates="highlight", lazy="selectin")
+    tags = relationship("Tag", secondary=highlight_tags, lazy="subquery")
+    reviews = relationship("ReviewLog", back_populates="highlight", lazy="subquery")
 
 
 class Tag(Base):

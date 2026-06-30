@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
+import sqlalchemy
 import os
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:////app/data/commonplace.db")
@@ -81,8 +82,10 @@ async def init_db():
                 "CREATE INDEX IF NOT EXISTS ix_highlights_fingerprint "
                 "ON highlights(fingerprint)"
             ))
-        except Exception:
-            pass
+        except sqlalchemy.exc.OperationalError:
+            pass  # SQLite version or feature not supported
+        except Exception as e:
+            print(f"  WARNING: Could not create fingerprint index: {e}")
 
     # ── BookCover metadata columns ──────────────────────────────────────────
     async with engine.begin() as conn:
@@ -130,8 +133,10 @@ async def init_db():
                 "CREATE INDEX IF NOT EXISTS ix_highlights_dedup "
                 "ON highlights(text, book_title, highlighted_at)"
             ))
-        except Exception:
-            pass  # Already exists or not supported
+        except sqlalchemy.exc.OperationalError:
+            pass  # SQLite version or feature not supported
+        except Exception as e:
+            print(f"  WARNING: Could not create dedup index: {e}")
 
     # ── FTS5 Full-Text Search ─────────────────────────────────────────────
     async with engine.begin() as conn:
@@ -153,16 +158,13 @@ async def init_db():
             "  VALUES (new.id, new.text, new.note, new.book_title, new.book_author); "
             "END"
         ))
-        await conn.execute(sqltext("DROP TRIGGER IF EXISTS highlights_ad"))
         await conn.execute(sqltext(
-            "CREATE TRIGGER highlights_ad AFTER DELETE ON highlights BEGIN "
+            "CREATE TRIGGER IF NOT EXISTS highlights_ad AFTER DELETE ON highlights BEGIN "
             "  DELETE FROM highlights_fts WHERE rowid = old.id; "
             "END"
         ))
-        # Replace old AU trigger that fired on EVERY column with one scoped to content columns
-        await conn.execute(sqltext("DROP TRIGGER IF EXISTS highlights_au"))
         await conn.execute(sqltext(
-            "CREATE TRIGGER highlights_au AFTER UPDATE OF text, note, book_title, book_author ON highlights BEGIN "
+            "CREATE TRIGGER IF NOT EXISTS highlights_au AFTER UPDATE OF text, note, book_title, book_author ON highlights BEGIN "
             "  DELETE FROM highlights_fts WHERE rowid = old.id; "
             "  INSERT INTO highlights_fts(rowid, text, note, book_title, book_author) "
             "  VALUES (new.id, new.text, new.note, new.book_title, new.book_author); "

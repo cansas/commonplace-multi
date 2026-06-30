@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """
 Seed commonplace from the Obsidian vault's Readwise exports.
-Usage: python3 seed_from_obsidian.py http://localhost:8765 my-api-token
+Usage: python3 seed_from_obsidian.py <api_url> <api_token> [--vault-path <path>]
 """
-
 import sys
 import os
 import json
 import glob
+import argparse
+import re
 import urllib.request
 
-DEFAULT_VAULT_PATH = os.path.expanduser("~/obsidianvault")
+VAULT_PATH_HELP = os.path.expanduser("~/obsidianvault")
 
 
 def parse_readwise_directory(vault_path):
@@ -36,16 +37,22 @@ def parse_readwise_directory(vault_path):
     return highlights
 
 
+def _strip_code_fences(content):
+    """Remove fenced code blocks so regex searches don't match inside them."""
+    return re.sub(r"```.*?```", "", content, flags=re.DOTALL)
+
+
 def _parse_content(content, filename):
     """Minimal parser for Readwise Obsidian export format."""
-    import re
-
     highlights = []
     book_title = ""
     book_author = ""
 
-    # Title
-    m = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
+    # Strip code fences before matching headers
+    clean = _strip_code_fences(content)
+
+    # Title — use content with code fences stripped
+    m = re.search(r"^#\s+(.+)$", clean, re.MULTILINE)
     if m:
         book_title = m.group(1).strip()
 
@@ -122,19 +129,24 @@ def send_highlights(highlights, api_url, api_token):
 
 
 def main():
-    if len(sys.argv) < 3:
-        print("Usage: python3 seed_from_obsidian.py <api_url> <api_token> [vault_path]")
-        print(f"Example: python3 seed_from_obsidian.py http://localhost:8765 change-me ~/obsidianvault")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Seed commonplace from Obsidian vault Readwise exports."
+    )
+    parser.add_argument("api_url", help="Commonplace server URL (e.g. http://localhost:8765)")
+    parser.add_argument("api_token", help="Commonplace API token")
+    parser.add_argument("--vault-path", default=VAULT_PATH_HELP,
+                        help=f"Path to Obsidian vault (default: {VAULT_PATH_HELP})")
 
-    api_url = sys.argv[1]
-    api_token = sys.argv[2]
-    vault_path = os.path.expanduser(sys.argv[3] if len(sys.argv) > 3 else DEFAULT_VAULT_PATH)
+    args = parser.parse_args()
+    api_url = args.api_url
+    api_token = args.api_token
+    vault_path = os.path.expanduser(args.vault_path)
 
     print(f"🔍 Scanning Obsidian vault at {vault_path}")
 
     if not os.path.isdir(vault_path):
         print(f"❌ Vault path {vault_path} not found")
+        print(f"   Use --vault-path <path> to specify your Obsidian vault directory")
         sys.exit(1)
 
     highlights = parse_readwise_directory(vault_path)

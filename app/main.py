@@ -30,6 +30,11 @@ async def lifespan(app: FastAPI):
     """Application lifespan: startup init, graceful shutdown."""
     # ── Startup ──────────────────────────────────────────────────────
     await init_db()
+    os.makedirs(COVERS_DIR, exist_ok=True)
+    try:
+        os.chmod(COVERS_DIR, 0o755)
+    except Exception:
+        pass
     async with async_session() as db:
         await ensure_admin(db)
 
@@ -110,16 +115,10 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="commonplace", version="1.0.6", lifespan=lifespan)
+app = FastAPI(title="commonplace", version="1.0.7", lifespan=lifespan)
 
 # Ensure covers directory exists on the mounted volume
 COVERS_DIR = os.environ.get("COVERS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "covers"))
-os.makedirs(COVERS_DIR, exist_ok=True)
-# Ensure covers dir is writable by appuser
-try:
-    os.chmod(COVERS_DIR, 0o755)
-except Exception:
-    pass
 
 # Templates
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))

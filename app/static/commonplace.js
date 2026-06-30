@@ -1152,7 +1152,6 @@
     }
 
     window.closeReviewContext = function(e) {
-        if (e && e.target !== e.currentTarget) return;
         document.getElementById('review-context-modal').classList.add('hidden');
     };
 

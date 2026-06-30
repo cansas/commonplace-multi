@@ -11,6 +11,7 @@ from app.csrf import template_context
 from app.services.settings_service import get_hardcover_api_key
 from app.template import render
 from typing import Optional
+import asyncio
 import hashlib
 import math
 import os
@@ -555,6 +556,9 @@ async def backfill_covers(db: AsyncSession = Depends(get_db)):
     }
 
     fetched = 0
+    sem = asyncio.Semaphore(3)  # match batch_search default concurrency
+    pending = []
+
     for row in books:
         key = (row.book_title, row.book_author or "")
         cover_row = cover_map.get(key)
@@ -567,10 +571,26 @@ async def backfill_covers(db: AsyncSession = Depends(get_db)):
 
         known_id = cover_row.hardcover_id if cover_row else None
         existing_isbn = cover_row.isbn if cover_row else None
-        url, cover_source, hc_id, isbn = await search_cover(
-            row.book_title, row.book_author or "",
-            hardcover_key=hc_key, known_id=known_id, isbn=existing_isbn,
-        )
+        pending.append((row, cover_row, known_id, existing_isbn, key))
+
+    async def _fetch_one(row, cover_row, known_id, existing_isbn, key):
+        async with sem:
+            return (row, cover_row, key,
+                    await search_cover(
+                        row.book_title, row.book_author or "",
+                        hardcover_key=hc_key, known_id=known_id, isbn=existing_isbn,
+                    ))
+
+    results = await asyncio.gather(*[
+        _fetch_one(row, cover_row, known_id, existing_isbn, key)
+        for row, cover_row, known_id, existing_isbn, key in pending
+    ], return_exceptions=True)
+
+    for item in results:
+        if isinstance(item, BaseException):
+            print(f"  WARNING: Cover fetch error: {item}")
+            continue
+        row, cover_row, key, (url, cover_source, hc_id, isbn) = item
         if url:
             if cover_row:
                 cover_row.cover_url = url
@@ -587,7 +607,7 @@ async def backfill_covers(db: AsyncSession = Depends(get_db)):
                     hardcover_id=hc_id, isbn=isbn,
                 ))
             fetched += 1
-            await db.commit()
+    await db.commit()
     return {"ok": True, "fetched": fetched}
 
 

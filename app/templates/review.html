@@ -199,7 +199,7 @@
     <div class="bg-card rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-lg mx-0 md:mx-4 max-h-[80vh] overflow-y-auto pointer-events-auto" onclick="event.stopPropagation()">
         <div class="sticky top-0 bg-card border-b border-card px-5 py-3 flex items-center justify-between rounded-t-2xl">
             <span class="text-sm font-semibold text-primary" id="review-context-title">📖 Context</span>
-            <button data-action="close-review-context" class="text-muted hover:text-primary text-xl leading-none">&times;</button>
+            <button data-action="close-review-context" onclick="document.getElementById('review-context-modal').classList.add('hidden')" class="text-muted hover:text-primary text-xl leading-none">&times;</button>
         </div>
         <div id="review-context-body" class="p-4 space-y-2">
             <div class="text-sm text-muted text-center py-4">Loading...</div>
