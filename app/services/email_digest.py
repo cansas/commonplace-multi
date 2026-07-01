@@ -1,12 +1,9 @@
-"""
-Mailjet email digest service.
+"""Mailjet email digest service.
 
 Sends daily review emails via Mailjet's REST API (free tier: 6k/mo, 200/day).
+All configuration is read/written through ``app.services.settings_service``.
 """
-import json
 import logging
-from datetime import datetime, timedelta
-from typing import Optional
 
 import httpx
 
@@ -14,57 +11,19 @@ logger = logging.getLogger(__name__)
 
 MAILJET_API = "https://api.mailjet.com/v3.1/send"
 
-# ── Settings helpers (avoid circular import) ────────────────────────────────
 
-_SETTINGS_FILE = None
-
-
-def _get_settings():
-    """Lazy-load email settings from .settings.json."""
-    global _SETTINGS_FILE
-    if _SETTINGS_FILE is None:
-        import os
-        _SETTINGS_FILE = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", ".settings.json"
-        )
-    try:
-        with open(_SETTINGS_FILE) as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
-
-
-def _save_settings(settings: dict):
-    try:
-        import os
-        os.makedirs(os.path.dirname(_SETTINGS_FILE), exist_ok=True)
-        with open(_SETTINGS_FILE, "w") as f:
-            json.dump(settings, f)
-    except Exception as e:
-        logger.warning("Failed to save email settings: %s", e)
-
+# ── Public helpers (delegate to settings_service) ─────────────────────────
 
 def get_email_config() -> dict:
-    s = _get_settings()
-    return {
-        "mailjet_api_key": s.get("mailjet_api_key", ""),
-        "mailjet_secret_key": s.get("mailjet_secret_key", ""),
-        "email_from_name": s.get("email_from_name", "Commonplace"),
-        "email_from_addr": s.get("email_from_addr", ""),
-        "email_to_addr": s.get("email_to_addr", ""),
-        "email_digest_enabled": s.get("email_digest_enabled", False),
-        "email_digest_time": s.get("email_digest_time", "07:00"),
-    }
+    """Return all email/digest settings from the shared settings store."""
+    from app.services.settings_service import get_email_config as _cfg
+    return _cfg()
 
 
-def save_email_config(config: dict):
-    s = _get_settings()
-    for key in ("mailjet_api_key", "mailjet_secret_key", "email_from_name",
-                 "email_from_addr", "email_to_addr", "email_digest_enabled",
-                 "email_digest_time"):
-        if key in config:
-            s[key] = config[key]
-    _save_settings(s)
+def save_email_config(config: dict) -> None:
+    """Merge *config* into the shared settings store."""
+    from app.services.settings_service import save_email_config as _save
+    _save(config)
 
 
 # ── Low-level Mailjet API ──────────────────────────────────────────────────
@@ -168,8 +127,8 @@ def _escape_html(text: str) -> str:
 
 def _get_base_url() -> str:
     """Return the base URL from settings, or a sensible default."""
-    s = _get_settings()
-    return s.get("base_url", "http://localhost:8765")
+    from app.services.settings_service import get as _get
+    return _get("base_url", "http://localhost:8765")
 
 
 # ── Send test email ────────────────────────────────────────────────────────

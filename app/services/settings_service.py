@@ -103,6 +103,37 @@ def set_hardcover_api_key(key: str) -> None:
     set("hardcover_api_key", key)
 
 
+# ── Email / Digest settings ────────────────────────────────────────────────
+
+def get_email_config() -> dict:
+    """Return all email/digest settings."""
+    return {
+        "mailjet_api_key": get("mailjet_api_key", ""),
+        "mailjet_secret_key": get("mailjet_secret_key", ""),
+        "email_from_name": get("email_from_name", "Commonplace"),
+        "email_from_addr": get("email_from_addr", ""),
+        "email_to_addr": get("email_to_addr", ""),
+        "email_digest_enabled": get("email_digest_enabled", False),
+        "email_digest_time": get("email_digest_time", "07:00"),
+        "base_url": get("base_url", ""),
+        "last_digest_sent_date": get("last_digest_sent_date", ""),
+    }
+
+
+_EMAIL_ALLOWED_KEYS = frozenset({
+    "mailjet_api_key", "mailjet_secret_key", "email_from_name",
+    "email_from_addr", "email_to_addr", "email_digest_enabled",
+    "email_digest_time", "base_url",
+})
+
+
+def save_email_config(config: dict) -> None:
+    """Merge *config* keys into the persistent settings store."""
+    for key in _EMAIL_ALLOWED_KEYS:
+        if key in config:
+            set(key, config[key])
+
+
 # Backward-compat alias
 set_setting = set
 

@@ -23,6 +23,8 @@ from app.services.settings_service import (
     set_theme as _set_theme,
     get_hardcover_api_key,
     set_hardcover_api_key,
+    get_email_config,
+    save_email_config,
 )
 from app.template import render
 
@@ -72,16 +74,7 @@ async def settings_page(
             new_token=new_token,
             username=request.session.get("username", ""),
             hardcover_key=get_hardcover_api_key(),
-            email_config={
-                "mailjet_api_key": _get("mailjet_api_key", ""),
-                "mailjet_secret_key": _get("mailjet_secret_key", ""),
-                "email_from_name": _get("email_from_name", "Commonplace"),
-                "email_from_addr": _get("email_from_addr", ""),
-                "email_to_addr": _get("email_to_addr", ""),
-                "email_digest_enabled": _get("email_digest_enabled", False),
-                "email_digest_time": _get("email_digest_time", "07:00"),
-                "base_url": _get("base_url", ""),
-            },
+            email_config=get_email_config(),
         ),
     )
 
@@ -383,14 +376,10 @@ async def save_email_settings(
     body: dict,
 ):
     """Save email/Mailjet configuration."""
-    from app.services.email_digest import save_email_config
-
-    allowed = {
-        "mailjet_api_key", "mailjet_secret_key", "email_from_name",
-        "email_from_addr", "email_to_addr", "email_digest_enabled",
-        "email_digest_time", "base_url",
-    }
-    config = {k: v for k, v in body.items() if k in allowed}
+    config = {k: v for k, v in body.items()
+              if k in ("mailjet_api_key", "mailjet_secret_key", "email_from_name",
+                       "email_from_addr", "email_to_addr", "email_digest_enabled",
+                       "email_digest_time", "base_url")}
     save_email_config(config)
     return {"ok": True}
 

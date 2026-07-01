@@ -1,61 +1,37 @@
-"""
-Scheduler for daily email digest.
+"""Scheduler for daily email digest.
 
 Uses APScheduler to check every 5 minutes whether the digest should be sent.
-Avoids sending multiple times per day by tracking the last-sent date in .settings.json.
+Relies on ``app.services.settings_service`` as the single source of truth
+for all email/digest configuration.
 """
-import json
 import logging
-import os
 from datetime import datetime, date
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from app.services.settings_service import get, set as set_setting
 
 logger = logging.getLogger(__name__)
 
 _SCHEDULER = None
 
-_SETTINGS_FILE = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", ".settings.json"
-)
-
-
-def _read_settings() -> dict:
-    try:
-        with open(_SETTINGS_FILE) as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
-
-
-def _write_settings(s: dict):
-    try:
-        os.makedirs(os.path.dirname(_SETTINGS_FILE), exist_ok=True)
-        with open(_SETTINGS_FILE, "w") as f:
-            json.dump(s, f)
-    except Exception as e:
-        logger.warning("Failed to write settings: %s", e)
-
 
 async def check_and_send_digest():
     """Check if it's time to send the digest and send if so."""
-    settings = _read_settings()
-
-    if not settings.get("email_digest_enabled", False):
+    if not get("email_digest_enabled", False):
         return
-    if not settings.get("mailjet_api_key") or not settings.get("mailjet_secret_key"):
+    if not get("mailjet_api_key") or not get("mailjet_secret_key"):
         return
-    if not settings.get("email_to_addr"):
+    if not get("email_to_addr"):
         return
 
     # Check already-sent date
     today_str = date.today().isoformat()
-    if settings.get("last_digest_sent_date") == today_str:
+    if get("last_digest_sent_date") == today_str:
         return  # Already sent today
 
     # Check if current time >= configured send time
     now = datetime.now()
-    send_time_str = settings.get("email_digest_time", "07:00")
+    send_time_str = get("email_digest_time", "07:00")
     try:
         send_hour, send_min = map(int, send_time_str.split(":"))
     except (ValueError, AttributeError):
@@ -67,11 +43,11 @@ async def check_and_send_digest():
     # ── Time to send! ──
     logger.info("Sending daily email digest...")
 
-    api_key = settings["mailjet_api_key"]
-    secret_key = settings["mailjet_secret_key"]
-    from_name = settings.get("email_from_name", "Commonplace")
-    from_email = settings.get("email_from_addr", "")
-    to_email = settings["email_to_addr"]
+    api_key = get("mailjet_api_key")
+    secret_key = get("mailjet_secret_key")
+    from_name = get("email_from_name", "Commonplace")
+    from_email = get("email_from_addr", "")
+    to_email = get("email_to_addr")
 
     if not from_email:
         logger.warning("Cannot send digest: from_email is not set")
@@ -90,14 +66,13 @@ async def check_and_send_digest():
         else:
             result = await send_email_via_mailjet(
                 api_key, secret_key, from_name, from_email, to_email,
-                "📖 Your Daily Commonplace Review",
+                "Commonplace — Your Daily Review",
                 html_content,
             )
-            logger.info("Digest sent successfully: %s", result.get("Messages", [{}])[0].get("Status", "?"))
+            logger.info("Digest sent: %s", result.get("Messages", [{}])[0].get("Status", "?"))
 
         # Mark as sent today
-        settings["last_digest_sent_date"] = today_str
-        _write_settings(settings)
+        set_setting("last_digest_sent_date", today_str)
 
     except Exception as e:
         logger.error("Failed to send digest: %s", e)
