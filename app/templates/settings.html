@@ -355,30 +355,52 @@
                 <p class="text-xs text-muted mt-0.5">Choose your appearance.</p>
             </div>
             <div class="px-6 py-5">
-                <div class="flex items-center gap-6">
-                    <button data-action="set-theme" data-theme="modern" class="theme-option flex-1 p-4 rounded-xl border-2 transition-all text-left {% if user_theme == 'modern' %}border-accent bg-accent-light{% else %}border-card hover:border-accent/40{% endif %}">
-                        <div class="flex items-center gap-3 mb-2">
-                            <div class="w-6 h-6 rounded bg-zinc-900 flex items-center justify-center"><span class="text-white text-xs">M</span></div>
-                            <span class="font-semibold text-primary">Modern</span>
-                        </div>
-                        <p class="text-xs text-muted">Clean, Linear-inspired. Zinc grays, Inter font.</p>
-                    </button>
-                    <button data-action="set-theme" data-theme="reader" class="theme-option flex-1 p-4 rounded-xl border-2 transition-all text-left {% if user_theme == 'reader' %}border-accent bg-accent-light{% else %}border-card hover:border-accent/40{% endif %}">
-                        <div class="flex items-center gap-3 mb-2">
-                            <div class="w-6 h-6 rounded bg-ink-900 flex items-center justify-center"><span class="text-white text-xs">R</span></div>
-                            <span class="font-semibold text-primary">Reader</span>
-                        </div>
-                        <p class="text-xs text-muted">Warm, cozy. Cream tones, Source Serif.</p>
-                    </button>
-                    <button data-action="set-theme" data-theme="dark" class="theme-option flex-1 p-4 rounded-xl border-2 transition-all text-left {% if user_theme == 'dark' %}border-accent bg-accent-light{% else %}border-card hover:border-accent/40{% endif %}">
-                        <div class="flex items-center gap-3 mb-2">
-                            <div class="w-6 h-6 rounded bg-black flex items-center justify-center"><span class="text-amber-400 text-xs">D</span></div>
-                            <span class="font-semibold text-primary">Dark</span>
-                        </div>
-                        <p class="text-xs text-muted">Deep charcoal, amber accent, easy on the eyes.</p>
-                    </button>
-                </div>
+                <div class="flex items-center gap-6 flex-wrap">
+                {% for t in all_themes %}
+                    <div class="theme-option flex-1 min-w-[140px] relative">
+                        {% if not t.builtin %}
+                        <button data-action="delete-theme" data-theme-name="{{ t.name }}"
+                                class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600 z-10 shadow-sm"
+                                title="Delete {{ t.label }}">&times;</button>
+                        {% endif %}
+                        <button data-action="set-theme" data-theme="{{ t.name }}"
+                                class="w-full p-4 rounded-xl border-2 transition-all text-left
+                                       {% if user_theme == t.name %}border-accent bg-accent-light{% else %}border-card hover:border-accent/40{% endif %}">
+                            <div class="flex items-center gap-3 mb-2">
+                                <div class="w-6 h-6 rounded flex items-center justify-center text-white text-xs font-bold
+                                            {% if t.name == 'modern' %}bg-zinc-900
+                                            {% elif t.name == 'reader' %}bg-amber-800
+                                            {% elif t.name == 'dark' %}bg-slate-950
+                                            {% else %}bg-accent{% endif %}">
+                                    {{ t.label[:1] }}
+                                </div>
+                                <span class="font-semibold text-primary">{{ t.label }}</span>
+                                {% if not t.builtin %}<span class="text-[10px] text-muted-lighter uppercase tracking-wider ml-1">Custom</span>{% endif %}
+                            </div>
+                            <p class="text-xs text-muted">{{ t.description }}</p>
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
                 <p class="text-xs text-muted mt-3">Theme is saved to your browser and persisted server-side.</p>
+
+                <!-- Upload custom theme -->
+                <div class="mt-5 pt-5 border-t border-card">
+                    <h3 class="text-sm font-semibold text-primary mb-2">Upload Custom Theme</h3>
+                    <p class="text-xs text-muted mb-3">Drop a <code>.css</code> file with a <code>.theme-{name}</code> class. See <a href="https://github.com/cansas/commonplace/blob/main/THEMES.md" target="_blank" class="link-accent">THEMES.md</a> for documentation.</p>
+                    <div class="flex items-center gap-3">
+                        <label class="flex-1 flex items-center gap-2 px-3 py-2 border border-card rounded-lg cursor-pointer hover:bg-page-alt transition text-sm text-muted">
+                            <input type="file" id="theme-file-input" accept=".css" class="hidden" />
+                            <span>📄</span>
+                            <span id="theme-file-name">Choose CSS file...</span>
+                        </label>
+                        <button data-action="upload-theme"
+                                class="px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg btn-primary hover:bg-accent-hover transition shadow-sm">
+                            Upload
+                        </button>
+                    </div>
+                    <div id="theme-upload-status" class="mt-2 text-xs"></div>
+                </div>
             </div>
         </section>
 

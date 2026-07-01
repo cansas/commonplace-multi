@@ -13,10 +13,12 @@
     <script src="/static/tailwind.min.js"></script>
     <link rel="stylesheet" href="/static/style.css" />
     <link rel="stylesheet" href="/static/themes.css" />
+    {% for t in custom_themes %}<link rel="stylesheet" href="/static/themes/{{ t.name }}.css" />{% endfor %}
     {% block head_extra %}{% endblock %}
 </head>
 <body class="bg-page text-primary antialiased min-h-screen flex flex-col md:flex-row"
-      data-theme="{{ user_theme or 'modern' }}">
+      data-theme="{{ user_theme or 'modern' }}"
+      data-theme-order="{% for t in all_themes %}{{ t.name }}{% if not loop.last %},{% endif %}{% endfor %}">
 
     <!-- Mobile Header -->
     <header class="md:hidden bg-sidebar text-sidebar px-4 py-3 flex items-center justify-between">
@@ -145,7 +147,7 @@
     </nav>
 
     <!-- PWA service worker -->
-    <script src="/static/commonplace.js?v=2"></script>
+    <script src="/static/commonplace.js?v=4"></script>
 
     <!-- Confirm dialog -->
     <div id="confirm-overlay" class="fixed inset-0 z-50 hidden bg-black/40 flex items-center justify-center">

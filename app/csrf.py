@@ -10,6 +10,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from app.services.theme_service import discover_custom_themes, get_all_themes
 
 
 _signer = None
@@ -137,6 +138,9 @@ def template_context(request: Request, **kwargs) -> dict:
     ctx["csrf_token"] = token
     # User theme preference (loaded from settings file on login, cached in session)
     ctx["user_theme"] = request.session.get("theme", "modern")
+    # Custom themes discovered from data/themes/
+    ctx.setdefault("custom_themes", discover_custom_themes())
+    ctx.setdefault("all_themes", get_all_themes())
     # VAPID public key for push notification subscription (lazy loaded)
     if "vapid_public_key" not in ctx:
         try:

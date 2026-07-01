@@ -232,30 +232,21 @@
         }
 
         function applyTheme(theme) {
-            body.classList.remove('theme-modern', 'theme-reader', 'theme-dark');
-            if (theme === 'reader') {
-                body.classList.add('theme-reader');
-            } else if (theme === 'dark') {
-                body.classList.add('theme-dark');
-            } else {
-                body.classList.add('theme-modern');
-            }
+            // Remove all .theme-* classes, then add current
+            body.className = body.className.replace(/\btheme-\S+/g, '').trim();
+            body.classList.add('theme-' + theme);
             localStorage.setItem(THEME_STORAGE_KEY, theme);
             body.setAttribute('data-theme', theme);
 
             var icon = document.getElementById('theme-toggle-icon');
             var label = document.getElementById('theme-toggle-label');
             if (icon && label) {
-                if (theme === 'reader') {
-                    icon.textContent = '\uD83C\uDF19';
-                    label.textContent = 'Switch to Dark';
-                } else if (theme === 'dark') {
-                    icon.textContent = '\u2600\ufe0f';
-                    label.textContent = 'Switch to Modern';
-                } else {
-                    icon.textContent = '\uD83D\uDCD6';
-                    label.textContent = 'Switch to Reader';
-                }
+                var order = (body.getAttribute('data-theme-order') || 'modern,reader,dark').split(',');
+                var idx = order.indexOf(theme);
+                var next = order[(idx + 1) % order.length];
+                var nextLabel = next.charAt(0).toUpperCase() + next.slice(1);
+                icon.textContent = '\uD83C\uDFA8';
+                label.textContent = 'Switch to ' + nextLabel;
             }
         }
 
@@ -263,7 +254,7 @@
 
         window.toggleTheme = function() {
             var current = localStorage.getItem(THEME_STORAGE_KEY) || body.getAttribute('data-theme') || 'modern';
-            var order = ['modern', 'reader', 'dark'];
+            var order = (body.getAttribute('data-theme-order') || 'modern,reader,dark').split(',');
             var idx = order.indexOf(current);
             var next = order[(idx + 1) % order.length];
             applyTheme(next);
@@ -934,7 +925,7 @@
     })();
 
     window.setTheme = function(theme) {
-        document.querySelectorAll('.theme-option').forEach(function(el) {
+        document.querySelectorAll('.theme-option [data-action="set-theme"]').forEach(function(el) {
             el.classList.remove('border-accent', 'bg-accent-light');
             el.classList.add('border-card');
         });
@@ -947,6 +938,57 @@
             var current = localStorage.getItem('commonplace-theme') || document.body.getAttribute('data-theme') || 'modern';
             if (current !== theme) window.toggleTheme();
         }
+    };
+
+    window.uploadTheme = function() {
+        var input = document.getElementById('theme-file-input');
+        var status = document.getElementById('theme-upload-status');
+        if (!input || !input.files || !input.files[0]) {
+            if (status) status.textContent = '❌ Select a CSS file first';
+            return;
+        }
+        var file = input.files[0];
+        if (file.size > 50 * 1024) {
+            if (status) status.textContent = '❌ File too large. Max 50KB.';
+            return;
+        }
+        var fd = new FormData();
+        fd.append('file', file);
+        if (status) status.textContent = '⏳ Uploading...';
+        fetch('/api/themes/upload', { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.ok) {
+                    if (status) status.textContent = '✅ ' + d.message + ' — reloading...';
+                    setTimeout(function() { location.reload(); }, 1000);
+                } else {
+                    if (status) status.textContent = '❌ ' + (d.error || 'Upload failed');
+                }
+            })
+            .catch(function(e) {
+                if (status) status.textContent = '❌ Network error: ' + e.message;
+            });
+    };
+
+    window.deleteTheme = function(name) {
+        if (!confirm('Delete theme "' + name + '"? This cannot be undone.')) return;
+        var status = document.getElementById('theme-upload-status');
+        if (status) status.textContent = '⏳ Deleting...';
+        var fd = new FormData();
+        fd.append('name', name);
+        fetch('/api/themes/delete', { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.ok) {
+                    if (status) status.textContent = '✅ ' + d.message + ' — reloading...';
+                    setTimeout(function() { location.reload(); }, 1000);
+                } else {
+                    if (status) status.textContent = '❌ ' + (d.error || 'Delete failed');
+                }
+            })
+            .catch(function(e) {
+                if (status) status.textContent = '❌ Network error: ' + e.message;
+            });
     };
 
     window.confirmRestore = function(event) {
@@ -1201,6 +1243,17 @@
             });
         }
 
+        // Theme file input — show selected filename
+        var themeFileInput = document.getElementById('theme-file-input');
+        if (themeFileInput) {
+            themeFileInput.addEventListener('change', function() {
+                var label = document.getElementById('theme-file-name');
+                if (label && this.files && this.files[0]) {
+                    label.textContent = this.files[0].name;
+                }
+            });
+        }
+
         // Theme selection buttons
         document.addEventListener('click', function(e) {
             var btn = e.target.closest('[data-action="set-theme"]');
@@ -1259,6 +1312,9 @@
             else if (action === 'unsubscribe-push' && window.unsubscribePush) { e.preventDefault(); window.unsubscribePush().then(function(ok) { if (ok) { var btn = document.querySelector('[data-action=\"unsubscribe-push\"]'); if (btn) btn.style.display = 'none'; var sbtn = document.querySelector('[data-action=\"subscribe-push\"]'); if (sbtn) sbtn.style.display = ''; }}); }
             // ── Theme selection ──
             else if (action === 'set-theme' && window.setTheme) { e.preventDefault(); window.setTheme(btn.getAttribute('data-theme')); }
+            // ── Theme management ──
+            else if (action === 'upload-theme' && window.uploadTheme) { e.preventDefault(); window.uploadTheme(); }
+            else if (action === 'delete-theme' && window.deleteTheme) { e.preventDefault(); var tn = btn.getAttribute('data-theme-name'); if (tn) window.deleteTheme(tn); }
         });
 
         // Universal data-action change delegation

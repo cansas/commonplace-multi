@@ -21,6 +21,7 @@ import os
 
 from fastapi.templating import Jinja2Templates
 from app.csrf import generate_csrf_token
+from app.services.theme_service import discover_custom_themes, get_all_themes
 
 _templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
@@ -57,4 +58,6 @@ def render(request, template_name: str, context: dict = None, **kwargs):
     ctx.setdefault("csrf_token", getattr(request.state, "csrf_token", None) or generate_csrf_token(request.session))
     ctx.setdefault("user_theme", request.session.get("theme", "modern"))
     ctx.setdefault("vapid_public_key", _get_vapid_public_key())
+    ctx.setdefault("custom_themes", discover_custom_themes())
+    ctx.setdefault("all_themes", get_all_themes())
     return _templates.TemplateResponse(request, template_name, ctx, **kwargs)
