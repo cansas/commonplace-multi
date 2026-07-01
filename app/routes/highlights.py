@@ -13,6 +13,7 @@ from app.template import render
 from typing import Optional, List
 from datetime import datetime
 import math
+import random
 import re
 import time
 
@@ -367,6 +368,29 @@ async def update_highlight(hl_id: int, data: HighlightUpdate, db: AsyncSession =
     return {"ok": True, "id": hl_id}
 
 
+@router.get("/api/highlights/random")
+async def random_highlight(db: AsyncSession = Depends(get_db)):
+    """Return a single random highlight (for highlight-of-the-day display)."""
+    result = await db.execute(select(sa_func.count(Highlight.id)))
+    total = result.scalar() or 0
+    if total == 0:
+        return None
+    offset = random.randint(0, total - 1)
+    hl_result = await db.execute(select(Highlight).offset(offset).limit(1))
+    hl = hl_result.scalar_one_or_none()
+    if not hl:
+        return None
+    return {
+        "id": hl.id,
+        "text": hl.text,
+        "note": hl.note,
+        "book_title": hl.book_title,
+        "book_author": hl.book_author or "",
+        "favorite": hl.favorite,
+        "created_at": hl.created_at.isoformat() if hl.created_at else None,
+    }
+
+
 @router.get("/api/highlights/{hl_id}")
 async def get_highlight(hl_id: int, db: AsyncSession = Depends(get_db)):
     """Return a single highlight with its tags."""
@@ -546,3 +570,4 @@ async def highlight_cover_image(hl_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Failed to decode cover")
 
     return Response(content=raw, media_type=mime)
+
