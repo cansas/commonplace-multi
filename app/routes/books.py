@@ -566,6 +566,9 @@ async def backfill_covers(db: AsyncSession = Depends(get_db)):
         if cover_row and cover_row.hardcover_id is not None:
             continue  # Already has an ID, skip fuzzy search
 
+        if cover_row and cover_row.cover_source == "upload":
+            continue  # User-uploaded covers — never replace
+
         if key in existing_covers and not cover_row:
             continue  # Already has a basic cover (no row in map edge case)
 
