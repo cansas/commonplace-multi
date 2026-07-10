@@ -6,7 +6,7 @@ A self-hosted Readwise alternative — capture, browse, review, and resurface yo
 - **Browse**: Full-text search, filter by source/tag/favorites, book view with covers
 - **Review**: Daily review
 - **Achievements**: Unlock witty milestones as you build your review streak
-- **Sync**: Push highlights from KOReader via custom plugin, sync to Obsidian via plugin
+- **Sync**: Push highlights from KOReader via custom plugin, sync to Obsidian via plugin, or auto-sync from BookOrbit (kobo, koreader, and web annotations)
 - **Self-hosted**: Single Docker container, SQLite database, no external services required
 
 ## Quick Start
@@ -41,6 +41,7 @@ For full setup instructions, see [INSTALL.md](INSTALL.md).
 - **Share cards** — PNG/SVG share cards per highlight with OpenGraph meta tags
 - **Themes** — Modern, Reader, Dark, plus unlimited **custom themes** — drop a `.css` file into `data/themes/` or upload via Settings → Appearance ([documentation](THEMES.md))
 - **Streaks** — track daily review streaks with current and best counters
+- **BookOrbit Sync** — auto-import annotations from BookOrbit (kobo, koreader, web) with SHA256 fingerprint dedup. Configure in Settings → BookOrbit tab
 - **First-run wizard** — web-based admin creation, no env vars required
 
 ## Screenshots

@@ -78,6 +78,10 @@ async def settings_page(
         )
         tokens = result.scalars().all()
 
+    # BookOrbit sync config
+    from app.services.bookorbit_sync import get_sync_config
+    bookorbit_config = get_sync_config()
+
     return render(
         request,
         "settings.html",
@@ -94,8 +98,74 @@ async def settings_page(
             username=request.session.get("username", ""),
             hardcover_key=get_hardcover_api_key(),
             email_config=get_email_config(),
+            bookorbit_config=bookorbit_config,
         ),
     )
+
+
+def get_bookorbit_config() -> dict:
+    from app.services.bookorbit_sync import get_sync_config
+    return get_sync_config()
+
+
+# ── BookOrbit Sync Settings ────────────────────────────────────────────────
+
+
+@router.post("/api/settings/bookorbit-sync")
+async def save_bookorbit_sync_settings(
+    request: Request,
+    body: dict,
+):
+    """Save BookOrbit sync configuration."""
+    from app.services.settings_service import set as _set
+
+    allowed = {"bookorbit_url", "bookorbit_username", "bookorbit_password",
+               "bookorbit_sync_enabled"}
+    for k in allowed:
+        if k in body:
+            _set(k, body[k])
+    # Clear any previous disabled reason when saving new settings
+    if "bookorbit_password" in body or "bookorbit_sync_enabled" in body:
+        _set("bookorbit_disabled_reason", "")
+    return {"ok": True}
+
+
+@router.post("/api/settings/bookorbit-test")
+async def test_bookorbit_connection(
+    request: Request,
+    body: dict,
+):
+    """Test BookOrbit connection."""
+    from app.services.bookorbit_sync import test_connection
+
+    url = body.get("bookorbit_url", "").strip()
+    username = body.get("bookorbit_username", "").strip()
+    password = body.get("bookorbit_password", "").strip()
+
+    # Fall back to stored values for fields not provided
+    if not url:
+        url = _get("bookorbit_url", "")
+    if not username:
+        username = _get("bookorbit_username", "")
+    if not password:
+        password = _get("bookorbit_password", "")
+
+    result = await test_connection(url, username, password)
+    return result
+
+
+@router.post("/api/settings/bookorbit-sync-now")
+async def trigger_bookorbit_sync(
+    request: Request,
+):
+    """Manually trigger a BookOrbit sync."""
+    from app.services.bookorbit_sync import sync_from_bookorbit
+
+    result = await sync_from_bookorbit()
+    return {"ok": True, "result": result}
+
+
+# ── Password change ────────────────────────────────────────────────────────
 
 
 @router.post("/settings/review-count")

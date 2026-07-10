@@ -1,8 +1,9 @@
-"""Scheduler for daily email digest.
+"""Scheduler for daily email digest + BookOrbit sync.
 
-Uses APScheduler to check every 5 minutes whether the digest should be sent.
+Uses APScheduler to check every 5 minutes whether the digest should be sent,
+and every 15 minutes whether BookOrbit sync should run.
 Relies on ``app.services.settings_service`` as the single source of truth
-for all email/digest configuration.
+for all configuration.
 """
 import logging
 from datetime import datetime
@@ -14,6 +15,7 @@ from app.services.settings_service import get, set as set_setting
 logger = logging.getLogger(__name__)
 
 _SCHEDULER = None
+_BOOKORBIT_SYNC_INTERVAL = 15  # minutes between BookOrbit sync checks
 
 
 async def check_and_send_digest():
@@ -80,17 +82,36 @@ async def check_and_send_digest():
         logger.error("Failed to send digest: %s", e)
 
 
+async def check_and_run_bookorbit_sync():
+    """Check if BookOrbit sync is enabled and run it if so."""
+    enabled = get("bookorbit_sync_enabled", False)
+    if not enabled:
+        return
+    try:
+        from app.services.bookorbit_sync import sync_from_bookorbit
+        result = await sync_from_bookorbit()
+        if result["posted"] > 0 or result["errors"] > 0:
+            logger.info(
+                "BookOrbit sync: posted=%d skipped=%d errors=%d",
+                result["posted"], result["skipped"], result["errors"],
+            )
+    except Exception as e:
+        logger.error("BookOrbit sync failed: %s", e)
+
+
 def start_scheduler():
-    """Start the background scheduler that checks for digest delivery."""
+    """Start the background scheduler that checks for digest delivery and BookOrbit sync."""
     global _SCHEDULER
     if _SCHEDULER is not None:
         return
 
     _SCHEDULER = AsyncIOScheduler()
-    # Check every 5 minutes
+    # Check digest every 5 minutes
     _SCHEDULER.add_job(check_and_send_digest, "interval", minutes=5, id="digest_check")
+    # Check BookOrbit sync every 15 minutes
+    _SCHEDULER.add_job(check_and_run_bookorbit_sync, "interval", minutes=_BOOKORBIT_SYNC_INTERVAL, id="bookorbit_sync")
     _SCHEDULER.start()
-    logger.info("Digest scheduler started (checking every 5 minutes)")
+    logger.info("Scheduler started (digest: 5min, BookOrbit sync: %dmin)", _BOOKORBIT_SYNC_INTERVAL)
 
 
 def stop_scheduler():

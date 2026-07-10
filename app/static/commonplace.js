@@ -1042,7 +1042,7 @@
     };
 
     (function() {
-        var valid = ['data', 'api-keys', 'email', 'notifications', 'appearance'];
+        var valid = ['data', 'api-keys', 'email', 'notifications', 'appearance', 'bookorbit'];
         var tab = location.hash.slice(1) || 'data';
         if (!valid.includes(tab)) tab = 'data';
         window.switchTab(tab);
@@ -1171,6 +1171,86 @@
                 })
                 .catch(function() { result.textContent = 'Network error'; });
         });
+    };
+
+    /* ── BookOrbit Sync ──────────────────────────────────── */
+
+    function getBookOrbitFields() {
+        return {
+            bookorbit_url: document.getElementById('bo-url').value.trim(),
+            bookorbit_username: document.getElementById('bo-username').value.trim(),
+            bookorbit_password: document.getElementById('bo-password').value,
+            bookorbit_sync_enabled: document.getElementById('bo-auto-sync').checked,
+        };
+    }
+
+    function setBookOrbitResult(msg, isError) {
+        var el = document.getElementById('bo-result');
+        el.textContent = msg;
+        el.style.color = isError ? '#dc2626' : '#6b7280';
+    }
+
+    window.testBookOrbit = function() {
+        var fields = getBookOrbitFields();
+        if (!fields.bookorbit_url || !fields.bookorbit_username || !fields.bookorbit_password) {
+            setBookOrbitResult('Fill in URL, username, and password first', true);
+            return;
+        }
+        setBookOrbitResult('Testing...', false);
+        fetch('/api/settings/bookorbit-test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(fields),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.ok) setBookOrbitResult('Connected!', false);
+            else setBookOrbitResult('Failed: ' + (d.error || 'unknown'), true);
+        })
+        .catch(function() { setBookOrbitResult('Network error', true); });
+    };
+
+    window.saveBookOrbit = function() {
+        var fields = getBookOrbitFields();
+        setBookOrbitResult('Saving...', false);
+        fetch('/api/settings/bookorbit-sync', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(fields),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.ok) setBookOrbitResult('Settings saved', false);
+            else setBookOrbitResult('Save failed', true);
+        })
+        .catch(function() { setBookOrbitResult('Network error', true); });
+    };
+
+    window.syncBookOrbitNow = function() {
+        setBookOrbitResult('Syncing... (may take a moment)', false);
+        var btn = document.querySelector('[data-action="sync-bookorbit-now"]');
+        if (btn) btn.disabled = true;
+        fetch('/api/settings/bookorbit-sync-now', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.ok) {
+                var r = d.result;
+                setBookOrbitResult(
+                    'Done: ' + r.posted + ' imported, ' + r.skipped + ' skipped, ' + r.errors + ' errors',
+                    r.errors > 0
+                );
+                if (btn) btn.disabled = false;
+                // Reload page to refresh status
+                location.reload();
+            } else {
+                setBookOrbitResult('Sync failed', true);
+                if (btn) btn.disabled = false;
+            }
+        })
+        .catch(function() { setBookOrbitResult('Network error', true); if (btn) btn.disabled = false; });
     };
 
     window.confirmReset = function() {
@@ -1400,6 +1480,9 @@
             else if (action === 'clear-cover-key' && window.clearCoverKey) { e.preventDefault(); window.clearCoverKey(); }
             else if (action === 'save-email' && window.saveEmailConfig) { e.preventDefault(); window.saveEmailConfig(); }
             else if (action === 'test-email' && window.sendTestEmail) { e.preventDefault(); window.sendTestEmail(); }
+            else if (action === 'test-bookorbit' && window.testBookOrbit) { e.preventDefault(); window.testBookOrbit(); }
+            else if (action === 'save-bookorbit' && window.saveBookOrbit) { e.preventDefault(); window.saveBookOrbit(); }
+            else if (action === 'sync-bookorbit-now' && window.syncBookOrbitNow) { e.preventDefault(); window.syncBookOrbitNow(); }
             else if (action === 'revoke-token') {
                 var name = btn.getAttribute('data-token-name') || 'this token';
                 if (!confirm('Revoke token \'' + name + '\'? This will break the device until a new token is configured.')) {

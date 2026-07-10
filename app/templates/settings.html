@@ -44,6 +44,7 @@
         <button data-tab="email" id="tab-email" class="px-5 py-3 text-sm font-medium border-b-2 border-transparent hover:text-accent transition tab-btn">📬 Email</button>
         <button data-tab="notifications" id="tab-notifications" class="px-5 py-3 text-sm font-medium border-b-2 border-transparent hover:text-accent transition tab-btn">🔔 Notifications</button>
         <button data-tab="appearance" id="tab-appearance" class="px-5 py-3 text-sm font-medium border-b-2 border-transparent hover:text-accent transition tab-btn">🎨 Appearance</button>
+        <button data-tab="bookorbit" id="tab-bookorbit" class="px-5 py-3 text-sm font-medium border-b-2 border-transparent hover:text-accent transition tab-btn">📡 BookOrbit</button>
     </div>
 
     <!-- ════════════ DATA TAB ════════════ -->
@@ -409,6 +410,102 @@
                     </div>
                     <div id="theme-upload-status" class="mt-2 text-xs"></div>
                 </div>
+            </div>
+        </section>
+    </div>
+    <!-- ════════════ BOOKORBIT TAB ════════════ -->
+    <div id="panel-bookorbit" class="tab-panel space-y-6">
+
+        <!-- Connection -->
+        <section class="bg-card rounded-xl border border-card shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-card">
+                <h2 class="text-base font-semibold text-primary">📡 BookOrbit Sync</h2>
+                <p class="text-xs text-muted mt-0.5">Import annotations from your BookOrbit server (kobo, koreader, web).</p>
+            </div>
+            <div class="px-6 py-5 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label for="bo-url" class="text-xs font-semibold text-muted uppercase tracking-wider block mb-1">Server URL</label>
+                        <input type="url" id="bo-url" value="{{ bookorbit_config.url or '' }}" placeholder="http://192.168.1.130:3000"
+                               class="w-full px-3 py-2 border border-card rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent font-mono" />
+                    </div>
+                    <div>
+                        <label for="bo-username" class="text-xs font-semibold text-muted uppercase tracking-wider block mb-1">Username</label>
+                        <input type="text" id="bo-username" value="{{ bookorbit_config.username or '' }}" placeholder="BookOrbit username"
+                               class="w-full px-3 py-2 border border-card rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent" />
+                    </div>
+                    <div>
+                        <label for="bo-password" class="text-xs font-semibold text-muted uppercase tracking-wider block mb-1">Password</label>
+                        <input type="password" id="bo-password" value="{{ bookorbit_config.password or '' }}" placeholder="BookOrbit password"
+                               class="w-full px-3 py-2 border border-card rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent font-mono" />
+                    </div>
+                </div>
+
+                {% if bookorbit_config.disabled_reason %}
+                <div class="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                    <span class="text-sm">⚠️</span>
+                    <p class="text-xs text-amber-800">Sync disabled: {{ bookorbit_config.disabled_reason }}</p>
+                </div>
+                {% endif %}
+
+                <div class="flex items-center gap-3 pt-1">
+                    <button data-action="test-bookorbit" class="px-4 py-2 border border-card text-secondary text-sm font-medium rounded-lg hover:bg-page-alt transition">
+                        🔌 Test Connection
+                    </button>
+                    <button data-action="save-bookorbit" class="px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg btn-primary hover:bg-accent-hover transition shadow-sm">
+                        💾 Save Settings
+                    </button>
+                    <button data-action="sync-bookorbit-now" class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition shadow-sm">
+                        🔄 Sync Now
+                    </button>
+                    <span id="bo-result" class="text-xs text-muted"></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Status -->
+        <section class="bg-card rounded-xl border border-card shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-card">
+                <h2 class="text-base font-semibold text-primary">📊 Sync Status</h2>
+            </div>
+            <div class="px-6 py-5">
+                <div class="flex items-center gap-6 text-sm">
+                    <div>
+                        <span class="text-muted">Auto-sync:</span>
+                        <span class="font-semibold text-primary ml-1">
+                            {%- if bookorbit_config.enabled -%}✅ On{%- else -%}⬜ Off{%- endif -%}
+                        </span>
+                    </div>
+                    <div>
+                        <span class="text-muted">Last synced:</span>
+                        <span class="font-semibold text-primary ml-1">
+                            {%- if bookorbit_config.last_synced_at -%}{{ bookorbit_config.last_synced_at[:19] | replace('T', ' ') }}{%- else -%}Never{%- endif -%}
+                        </span>
+                    </div>
+                    <div>
+                        <span class="text-muted">Last annotation ID:</span>
+                        <span class="font-semibold text-primary ml-1">{{ bookorbit_config.last_synced_id or 0 }}</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 pt-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="bo-auto-sync" {% if bookorbit_config.enabled %}checked{% endif %}
+                               class="w-4 h-4 rounded border-slate-300 text-accent focus:ring-accent/40" />
+                        <span class="text-sm font-medium text-primary">Enable automatic sync (every 15 minutes)</span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <!-- Info -->
+        <section class="bg-card rounded-xl border border-card shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-card">
+                <h2 class="text-base font-semibold text-primary">ℹ️ About</h2>
+            </div>
+            <div class="px-6 py-5 space-y-2 text-sm text-muted">
+                <p>Syncs annotations from <strong>all origins</strong> (kobo, koreader, web) in BookOrbit into Commonplace.</p>
+                <p>Dedup is handled via SHA256 fingerprint of <code>text + book_title + author</code> — existing highlights are skipped.</p>
+                <p>New annotations get a <code>bookorbit:&#123;id&#125;</code> source_id for exact reference.</p>
             </div>
         </section>
     </div>
