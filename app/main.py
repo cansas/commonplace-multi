@@ -222,6 +222,15 @@ async def health(db: AsyncSession = Depends(get_db)):
     return result
 
 
+@app.post("/api/ping")
+async def ping():
+    """Lightweight token validation endpoint for external integrations.
+
+    Requires ``Authorization: Token ***  Returns 200 if valid, 401 if not.
+    """
+    return {"ok": True, "version": app.version}
+
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(
     request: Request,

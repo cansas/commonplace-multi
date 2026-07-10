@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sa_func, text, text as sqltext
 from app.database import get_db
 from app.models import Highlight, Tag, BookCover, ReviewLog, DailyReviewQueue
-from app.schemas import HighlightOut, HighlightCreate, HighlightUpdate
+from app.schemas import HighlightOut, HighlightCreate, HighlightUpdate, ReadwiseBatchImport
 from app.services.highlight_card import generate_card, fetch_cover_data
 from app.routes.share import get_share_token
 from app.csrf import template_context
@@ -14,6 +14,7 @@ from app.template import render
 from typing import Optional, List
 from datetime import datetime
 import math
+import hashlib
 import random
 import re
 import time
@@ -572,4 +573,92 @@ async def highlight_cover_image(hl_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Failed to decode cover")
 
     return Response(content=raw, media_type=mime)
+
+
+@router.post("/api/highlights/batch")
+async def batch_import(
+    data: ReadwiseBatchImport,
+    db: AsyncSession = Depends(get_db),
+):
+    """Batch import highlights (Readwise-compatible format).
+
+    Accepts an array of ``HighlightCreate`` items. Each item is
+    fingerprinted for dedup (SHA256 of ``text|book_title|book_author``).
+    Returns per-item results so the caller can distinguish new imports
+    from skipped duplicates.
+
+    Useful for BookOrbit sync and other bulk import tools.
+    """
+    imported = 0
+    skipped = 0
+    errors = 0
+    items = []
+
+    for i, hl_data in enumerate(data.highlights):
+        try:
+            # Compute fingerprint
+            text = (hl_data.text or "").strip()
+            book_title = hl_data.book_title or "Untitled"
+            book_author = hl_data.book_author or ""
+            fp = hashlib.sha256(
+                f"{text}|{book_title}|{book_author}".encode("utf-8")
+            ).hexdigest()
+
+            # Check fingerprint
+            result = await db.execute(
+                sqltext("SELECT id FROM highlights WHERE fingerprint = :fp"),
+                {"fp": fp},
+            )
+            if result.one_or_none():
+                skipped += 1
+                items.append({"index": i, "status": "skipped", "reason": "fingerprint_match"})
+                continue
+
+            # Create highlight (reuse ORM logic inline since we need
+            # granular control per-item in a batch context)
+            hl = Highlight(
+                text=hl_data.text,
+                note=hl_data.note,
+                page=hl_data.page,
+                chapter=hl_data.chapter,
+                source_type=hl_data.source_type,
+                source_id=hl_data.source_id,
+                book_title=hl_data.book_title,
+                book_author=hl_data.book_author,
+                book_url=hl_data.book_url,
+                category=hl_data.category or "books",
+                color=hl_data.color,
+                highlighted_at=hl_data.highlighted_at or datetime.utcnow(),
+                share_token=get_share_token(),
+                fingerprint=fp,
+            )
+
+            if hl_data.tags:
+                for tag_name in hl_data.tags:
+                    tag_result = await db.execute(
+                        select(Tag).where(Tag.name == tag_name)
+                    )
+                    tag = tag_result.scalar_one_or_none()
+                    if not tag:
+                        tag = Tag(name=tag_name)
+                        db.add(tag)
+                    hl.tags.append(tag)
+
+            db.add(hl)
+            await db.flush()
+            imported += 1
+            items.append({"index": i, "status": "imported", "id": hl.id})
+
+        except Exception as e:
+            errors += 1
+            items.append({"index": i, "status": "error", "error": str(e)})
+
+    await db.commit()
+    return {
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors,
+        "total": len(data.highlights),
+        "items": items,
+    }
 
