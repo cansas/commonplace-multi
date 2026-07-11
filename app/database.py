@@ -62,6 +62,7 @@ async def init_db():
             old_tags = (await conn.execute(sqltext(
                 "SELECT id, name, color FROM tags"
             ))).fetchall()
+            await conn.execute(sqltext("DROP TABLE IF EXISTS tags_v2"))
             await conn.execute(sqltext(
                 "CREATE TABLE tags_v2 ("
                 "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -89,6 +90,7 @@ async def init_db():
             old_srcs = (await conn.execute(sqltext(
                 "SELECT id, name, source_type, last_import_at, last_hash, highlights_imported FROM sources"
             ))).fetchall()
+            await conn.execute(sqltext("DROP TABLE IF EXISTS sources_v2"))
             await conn.execute(sqltext(
                 "CREATE TABLE sources_v2 ("
                 "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -120,6 +122,7 @@ async def init_db():
                 "SELECT id, highlight_id, reviewed_at, rating, ease_factor, interval, repetitions, next_review_at "
                 "FROM review_log"
             ))).fetchall()
+            await conn.execute(sqltext("DROP TABLE IF EXISTS review_log_v2"))
             await conn.execute(sqltext(
                 "CREATE TABLE review_log_v2 ("
                 "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -153,6 +156,7 @@ async def init_db():
                     "SELECT id, highlight_id, queue_date, position, reviewed FROM daily_review_queue"
                 ))).fetchall()
 
+                await conn.execute(sqltext("DROP TABLE IF EXISTS daily_review_queue_v2"))
                 await conn.execute(sqltext(
                     "CREATE TABLE daily_review_queue_v2 ("
                     "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -185,6 +189,7 @@ async def init_db():
                 "FROM book_covers"
             ))).fetchall()
 
+            await conn.execute(sqltext("DROP TABLE IF EXISTS book_covers_v2"))
             await conn.execute(sqltext(
                 "CREATE TABLE book_covers_v2 ("
                 "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
