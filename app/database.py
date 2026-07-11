@@ -72,10 +72,12 @@ async def init_db():
                 ")"
             ))
             for row in old_tags:
-                await conn.execute(sqltext(
-                    "INSERT INTO tags_v2 (id, user_id, name, color) VALUES (:id, 1, :name, :color)",
+                await conn.execute(
+                    sqltext(
+                        "INSERT INTO tags_v2 (id, user_id, name, color) VALUES (:id, 1, :name, :color)"
+                    ),
                     {"id": row[0], "name": row[1], "color": row[2]},
-                ))
+                )
             await conn.execute(sqltext("DROP TABLE tags"))
             await conn.execute(sqltext("ALTER TABLE tags_v2 RENAME TO tags"))
 
@@ -99,11 +101,13 @@ async def init_db():
                 ")"
             ))
             for row in old_srcs:
-                await conn.execute(sqltext(
-                    "INSERT INTO sources_v2 (id, user_id, name, source_type, last_import_at, last_hash, highlights_imported) "
-                    "VALUES (:id, 1, :name, :st, :lia, :lh, :hi)",
+                await conn.execute(
+                    sqltext(
+                        "INSERT INTO sources_v2 (id, user_id, name, source_type, last_import_at, last_hash, highlights_imported) "
+                        "VALUES (:id, 1, :name, :st, :lia, :lh, :hi)"
+                    ),
                     {"id": row[0], "name": row[1], "st": row[2], "lia": row[3], "lh": row[4], "hi": row[5]},
-                ))
+                )
             await conn.execute(sqltext("DROP TABLE sources"))
             await conn.execute(sqltext("ALTER TABLE sources_v2 RENAME TO sources"))
 
@@ -130,12 +134,14 @@ async def init_db():
                 ")"
             ))
             for row in old_rls:
-                await conn.execute(sqltext(
-                    "INSERT INTO review_log_v2 (id, user_id, highlight_id, reviewed_at, rating, ease_factor, interval, repetitions, next_review_at) "
-                    "VALUES (:id, 1, :hl_id, :ra, :rating, :ef, :intv, :rep, :nra)",
+                await conn.execute(
+                    sqltext(
+                        "INSERT INTO review_log_v2 (id, user_id, highlight_id, reviewed_at, rating, ease_factor, interval, repetitions, next_review_at) "
+                        "VALUES (:id, 1, :hl_id, :ra, :rating, :ef, :intv, :rep, :nra)"
+                    ),
                     {"id": row[0], "hl_id": row[1], "ra": row[2], "rating": row[3],
                      "ef": row[4], "intv": row[5], "rep": row[6], "nra": row[7]},
-                ))
+                )
             await conn.execute(sqltext("DROP TABLE review_log"))
             await conn.execute(sqltext("ALTER TABLE review_log_v2 RENAME TO review_log"))
 
@@ -159,11 +165,13 @@ async def init_db():
                     ")"
                 ))
                 for row in old_drqs:
-                    await conn.execute(sqltext(
-                        "INSERT INTO daily_review_queue_v2 (id, user_id, highlight_id, queue_date, position, reviewed) "
-                        "VALUES (:id, 1, :hl_id, :qd, :pos, :rev)",
+                    await conn.execute(
+                        sqltext(
+                            "INSERT INTO daily_review_queue_v2 (id, user_id, highlight_id, queue_date, position, reviewed) "
+                            "VALUES (:id, 1, :hl_id, :qd, :pos, :rev)"
+                        ),
                         {"id": row[0], "hl_id": row[1], "qd": row[2], "pos": row[3], "rev": row[4]},
-                    ))
+                    )
                 await conn.execute(sqltext("DROP TABLE daily_review_queue"))
                 await conn.execute(sqltext("ALTER TABLE daily_review_queue_v2 RENAME TO daily_review_queue"))
 
@@ -192,12 +200,14 @@ async def init_db():
                 ")"
             ))
             for row in old_bcs:
-                await conn.execute(sqltext(
-                    "INSERT INTO book_covers_v2 (id, user_id, book_title, book_author, cover_source, cover_url, hardcover_id, isbn, updated_at) "
-                    "VALUES (:id, 1, :bt, :ba, :cs, :cu, :hcid, :isbn, :ua)",
+                await conn.execute(
+                    sqltext(
+                        "INSERT INTO book_covers_v2 (id, user_id, book_title, book_author, cover_source, cover_url, hardcover_id, isbn, updated_at) "
+                        "VALUES (:id, 1, :bt, :ba, :cs, :cu, :hcid, :isbn, :ua)"
+                    ),
                     {"id": row[0], "bt": row[1], "ba": row[2], "cs": row[3], "cu": row[4],
                      "hcid": row[5], "isbn": row[6], "ua": row[7]},
-                ))
+                )
             await conn.execute(sqltext("DROP TABLE book_covers"))
             await conn.execute(sqltext("ALTER TABLE book_covers_v2 RENAME TO book_covers"))
 
