@@ -46,6 +46,18 @@
     <p class="text-xs text-muted mt-2">The invite link expires in 7 days. Share it privately with the person you want to add.</p>
   </div>
 
+  <!-- Deduplicate -->
+  <div class="bg-card border border-card rounded-xl p-6 mb-8">
+    <h2 class="text-lg font-semibold mb-4">🧹 Deduplicate Highlights</h2>
+    <p class="text-sm text-muted mb-4">Find highlights with identical text/book/author and merge them into one, preserving tags and review history.</p>
+    <form method="POST" action="/admin/dedup" onsubmit="return confirm('This will merge duplicate highlights into one. Review logs from duplicates will be reassigned. Continue?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="px-5 py-2.5 bg-amber-500 text-white rounded-lg text-sm font-medium hover:opacity-90 transition">
+        Run Dedup
+      </button>
+    </form>
+  </div>
+
   <!-- Current users -->
   <div class="bg-card border border-card rounded-xl p-6">
     <h2 class="text-lg font-semibold mb-4">Users ({{ users|length }})</h2>
