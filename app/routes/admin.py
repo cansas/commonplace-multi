@@ -285,11 +285,12 @@ async def dedup_highlights(
                 {"keep": keep_id, "del": did},
             ))
 
-        # Reassign review_logs
-        await db.execute(sqltext(
-            "UPDATE review_log SET highlight_id = :keep WHERE highlight_id IN :del_ids",
-            {"keep": keep_id, "del_ids": tuple(del_ids)},
-        ))
+        # Reassign review_logs one at a time (avoids SQLite IN clause binding)
+        for did in del_ids:
+            await db.execute(sqltext(
+                "UPDATE review_log SET highlight_id = :keep WHERE highlight_id = :del",
+                {"keep": keep_id, "del": did},
+            ))
 
         # Delete duplicate highlights (cascade handles review_log re-flag? no — we already moved them)
         for did in del_ids:
