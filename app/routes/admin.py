@@ -216,10 +216,12 @@ async def accept_invite(
 async def rescind_invite(
     request: Request,
     invite_id: int,
+    csrf_token: str = Form(default=""),
     db: AsyncSession = Depends(get_db),
 ):
     """Admin: cancel a pending invite."""
     await _require_admin(request, db)
+    csrf_guard(request, csrf_token)
 
     result = await db.execute(
         select(Invite).where(

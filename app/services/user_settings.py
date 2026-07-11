@@ -122,5 +122,5 @@ async def migrate_from_file(db: AsyncSession, user_id: int) -> int:
             await set_(db, user_id, key, file_settings[key])
             count += 1
     if count:
-        await db.commit()
+        await db.flush()
     return count
