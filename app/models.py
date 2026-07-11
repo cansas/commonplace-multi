@@ -16,6 +16,7 @@ class Highlight(Base):
     __tablename__ = "highlights"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     text = Column(Text, nullable=False)
     note = Column(Text, nullable=True)
     page = Column(Integer, nullable=True)
@@ -33,6 +34,7 @@ class Highlight(Base):
     share_token = Column(String(64), unique=True, nullable=True)
     fingerprint = Column(String(64), nullable=True, index=True)  # SHA256 dedup hash
 
+    user = relationship("User", foreign_keys=[user_id])
     tags = relationship("Tag", secondary=highlight_tags, lazy="subquery")
     reviews = relationship("ReviewLog", back_populates="highlight", lazy="subquery")
 
@@ -41,33 +43,45 @@ class Tag(Base):
     __tablename__ = "tags"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(128), unique=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    name = Column(String(128), nullable=False)
     color = Column(String(7), nullable=True)  # hex color like #3b82f6
+
+    user = relationship("User", foreign_keys=[user_id])
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_tag_per_user"),
+    )
 
 
 class Source(Base):
     __tablename__ = "sources"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     name = Column(String(255), nullable=False)
     source_type = Column(String(64), nullable=False)
     last_import_at = Column(DateTime, nullable=True)
     last_hash = Column(String(128), nullable=True)
     highlights_imported = Column(Integer, default=0)
 
+    user = relationship("User", foreign_keys=[user_id])
+
 
 class ReviewLog(Base):
     __tablename__ = "review_log"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     highlight_id = Column(Integer, ForeignKey("highlights.id"), nullable=False)
     reviewed_at = Column(DateTime, default=datetime.utcnow)
-    rating = Column(Integer, nullable=True)  # 0=forgot, 1=hard, 2=good, 3=easy
+    rating = Column(Integer, nullable=True)  # deprecated — always None after SM-2 removal
     ease_factor = Column(Float, default=2.5)
     interval = Column(Integer, default=0)  # days
     repetitions = Column(Integer, default=0)
     next_review_at = Column(DateTime, nullable=True)
 
+    user = relationship("User", foreign_keys=[user_id])
     highlight = relationship("Highlight", back_populates="reviews")
 
 
@@ -86,10 +100,12 @@ class UserAchievement(Base):
     __tablename__ = "user_achievements"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, default=1)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     achievement_key = Column(String(64), nullable=False)
     message = Column(String(255), nullable=True)
     unlocked_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", foreign_keys=[user_id])
 
     __table_args__ = (
         UniqueConstraint("user_id", "achievement_key", name="uq_user_achievement"),
@@ -117,23 +133,27 @@ class PushSubscription(Base):
     endpoint = Column(String(512), nullable=False, unique=True)
     p256dh_key = Column(String(256), nullable=False)
     auth_key = Column(String(256), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, default=1)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", foreign_keys=[user_id])
 
 
 class DailyReviewQueue(Base):
     __tablename__ = "daily_review_queue"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     highlight_id = Column(Integer, ForeignKey("highlights.id"), nullable=False)
     queue_date = Column(Date, nullable=False)
     position = Column(Integer, nullable=False)
     reviewed = Column(Boolean, default=False)
 
+    user = relationship("User", foreign_keys=[user_id])
     highlight = relationship("Highlight")
 
     __table_args__ = (
-        UniqueConstraint("queue_date", "position", name="uq_queue_date_position"),
+        UniqueConstraint("user_id", "queue_date", "position", name="uq_queue_user_date_position"),
     )
 
 
@@ -141,6 +161,7 @@ class BookCover(Base):
     __tablename__ = "book_covers"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     book_title = Column(String(511), nullable=False)
     book_author = Column(String(511), nullable=False, default="")
     cover_source = Column(String(16), nullable=False, default="none")
@@ -149,6 +170,8 @@ class BookCover(Base):
     isbn = Column(String(20), nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
+    user = relationship("User", foreign_keys=[user_id])
+
     __table_args__ = (
-        UniqueConstraint("book_title", "book_author", name="uq_book_cover"),
+        UniqueConstraint("user_id", "book_title", "book_author", name="uq_cover_per_user"),
     )

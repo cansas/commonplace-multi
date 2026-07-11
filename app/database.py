@@ -19,12 +19,215 @@ async def get_db():
 
 
 async def init_db():
+    from sqlalchemy import text as sqltext
+
     async with engine.begin() as conn:
         from app.models import Base  # noqa: F401
         await conn.run_sync(Base.metadata.create_all)
+
+    # ═══════════════════════════════════════════════════════════════════
+    # MULTI-USER MIGRATION — single-user DB → multi-user (user_id cols)
+    # ═══════════════════════════════════════════════════════════════════
+    # Detects an existing single-user DB (no user_id column on highlights)
+    # and recreates each content table with user_id. All existing data
+    # is assigned to user_id=1 (the admin user).
+    async with engine.begin() as conn:
+        pragma = await conn.execute(sqltext("PRAGMA table_info('highlights')"))
+        hl_cols = {row[1] for row in pragma.fetchall()}
+
+        if "user_id" not in hl_cols:
+            print("  === Multi-user fork migration ===")
+            print("  Detected single-user DB — adding user_id to all content tables...")
+
+            # Drop FTS triggers + table (will be rebuilt later in init_db)
+            await conn.execute(sqltext("DROP TRIGGER IF EXISTS highlights_ai"))
+            await conn.execute(sqltext("DROP TRIGGER IF EXISTS highlights_ad"))
+            await conn.execute(sqltext("DROP TRIGGER IF EXISTS highlights_au"))
+            await conn.execute(sqltext("DROP TABLE IF EXISTS highlights_fts"))
+
+            # ── highlights ──────────────────────────────────────────────
+            print("  Migrating: highlights")
+            await conn.execute(sqltext(
+                "ALTER TABLE highlights ADD COLUMN user_id INTEGER REFERENCES users(id)"
+            ))
+            await conn.execute(sqltext(
+                "UPDATE highlights SET user_id = 1 WHERE user_id IS NULL"
+            ))
+            # SQLite can't ALTER to add NOT NULL, but the column is populated
+
+            # ── tags ────────────────────────────────────────────────────
+            print("  Migrating: tags")
+            pragma = await conn.execute(sqltext("PRAGMA table_info('tags')"))
+            tag_cols = {row[1] for row in pragma.fetchall()}
+            if "user_id" not in tag_cols:
+                # Get existing tags
+                old_tags = (await conn.execute(sqltext(
+                    "SELECT id, name, color FROM tags"
+                ))).fetchall()
+
+                # Drop old constraints by recreating the table
+                await conn.execute(sqltext(
+                    "CREATE TABLE tags_v2 ("
+                    "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    "  user_id INTEGER NOT NULL REFERENCES users(id),"
+                    "  name VARCHAR(128) NOT NULL,"
+                    "  color VARCHAR(7),"
+                    "  UNIQUE(user_id, name)"
+                    ")"
+                ))
+                for row in old_tags:
+                    await conn.execute(sqltext(
+                        "INSERT INTO tags_v2 (id, user_id, name, color) VALUES (:id, 1, :name, :color)",
+                        {"id": row[0], "name": row[1], "color": row[2]},
+                    ))
+                await conn.execute(sqltext("DROP TABLE tags"))
+                await conn.execute(sqltext("ALTER TABLE tags_v2 RENAME TO tags"))
+
+            # ── sources ─────────────────────────────────────────────────
+            print("  Migrating: sources")
+            pragma = await conn.execute(sqltext("PRAGMA table_info('sources')"))
+            src_cols = {row[1] for row in pragma.fetchall()}
+            if "user_id" not in src_cols:
+                old_srcs = (await conn.execute(sqltext(
+                    "SELECT id, name, source_type, last_import_at, last_hash, highlights_imported FROM sources"
+                ))).fetchall()
+
+                await conn.execute(sqltext(
+                    "CREATE TABLE sources_v2 ("
+                    "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    "  user_id INTEGER NOT NULL REFERENCES users(id),"
+                    "  name VARCHAR(255) NOT NULL,"
+                    "  source_type VARCHAR(64) NOT NULL,"
+                    "  last_import_at TIMESTAMP,"
+                    "  last_hash VARCHAR(128),"
+                    "  highlights_imported INTEGER DEFAULT 0"
+                    ")"
+                ))
+                for row in old_srcs:
+                    await conn.execute(sqltext(
+                        "INSERT INTO sources_v2 (id, user_id, name, source_type, last_import_at, last_hash, highlights_imported) "
+                        "VALUES (:id, 1, :name, :st, :lia, :lh, :hi)",
+                        {"id": row[0], "name": row[1], "st": row[2], "lia": row[3], "lh": row[4], "hi": row[5]},
+                    ))
+                await conn.execute(sqltext("DROP TABLE sources"))
+                await conn.execute(sqltext("ALTER TABLE sources_v2 RENAME TO sources"))
+
+            # ── review_log ──────────────────────────────────────────────
+            print("  Migrating: review_log")
+            pragma = await conn.execute(sqltext("PRAGMA table_info('review_log')"))
+            rl_cols = {row[1] for row in pragma.fetchall()}
+            if "user_id" not in rl_cols:
+                old_rls = (await conn.execute(sqltext(
+                    "SELECT id, highlight_id, reviewed_at, rating, ease_factor, interval, repetitions, next_review_at "
+                    "FROM review_log"
+                ))).fetchall()
+
+                await conn.execute(sqltext(
+                    "CREATE TABLE review_log_v2 ("
+                    "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    "  user_id INTEGER NOT NULL REFERENCES users(id),"
+                    "  highlight_id INTEGER NOT NULL REFERENCES highlights(id),"
+                    "  reviewed_at TIMESTAMP,"
+                    "  rating INTEGER,"
+                    "  ease_factor FLOAT DEFAULT 2.5,"
+                    "  interval INTEGER DEFAULT 0,"
+                    "  repetitions INTEGER DEFAULT 0,"
+                    "  next_review_at TIMESTAMP"
+                    ")"
+                ))
+                for row in old_rls:
+                    await conn.execute(sqltext(
+                        "INSERT INTO review_log_v2 (id, user_id, highlight_id, reviewed_at, rating, ease_factor, interval, repetitions, next_review_at) "
+                        "VALUES (:id, 1, :hl_id, :ra, :rating, :ef, :intv, :rep, :nra)",
+                        {"id": row[0], "hl_id": row[1], "ra": row[2], "rating": row[3],
+                         "ef": row[4], "intv": row[5], "rep": row[6], "nra": row[7]},
+                    ))
+                await conn.execute(sqltext("DROP TABLE review_log"))
+                await conn.execute(sqltext("ALTER TABLE review_log_v2 RENAME TO review_log"))
+
+            # ── daily_review_queue ──────────────────────────────────────
+            print("  Migrating: daily_review_queue")
+            pragma = await conn.execute(sqltext("PRAGMA table_info('daily_review_queue')"))
+            drq_cols = {row[1] for row in pragma.fetchall()}
+            if "user_id" not in drq_cols:
+                old_drqs = (await conn.execute(sqltext(
+                    "SELECT id, highlight_id, queue_date, position, reviewed FROM daily_review_queue"
+                ))).fetchall()
+
+                await conn.execute(sqltext(
+                    "CREATE TABLE daily_review_queue_v2 ("
+                    "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    "  user_id INTEGER NOT NULL REFERENCES users(id),"
+                    "  highlight_id INTEGER NOT NULL REFERENCES highlights(id),"
+                    "  queue_date DATE NOT NULL,"
+                    "  position INTEGER NOT NULL,"
+                    "  reviewed INTEGER DEFAULT 0,"
+                    "  UNIQUE(user_id, queue_date, position)"
+                    ")"
+                ))
+                for row in old_drqs:
+                    await conn.execute(sqltext(
+                        "INSERT INTO daily_review_queue_v2 (id, user_id, highlight_id, queue_date, position, reviewed) "
+                        "VALUES (:id, 1, :hl_id, :qd, :pos, :rev)",
+                        {"id": row[0], "hl_id": row[1], "qd": row[2], "pos": row[3], "rev": row[4]},
+                    ))
+                await conn.execute(sqltext("DROP TABLE daily_review_queue"))
+                await conn.execute(sqltext("ALTER TABLE daily_review_queue_v2 RENAME TO daily_review_queue"))
+
+            # ── book_covers ─────────────────────────────────────────────
+            print("  Migrating: book_covers")
+            pragma = await conn.execute(sqltext("PRAGMA table_info('book_covers')"))
+            bc_cols = {row[1] for row in pragma.fetchall()}
+            if "user_id" not in bc_cols:
+                old_bcs = (await conn.execute(sqltext(
+                    "SELECT id, book_title, book_author, cover_source, cover_url, hardcover_id, isbn, updated_at "
+                    "FROM book_covers"
+                ))).fetchall()
+
+                await conn.execute(sqltext(
+                    "CREATE TABLE book_covers_v2 ("
+                    "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    "  user_id INTEGER NOT NULL REFERENCES users(id),"
+                    "  book_title VARCHAR(511) NOT NULL,"
+                    "  book_author VARCHAR(511) NOT NULL DEFAULT '',"
+                    "  cover_source VARCHAR(16) NOT NULL DEFAULT 'none',"
+                    "  cover_url VARCHAR(1024),"
+                    "  hardcover_id INTEGER,"
+                    "  isbn VARCHAR(20),"
+                    "  updated_at TIMESTAMP,"
+                    "  UNIQUE(user_id, book_title, book_author)"
+                    ")"
+                ))
+                for row in old_bcs:
+                    await conn.execute(sqltext(
+                        "INSERT INTO book_covers_v2 (id, user_id, book_title, book_author, cover_source, cover_url, hardcover_id, isbn, updated_at) "
+                        "VALUES (:id, 1, :bt, :ba, :cs, :cu, :hcid, :isbn, :ua)",
+                        {"id": row[0], "bt": row[1], "ba": row[2], "cs": row[3], "cu": row[4],
+                         "hcid": row[5], "isbn": row[6], "ua": row[7]},
+                    ))
+                await conn.execute(sqltext("DROP TABLE book_covers"))
+                await conn.execute(sqltext("ALTER TABLE book_covers_v2 RENAME TO book_covers"))
+
+            # ── user_achievements — fix default=1 to require user_id ────
+            # The plan says enforce NOT NULL properly.
+            # Since the column already exists and is populated, we can add
+            # a partial migration for strictness (skip full recreate).
+            await conn.execute(sqltext(
+                "UPDATE user_achievements SET user_id = 1 WHERE user_id IS NULL"
+            ))
+
+            # ── push_subscriptions — fix default=1 to require user_id ───
+            await conn.execute(sqltext(
+                "UPDATE push_subscriptions SET user_id = 1 WHERE user_id IS NULL"
+            ))
+
+            print("  Multi-user migration complete — all existing data assigned to user_id=1")
+
+    # ═══════════════════════════════════════════════════════════════════
+    # LEGACY MIGRATIONS (shared with upstream)
+    # ═══════════════════════════════════════════════════════════════════
     # Migrations for existing databases — use PRAGMA to check column existence
     async with engine.begin() as conn:
-        from sqlalchemy import text as sqltext
         # Check which columns actually exist in highlights
         pragma = await conn.execute(sqltext("PRAGMA table_info('highlights')"))
         existing = {row[1] for row in pragma.fetchall()}  # row[1] = column name
@@ -89,7 +292,6 @@ async def init_db():
 
     # ── BookCover metadata columns ──────────────────────────────────────────
     async with engine.begin() as conn:
-        from sqlalchemy import text as sqltext
         pragma2 = await conn.execute(sqltext("PRAGMA table_info('book_covers')"))
         bc_cols = {row[1] for row in pragma2.fetchall()}
         if "hardcover_id" not in bc_cols:
@@ -101,7 +303,6 @@ async def init_db():
 
     # ── UserAchievements table ─────────────────────────────────────────────
     async with engine.begin() as conn:
-        from sqlalchemy import text as sqltext
         pragma3 = await conn.execute(sqltext("SELECT name FROM sqlite_master WHERE type='table' AND name='user_achievements'"))
         if not pragma3.fetchone():
             await conn.execute(sqltext(
@@ -118,7 +319,6 @@ async def init_db():
 
     # ── Tags color column ───────────────────────────────────────────────────
     async with engine.begin() as conn:
-        from sqlalchemy import text as sqltext
         pragma4 = await conn.execute(sqltext("PRAGMA table_info('tags')"))
         tag_cols = {row[1] for row in pragma4.fetchall()}
         if "color" not in tag_cols:
@@ -127,7 +327,6 @@ async def init_db():
 
     # Create dedup index (text + book_title + highlighted_at)
     async with engine.begin() as conn:
-        from sqlalchemy import text as sqltext
         try:
             await conn.execute(sqltext(
                 "CREATE INDEX IF NOT EXISTS ix_highlights_dedup "
@@ -140,7 +339,6 @@ async def init_db():
 
     # ── FTS5 Full-Text Search ─────────────────────────────────────────────
     async with engine.begin() as conn:
-        from sqlalchemy import text as sqltext
         # Drop old external-content FTS table if upgrading
         await conn.execute(sqltext("DROP TABLE IF EXISTS highlights_fts"))
         # Create FTS5 virtual table (standalone — stores its own content)
@@ -174,14 +372,18 @@ async def init_db():
     # ── Database indexes ───────────────────────────────────────────────────
     # Add indexes on common filter columns used in WHERE/ORDER BY clauses
     async with engine.begin() as conn:
-        from sqlalchemy import text as sqltext
         for idx_stmt in [
             "CREATE INDEX IF NOT EXISTS ix_highlights_highlighted_at ON highlights(highlighted_at)",
             "CREATE INDEX IF NOT EXISTS ix_highlights_book_title ON highlights(book_title)",
             "CREATE INDEX IF NOT EXISTS ix_highlights_source_type ON highlights(source_type)",
             "CREATE INDEX IF NOT EXISTS ix_highlights_favorite ON highlights(favorite)",
+            "CREATE INDEX IF NOT EXISTS ix_highlights_user_id ON highlights(user_id)",
             "CREATE INDEX IF NOT EXISTS ix_review_log_highlight_id ON review_log(highlight_id)",
             "CREATE INDEX IF NOT EXISTS ix_review_log_reviewed_at ON review_log(reviewed_at)",
+            "CREATE INDEX IF NOT EXISTS ix_review_log_user_id ON review_log(user_id)",
+            "CREATE INDEX IF NOT EXISTS ix_tags_user_id ON tags(user_id)",
+            "CREATE INDEX IF NOT EXISTS ix_daily_review_queue_user_id ON daily_review_queue(user_id)",
+            "CREATE INDEX IF NOT EXISTS ix_book_covers_user_id ON book_covers(user_id)",
         ]:
             try:
                 await conn.execute(sqltext(idx_stmt))
