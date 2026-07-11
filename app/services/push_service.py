@@ -104,8 +104,12 @@ async def send_push_to_all(
     db: AsyncSession,
     url: str = "/review",
     icon: str = "/static/logo-128.png",
+    user_id: int | None = None,
 ) -> dict:
     """Send a push notification to every active subscription.
+
+    When *user_id* is provided, only sends to that user's subscriptions.
+    Otherwise sends to ALL subscriptions (admin broadcast).
 
     webpush.send() is synchronous — each call is offloaded to a thread
     via asyncio.to_thread() to avoid blocking the event loop.
@@ -118,7 +122,10 @@ async def send_push_to_all(
 
     vapid_keys, vapid_claims = _ensure_vapid_keys()
 
-    result = await db.execute(select(PushSubscription))
+    q = select(PushSubscription)
+    if user_id is not None:
+        q = q.where(PushSubscription.user_id == user_id)
+    result = await db.execute(q)
     subs = result.scalars().all()
 
     sent = 0
