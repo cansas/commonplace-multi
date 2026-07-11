@@ -38,6 +38,8 @@ COVERS_DIR = os.environ.get("COVERS_DIR", os.path.join(os.path.dirname(os.path.a
 async def books_page(
     request: Request,
     user_id: int = Depends(get_current_user_id),
+    search: Optional[str] = Query(default=""),
+    sort: str = Query(default="highlights"),
     page: int = Query(default=1, ge=1),
     db: AsyncSession = Depends(get_db),
 ):
@@ -53,6 +55,7 @@ async def books_page(
             sa_func.max(Highlight.highlighted_at).label("last_highlighted"),
             sa_func.max(Highlight.id).label("sample_hl_id"),
         )
+        .where(Highlight.user_id == user_id)
         .group_by(Highlight.book_title, Highlight.book_author)
     )
 
