@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Accept Invite — Commonplace{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto mt-16">
+  <div class="bg-card border border-card rounded-xl p-8">
+    <h1 class="text-2xl font-bold mb-2">You're Invited!</h1>
+    <p class="text-muted text-sm mb-6">
+      Set up your account to start using Commonplace as <strong>{{ username }}</strong>.
+    </p>
+
+    {% if error %}
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4 text-sm">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/setup/invite">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="token" value="{{ token }}">
+
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-muted mb-1">Username</label>
+        <input type="text" value="{{ username }}" disabled
+               class="w-full px-4 py-2.5 bg-page-alt border border-card rounded-lg text-sm opacity-70">
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-muted mb-1">Password</label>
+        <input type="password" name="password" required minlength="8"
+               class="w-full px-4 py-2.5 bg-page border border-card rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/40" 
+               placeholder="At least 8 characters">
+      </div>
+
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-muted mb-1">Confirm Password</label>
+        <input type="password" name="confirm_password" required
+               class="w-full px-4 py-2.5 bg-page border border-card rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/40">
+      </div>
+
+      <button type="submit"
+              class="w-full px-5 py-3 bg-accent text-white rounded-lg text-sm font-medium hover:opacity-90 transition">
+        Create Account
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -96,6 +96,21 @@ class User(Base):
     tokens = relationship("ApiToken", back_populates="user", cascade="all, delete-orphan")
 
 
+class Invite(Base):
+    """One-time invite token for new user registration."""
+    __tablename__ = "invites"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(128), nullable=False)
+    token = Column(String(64), nullable=False, unique=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    creator = relationship("User", foreign_keys=[created_by])
+
+
 class UserAchievement(Base):
     __tablename__ = "user_achievements"
 

@@ -334,6 +334,25 @@ async def init_db():
             ))
             print("  Migration: created user_settings table")
 
+    # ── Invites table (multi-user fork) ──────────────────────────────────
+    async with engine.begin() as conn:
+        pragma_inv = await conn.execute(sqltext(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='invites'"
+        ))
+        if not pragma_inv.fetchone():
+            await conn.execute(sqltext(
+                "CREATE TABLE invites ("
+                "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "  username VARCHAR(128) NOT NULL,"
+                "  token VARCHAR(64) NOT NULL UNIQUE,"
+                "  created_by INTEGER NOT NULL REFERENCES users(id),"
+                "  expires_at TIMESTAMP NOT NULL,"
+                "  used_at TIMESTAMP,"
+                "  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+                ")"
+            ))
+            print("  Migration: created invites table")
+
     # Seed user_settings from file for existing single-user DBs
     async with async_session() as session:
         from app.models import UserSetting

@@ -18,7 +18,7 @@ from app.database import init_db, get_db, async_session
 from app.models import Highlight, Source, BookCover
 from app.auth import AuthMiddleware, ensure_admin
 from app.csrf import CSRFMiddleware, generate_csrf_token, template_context, SecurityHeadersMiddleware
-from app.routes import highlights, review, import_routes, settings as settings_routes, books, auth as auth_routes, share as share_routes, backup as backup_routes, tags as tags_routes, achievements as achievements_routes, about as about_routes, push as push_routes, themes as themes_routes
+from app.routes import highlights, review, import_routes, settings as settings_routes, books, auth as auth_routes, share as share_routes, backup as backup_routes, tags as tags_routes, achievements as achievements_routes, about as about_routes, push as push_routes, themes as themes_routes, admin as admin_routes
 from app.services.resurface import get_dashboard_counts
 from app.services.book_covers import batch_search
 from app.services.streaks import calculate_streaks
@@ -117,7 +117,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="commonplace-multi", version="2.0.0-alpha", lifespan=lifespan)
+app = FastAPI(title="commonplace-multi", version="2.0.0-alpha.1", lifespan=lifespan)
 
 # Ensure covers directory exists on the mounted volume
 COVERS_DIR = os.environ.get("COVERS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "covers"))
@@ -194,6 +194,7 @@ app.include_router(achievements_routes.router)
 app.include_router(about_routes.router)
 app.include_router(push_routes.router)
 app.include_router(themes_routes.router)
+app.include_router(admin_routes.router)
 
 
 @app.get("/health")

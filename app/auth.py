@@ -114,7 +114,8 @@ def _invalidate_token_cache(raw_token: str):
 
 # ── Middleware ─────────────────────────────────────────────────────────────
 
-PUBLIC_PATHS = {"/login", "/health", "/setup"}
+PUBLIC_PATHS = {"/login", "/health", "/setup", "/setup/invite"}
+PUBLIC_PATH_PREFIXES = {"/share/"}
 
 
 def _path_parts(path: str) -> list[str]:
@@ -151,6 +152,12 @@ class AuthMiddleware:
         if path in PUBLIC_PATHS or path.startswith("/static"):
             await self.app(scope, receive, send)
             return
+
+        # ── Public path prefixes (share cards, invite with query params) ──
+        for prefix in PUBLIC_PATH_PREFIXES:
+            if path.startswith(prefix):
+                await self.app(scope, receive, send)
+                return
 
         # ── Share cards (public) ──────────────────────────────────────
         if len(parts) >= 2 and parts[0] == "share":
