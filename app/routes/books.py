@@ -55,7 +55,6 @@ async def books_page(
             sa_func.max(Highlight.highlighted_at).label("last_highlighted"),
             sa_func.max(Highlight.id).label("sample_hl_id"),
         )
-        .where(Highlight.user_id == user_id)
         .group_by(Highlight.book_title, Highlight.book_author)
     )
 

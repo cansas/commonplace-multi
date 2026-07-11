@@ -50,9 +50,11 @@ async def init_db():
             await conn.execute(sqltext(
                 "ALTER TABLE highlights ADD COLUMN user_id INTEGER REFERENCES users(id)"
             ))
-            await conn.execute(sqltext(
-                "UPDATE highlights SET user_id = 1 WHERE user_id IS NULL"
-            ))
+
+        # Always ensure existing highlights are assigned to user 1
+        await conn.execute(sqltext(
+            "UPDATE highlights SET user_id = 1 WHERE user_id IS NULL"
+        ))
 
         # ── tags ────────────────────────────────────────────────────
         pragma = await conn.execute(sqltext("PRAGMA table_info('tags')"))
