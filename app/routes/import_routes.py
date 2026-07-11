@@ -14,6 +14,7 @@ from app.services.obsidian import parse_readwise_md
 from app.services.koreader_json import parse_koreader_json
 from app.services.import_service import ImportService, ImportResult
 from app.schemas import ReadwiseBatchImport
+from app.auth import get_current_user_id
 from app.csrf import template_context, csrf_guard
 from app.template import render
 from datetime import datetime

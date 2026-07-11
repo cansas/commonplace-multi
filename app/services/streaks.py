@@ -1,5 +1,4 @@
 """Streak tracking — daily review streaks and stat milestones."""
-
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +9,7 @@ from app.services.settings_service import get_all as get_settings, set as set_se
 _CENTRAL = ZoneInfo("America/Chicago")
 
 
-async def calculate_streaks(db: AsyncSession) -> dict:
+async def calculate_streaks(db: AsyncSession, user_id: int = 1) -> dict:
     """Return current streak and best-ever streak based on ReviewLog.
 
     Both are calendar-day streaks in Central time (matching the daily
@@ -21,6 +20,7 @@ async def calculate_streaks(db: AsyncSession) -> dict:
     # Fetch all raw reviewed_at datetimes (full precision, not func.date())
     result = await db.execute(
         select(ReviewLog.reviewed_at,)
+        .where(ReviewLog.user_id == user_id)
         .order_by(ReviewLog.reviewed_at.desc())
     )
     rows = result.all()

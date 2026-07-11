@@ -96,21 +96,21 @@ def _get_achievement(key: str) -> dict | None:
     return None
 
 
-async def _is_unlocked(db: AsyncSession, key: str) -> bool:
+async def _is_unlocked(db: AsyncSession, key: str, user_id: int = 1) -> bool:
     """Check if an achievement has already been unlocked."""
     result = await db.execute(
         select(UserAchievement).where(
-            UserAchievement.user_id == 1,
+            UserAchievement.user_id == user_id,
             UserAchievement.achievement_key == key,
         )
     )
     return result.scalar_one_or_none() is not None
 
 
-async def _award(db: AsyncSession, ach: dict) -> dict:
+async def _award(db: AsyncSession, ach: dict, user_id: int = 1) -> dict:
     """Record an unlocked achievement and return the payload."""
     db.add(UserAchievement(
-        user_id=1,
+        user_id=user_id,
         achievement_key=ach["key"],
         message=ach["message"],
     ))
@@ -128,6 +128,7 @@ async def check_and_unlock(
     current_streak: int,
     review_hour: int | None = None,
     daily_limit: int = 10,
+    user_id: int = 1,
 ) -> list[dict]:
     """Check if any new achievements should be unlocked.
 
@@ -141,7 +142,7 @@ async def check_and_unlock(
     newly_unlocked = []
 
     for ach in ACHIEVEMENTS:
-        if await _is_unlocked(db, ach["key"]):
+        if await _is_unlocked(db, ach["key"], user_id):
             continue
 
         unlocked = False
@@ -152,7 +153,9 @@ async def check_and_unlock(
         elif ach["check"] == "total_days":
             # Count distinct Central-timezone dates with reviews
             _CENTRAL = ZoneInfo("America/Chicago")
-            result = await db.execute(select(ReviewLog.reviewed_at).distinct())
+            result = await db.execute(
+                select(ReviewLog.reviewed_at).where(ReviewLog.user_id == user_id).distinct()
+            )
             dates = set()
             for row in result.all():
                 dt = row[0]
@@ -169,7 +172,7 @@ async def check_and_unlock(
         elif ach["check"] == "completionist":
             # 7 consecutive Central-timezone days where reviews >= daily_limit
             _CENTRAL = ZoneInfo("America/Chicago")
-            result = await db.execute(select(ReviewLog.reviewed_at))
+            result = await db.execute(select(ReviewLog.reviewed_at).where(ReviewLog.user_id == user_id))
             # Group by Central date in Python
             central_counts = {}
             for row in result.all():
@@ -193,19 +196,19 @@ async def check_and_unlock(
                             break
 
         elif ach["check"] == "first_review":
-            result = await db.execute(select(func.count(ReviewLog.id)))
+            result = await db.execute(select(func.count(ReviewLog.id)).where(ReviewLog.user_id == user_id))
             unlocked = (result.scalar() or 0) >= 1
 
         if unlocked:
-            newly_unlocked.append(await _award(db, ach))
+            newly_unlocked.append(await _award(db, ach, user_id))
 
     return newly_unlocked
 
 
-async def get_all_achievements(db: AsyncSession) -> list[dict]:
+async def get_all_achievements(db: AsyncSession, user_id: int = 1) -> list[dict]:
     """Return all achievement definitions with unlock status."""
     result = await db.execute(
-        select(UserAchievement).where(UserAchievement.user_id == 1)
+        select(UserAchievement).where(UserAchievement.user_id == user_id)
     )
     unlocked = {ua.achievement_key: ua for ua in result.scalars().all()}
 
@@ -223,13 +226,13 @@ async def get_all_achievements(db: AsyncSession) -> list[dict]:
     return output
 
 
-async def backfill_achievements(db: AsyncSession, current_streak: int) -> int:
+async def backfill_achievements(db: AsyncSession, current_streak: int, user_id: int = 1) -> int:
     """On startup, check and award any achievements already earned.
     Returns the number of newly backfilled achievements.
     """
     count = 0
     for ach in ACHIEVEMENTS:
-        if await _is_unlocked(db, ach["key"]):
+        if await _is_unlocked(db, ach["key"], user_id):
             continue
 
         should_award = False
@@ -238,7 +241,9 @@ async def backfill_achievements(db: AsyncSession, current_streak: int) -> int:
         elif ach["check"] == "total_days":
             # Count distinct Central-timezone dates with reviews
             _CENTRAL = ZoneInfo("America/Chicago")
-            result = await db.execute(select(ReviewLog.reviewed_at).distinct())
+            result = await db.execute(
+                select(ReviewLog.reviewed_at).where(ReviewLog.user_id == user_id).distinct()
+            )
             dates = set()
             for row in result.all():
                 dt = row[0]
@@ -249,7 +254,7 @@ async def backfill_achievements(db: AsyncSession, current_streak: int) -> int:
             should_award = total_days >= ach["threshold"]
         elif ach["check"] == "completionist":
             _CENTRAL = ZoneInfo("America/Chicago")
-            result = await db.execute(select(ReviewLog.reviewed_at))
+            result = await db.execute(select(ReviewLog.reviewed_at).where(ReviewLog.user_id == user_id))
             # Group by Central date in Python
             central_counts = {}
             for row in result.all():
@@ -266,12 +271,12 @@ async def backfill_achievements(db: AsyncSession, current_streak: int) -> int:
                         should_award = False
                         break
         elif ach["check"] == "first_review":
-            result = await db.execute(select(func.count(ReviewLog.id)))
+            result = await db.execute(select(func.count(ReviewLog.id)).where(ReviewLog.user_id == user_id))
             should_award = (result.scalar() or 0) >= 1
 
         if should_award:
             db.add(UserAchievement(
-                user_id=1,
+                user_id=user_id,
                 achievement_key=ach["key"],
                 message=ach["message"],
             ))

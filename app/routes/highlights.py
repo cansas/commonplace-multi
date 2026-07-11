@@ -7,6 +7,7 @@ from sqlalchemy import select, func as sa_func, text, text as sqltext
 from app.database import get_db
 from app.models import Highlight, Tag, BookCover, ReviewLog, DailyReviewQueue
 from app.schemas import HighlightOut, HighlightCreate, HighlightUpdate, ReadwiseBatchImport
+from app.auth import get_current_user_id
 from app.services.highlight_card import generate_card, fetch_cover_data
 from app.routes.share import get_share_token
 from app.csrf import template_context
@@ -30,6 +31,7 @@ router = APIRouter(tags=["highlights"])
 
 @router.get("/highlights", response_class=HTMLResponse)
 async def highlights_page(
+    user_id: int = Depends(get_current_user_id),
     request: Request,
     search: Optional[str] = Query(default=""),
     source: Optional[str] = Query(default=""),
@@ -111,9 +113,12 @@ async def highlights_page(
 @router.post("/api/highlights", response_model=HighlightOut)
 async def create_highlight(
     data: HighlightCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = await get_current_user_id(request)
     hl = Highlight(
+        user_id=user_id,
         text=data.text,
         note=data.note,
         page=data.page,
@@ -134,7 +139,7 @@ async def create_highlight(
             result = await db.execute(select(Tag).where(Tag.name == tag_name))
             tag = result.scalar_one_or_none()
             if not tag:
-                tag = Tag(name=tag_name)
+                tag = Tag(name=tag_name, user_id=user_id)
                 db.add(tag)
             hl.tags.append(tag)
 
@@ -146,6 +151,7 @@ async def create_highlight(
 
 @router.get("/api/highlights", response_model=List[HighlightOut])
 async def list_highlights(
+    request: Request,
     skip: int = 0,
     limit: int = 50,
     since: Optional[str] = "",
@@ -153,6 +159,7 @@ async def list_highlights(
     book_title: Optional[str] = "",
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = await get_current_user_id(request)
     if search and search.strip():
         fts_query = text(
             "SELECT rowid FROM highlights_fts WHERE highlights_fts MATCH :q ORDER BY rank"
@@ -161,9 +168,9 @@ async def list_highlights(
         ids = [row[0] for row in fts_result.fetchall()]
         if not ids:
             return []
-        query = select(Highlight).where(Highlight.id.in_(ids)).order_by(Highlight.created_at.desc())
+        query = select(Highlight).where(Highlight.id.in_(ids), Highlight.user_id == user_id).order_by(Highlight.created_at.desc())
     else:
-        query = select(Highlight).order_by(Highlight.created_at.desc())
+        query = select(Highlight).where(Highlight.user_id == user_id).order_by(Highlight.created_at.desc())
     if book_title:
         query = query.where(Highlight.book_title == book_title)
     if since:
@@ -178,11 +185,13 @@ async def list_highlights(
 
 @router.get("/api/export")
 async def export_highlights(
+    request: Request,
     since: Optional[str] = "",
     offset: int = 0,
     limit: int = 10000,
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = await get_current_user_id(request)
     """Export highlights grouped by book for Obsidian sync.
     
     When ``since`` is provided, returns ALL highlights for books that have
@@ -190,7 +199,7 @@ async def export_highlights(
     This lets client plugins overwrite per-book files safely without losing
     previously synced highlights.
     """
-    base_q = select(Highlight).order_by(Highlight.book_title, Highlight.highlighted_at)
+    base_q = select(Highlight).where(Highlight.user_id == user_id).order_by(Highlight.book_title, Highlight.highlighted_at)
 
     if since:
         try:
@@ -250,9 +259,10 @@ async def export_highlights(
 
 
 @router.delete("/api/highlights/{hl_id}")
-async def delete_highlight(hl_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_highlight(hl_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = await get_current_user_id(request)
     hl = await db.get(Highlight, hl_id)
-    if hl:
+    if hl and hl.user_id == user_id:
         # Detach hl and its loaded reviews from the session so ORM flush
         # doesn't try to cascade or update child rows (all FKs are NOT NULL).
         db.expunge(hl)
@@ -273,9 +283,10 @@ async def delete_highlight(hl_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/api/highlights/{hl_id}/favorite")
-async def toggle_favorite(hl_id: int, db: AsyncSession = Depends(get_db)):
+async def toggle_favorite(hl_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = await get_current_user_id(request)
     hl = await db.get(Highlight, hl_id)
-    if not hl:
+    if not hl or hl.user_id != user_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Highlight not found")
     hl.favorite = 0 if hl.favorite else 1
     await db.commit()
@@ -283,9 +294,10 @@ async def toggle_favorite(hl_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.put("/api/highlights/{hl_id}")
-async def update_highlight(hl_id: int, data: HighlightUpdate, db: AsyncSession = Depends(get_db)):
+async def update_highlight(hl_id: int, data: HighlightUpdate, request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = await get_current_user_id(request)
     hl = await db.get(Highlight, hl_id)
-    if not hl:
+    if not hl or hl.user_id != user_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Highlight not found")
 
     update_data = data.model_dump(exclude_unset=True)
@@ -372,14 +384,15 @@ async def update_highlight(hl_id: int, data: HighlightUpdate, db: AsyncSession =
 
 
 @router.get("/api/highlights/random")
-async def random_highlight(db: AsyncSession = Depends(get_db)):
+async def random_highlight(request: Request, db: AsyncSession = Depends(get_db)):
     """Return a single random highlight (for highlight-of-the-day display)."""
-    result = await db.execute(select(sa_func.count(Highlight.id)))
+    user_id = await get_current_user_id(request)
+    result = await db.execute(select(sa_func.count(Highlight.id)).where(Highlight.user_id == user_id))
     total = result.scalar() or 0
     if total == 0:
         return None
     offset = random.randint(0, total - 1)
-    hl_result = await db.execute(select(Highlight).offset(offset).limit(1))
+    hl_result = await db.execute(select(Highlight).where(Highlight.user_id == user_id).offset(offset).limit(1))
     hl = hl_result.scalar_one_or_none()
     if not hl:
         return None
@@ -395,7 +408,8 @@ async def random_highlight(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/api/highlights/{hl_id}")
-async def get_highlight(hl_id: int, db: AsyncSession = Depends(get_db)):
+async def get_highlight(hl_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = await get_current_user_id(request)
     """Return a single highlight with its tags."""
     hl = await db.get(Highlight, hl_id)
     if not hl:
@@ -430,9 +444,9 @@ def _check_context_rate_limit(request: Request):
 async def highlight_context(hl_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     """Return up to 5 highlights before and after the given highlight within the same book."""
     _check_context_rate_limit(request)
-
+    user_id = await get_current_user_id(request)
     hl = await db.get(Highlight, hl_id)
-    if not hl:
+    if not hl or hl.user_id != user_id:
         raise HTTPException(status_code=404, detail="Highlight not found")
 
     title = hl.book_title or ""
@@ -509,9 +523,10 @@ def _serialize_context_hl(hl) -> dict:
 
 
 @router.get("/api/highlights/{hl_id}/card")
-async def highlight_card(hl_id: int, db: AsyncSession = Depends(get_db)):
+async def highlight_card(hl_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = await get_current_user_id(request)
     hl = await db.get(Highlight, hl_id)
-    if not hl:
+    if not hl or hl.user_id != user_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Highlight not found")
 
     # Look up cover image
@@ -540,10 +555,11 @@ async def highlight_card(hl_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/api/highlights/{hl_id}/cover-image")
-async def highlight_cover_image(hl_id: int, db: AsyncSession = Depends(get_db)):
+async def highlight_cover_image(hl_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     """Return the book cover image for a highlight (raw bytes)."""
+    user_id = await get_current_user_id(request)
     hl = await db.get(Highlight, hl_id)
-    if not hl:
+    if not hl or hl.user_id != user_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     if not hl.book_title:
@@ -578,8 +594,10 @@ async def highlight_cover_image(hl_id: int, db: AsyncSession = Depends(get_db)):
 @router.post("/api/highlights/batch")
 async def batch_import(
     data: ReadwiseBatchImport,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = await get_current_user_id(request)
     """Batch import highlights (Readwise-compatible format).
 
     Accepts an array of ``HighlightCreate`` items. Each item is
@@ -617,6 +635,7 @@ async def batch_import(
             # Create highlight (reuse ORM logic inline since we need
             # granular control per-item in a batch context)
             hl = Highlight(
+                user_id=user_id,
                 text=hl_data.text,
                 note=hl_data.note,
                 page=hl_data.page,
@@ -640,7 +659,7 @@ async def batch_import(
                     )
                     tag = tag_result.scalar_one_or_none()
                     if not tag:
-                        tag = Tag(name=tag_name)
+                        tag = Tag(name=tag_name, user_id=user_id)
                         db.add(tag)
                     hl.tags.append(tag)
 

@@ -13,7 +13,7 @@ from app.models import Highlight, ReviewLog, DailyReviewQueue
 from app.dates import today_start_utc
 
 
-async def get_or_create_queue(daily_limit: int) -> list[dict]:
+async def get_or_create_queue(daily_limit: int, user_id: int = 1) -> list[dict]:
     """Get today's review queue, creating it from random unreviewed
     highlights if it doesn't exist yet.
 
@@ -29,7 +29,10 @@ async def get_or_create_queue(daily_limit: int) -> list[dict]:
         # 1. Check if queue already exists for today
         existing = await db.execute(
             select(DailyReviewQueue)
-            .where(DailyReviewQueue.queue_date == today)
+            .where(
+                DailyReviewQueue.queue_date == today,
+                DailyReviewQueue.user_id == user_id,
+            )
             .order_by(DailyReviewQueue.position)
         )
         rows = existing.scalars().all()
@@ -69,7 +72,10 @@ async def get_or_create_queue(daily_limit: int) -> list[dict]:
                 (ReviewLog.highlight_id == Highlight.id)
                 & (ReviewLog.reviewed_at >= today_start),
             )
-            .where(ReviewLog.id.is_(None))
+            .where(
+                ReviewLog.id.is_(None),
+                Highlight.user_id == user_id,
+            )
         )
         total = (await db.execute(count_q)).scalar() or 0
         limit = min(daily_limit, total)
@@ -86,7 +92,10 @@ async def get_or_create_queue(daily_limit: int) -> list[dict]:
                 (ReviewLog.highlight_id == Highlight.id)
                 & (ReviewLog.reviewed_at >= today_start),
             )
-            .where(ReviewLog.id.is_(None))
+            .where(
+                ReviewLog.id.is_(None),
+                Highlight.user_id == user_id,
+            )
             .order_by(func.random())
             .limit(limit)
         )
@@ -96,6 +105,7 @@ async def get_or_create_queue(daily_limit: int) -> list[dict]:
         for i, hl_id in enumerate(hl_ids):
             db.add(
                 DailyReviewQueue(
+                    user_id=user_id,
                     highlight_id=hl_id,
                     queue_date=today,
                     position=i + 1,
@@ -119,7 +129,7 @@ async def get_or_create_queue(daily_limit: int) -> list[dict]:
         return result
 
 
-async def mark_reviewed(highlight_id: int) -> None:
+async def mark_reviewed(highlight_id: int, user_id: int = 1) -> None:
     """Mark the queue entry for this highlight as reviewed."""
     from app.dates import central_now
 
@@ -130,6 +140,7 @@ async def mark_reviewed(highlight_id: int) -> None:
             .where(
                 DailyReviewQueue.queue_date == today,
                 DailyReviewQueue.highlight_id == highlight_id,
+                DailyReviewQueue.user_id == user_id,
             )
         )
         await db.execute(
@@ -143,13 +154,13 @@ async def mark_reviewed(highlight_id: int) -> None:
         await db.commit()
 
 
-async def get_queue_for_digest() -> list[dict]:
+async def get_queue_for_digest(user_id: int = 1) -> list[dict]:
     """Get today's queue (max 3 entries) for the email digest.
     Creates the queue if it doesn't exist yet (first caller wins).
     """
     from app.services.settings_service import get_review_count
 
-    return await get_or_create_queue(get_review_count())
+    return await get_or_create_queue(get_review_count(), user_id)
 
 
 def _highlight_to_dict(

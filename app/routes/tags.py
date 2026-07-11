@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete as sa_delete, text as sqltext
 from app.database import get_db
 from app.models import Tag, Highlight, highlight_tags
+from app.auth import get_current_user_id
 from app.csrf import template_context, csrf_guard
 from app.template import render
 
@@ -159,7 +160,8 @@ async def set_highlight_tags(
 
 
 @router.get("/tags", response_class=HTMLResponse)
-async def tags_page(request: Request, db: AsyncSession = Depends(get_db)):
+async def tags_page(
+    user_id: int = Depends(get_current_user_id),request: Request, db: AsyncSession = Depends(get_db)):
     """Tag browser page."""
     result = await db.execute(
         select(
@@ -188,11 +190,12 @@ async def tags_page(request: Request, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/tags/{tag_id}", response_class=HTMLResponse)
-async def tag_detail(
-    tag_id: int,
+async def tags_page(
+    user_id: int = Depends(get_current_user_id),
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    # Tag queries are scoped by user_id via the Tag model
     """Show all highlights with a given tag."""
     tag = await db.get(Tag, tag_id)
     if not tag:

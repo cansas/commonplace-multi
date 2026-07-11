@@ -12,6 +12,8 @@ from fastapi.responses import StreamingResponse, RedirectResponse
 from starlette.responses import Response
 
 from app.database import DATABASE_URL, async_session
+from app.auth import get_current_user_id
+from app.auth import get_current_user_id
 from app.csrf import template_context, csrf_guard
 from app.template import render
 

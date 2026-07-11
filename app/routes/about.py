@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models import Highlight, Tag, UserAchievement
 from app.services.streaks import calculate_streaks
 from app.services.settings_service import get_hardcover_api_key
+from app.auth import get_current_user_id
 from app.csrf import template_context
 from app.template import render
 
@@ -17,8 +18,11 @@ router = APIRouter(tags=["about"])
 
 
 @router.get("/about", response_class=HTMLResponse)
-async def about_page(request: Request, db: AsyncSession = Depends(get_db)):
-    """In-app about page with version, stats, and quick reference."""
+async def about_page(
+    user_id: int = Depends(get_current_user_id),
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     # Defer import to avoid circular import (main.py imports this module)
     from app.main import app
 
@@ -31,9 +35,9 @@ async def about_page(request: Request, db: AsyncSession = Depends(get_db)):
     ).scalar() or 0
     tag_count = (await db.execute(select(func.count(Tag.id)))).scalar() or 0
     ach_count = (
-        await db.execute(select(func.count(UserAchievement.id)).where(UserAchievement.user_id == 1))
+        await db.execute(select(func.count(UserAchievement.id)).where(UserAchievement.user_id == user_id))
     ).scalar() or 0
-    streaks = await calculate_streaks(db)
+    streaks = await calculate_streaks(db, user_id)
     hc_key = get_hardcover_api_key()
 
     return render(

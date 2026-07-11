@@ -10,6 +10,7 @@ from app.services.settings_service import get_review_count
 from app.services.streaks import calculate_streaks
 from app.services.achievements import check_and_unlock
 from app.services.review_queue import get_or_create_queue, mark_reviewed
+from app.auth import get_current_user_id
 from app.csrf import template_context, csrf_guard
 from app.dates import central_now, today_start_utc
 from app.template import render
@@ -28,7 +29,7 @@ def _today_start() -> datetime:
     return today_start_utc()
 
 
-async def _reviewed_today_count(db) -> int:
+async def _reviewed_today_count(db, user_id: int = 1) -> int:
     """How many highlights have been reviewed so far today (UTC)."""
     today_start = _today_start()
     result = await db.execute(
@@ -38,9 +39,10 @@ async def _reviewed_today_count(db) -> int:
     return result.scalar() or 0
 
 
-async def _log_review(db, hl_id: int, rating: int | None = None):
+async def _log_review(db, hl_id: int, user_id: int = 1, rating: int | None = None):
     """Record a review. Does NOT commit — caller is responsible for committing."""
     log = ReviewLog(
+        user_id=user_id,
         highlight_id=hl_id,
         rating=rating,
         reviewed_at=datetime.utcnow(),
@@ -48,13 +50,13 @@ async def _log_review(db, hl_id: int, rating: int | None = None):
     db.add(log)
 
 
-async def _get_today_reviews(db):
+async def _get_today_reviews(db, user_id: int = 1):
     """Return all reviews from today with their highlight data."""
     today_start = _today_start()
     result = await db.execute(
         select(ReviewLog, Highlight)
         .join(Highlight, ReviewLog.highlight_id == Highlight.id)
-        .where(ReviewLog.reviewed_at >= today_start)
+        .where(ReviewLog.user_id == user_id, ReviewLog.reviewed_at >= today_start)
         .order_by(ReviewLog.reviewed_at.desc())
     )
     rows = []
@@ -75,12 +77,13 @@ async def _get_today_reviews(db):
 
 @router.get("/review", response_class=HTMLResponse)
 async def review_page(
+    user_id: int = Depends(get_current_user_id),
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     daily_limit = get_review_count()
-    streaks = await calculate_streaks(db)
-    queue = await get_or_create_queue(daily_limit)
+    streaks = await calculate_streaks(db, user_id)
+    queue = await get_or_create_queue(daily_limit, user_id)
 
     # Find the first not-yet-reviewed entry
     current_entry = None
@@ -126,11 +129,12 @@ async def review_page(
 
 @router.get("/review/today", response_class=HTMLResponse)
 async def review_today_page(
+    user_id: int = Depends(get_current_user_id),
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Display all reviews from today with their ratings."""
-    streaks = await calculate_streaks(db)
+    streaks = await calculate_streaks(db, user_id)
     today_reviews = await _get_today_reviews(db)
     daily_limit = get_review_count()
 
@@ -150,11 +154,12 @@ async def review_today_page(
 
 @router.get("/review/stats", response_class=HTMLResponse)
 async def review_stats_page(
+    user_id: int = Depends(get_current_user_id),
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Review statistics dashboard."""
-    streaks = await calculate_streaks(db)
+    streaks = await calculate_streaks(db, user_id)
 
     # Reviews per day for last 30 days (in Central time)
     _CENTRAL = ZoneInfo("America/Chicago")
@@ -226,10 +231,11 @@ _RATING_LABELS = {0: "Forgot", 1: "Hard", 2: "Good", 3: "Easy"}
 
 
 @router.get("/api/review/stats")
-async def review_stats(db: AsyncSession = Depends(get_db)):
+async def review_stats(
+    user_id: int = Depends(get_current_user_id),db: AsyncSession = Depends(get_db)):
     """Return review statistics for today."""
-    streaks = await calculate_streaks(db)
-    done_today = await _reviewed_today_count(db)
+    streaks = await calculate_streaks(db, user_id)
+    done_today = await _reviewed_today_count(db, user_id)
     daily_limit = get_review_count()
     remaining = max(0, daily_limit - done_today)
     return {
@@ -242,9 +248,10 @@ async def review_stats(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/api/review/today")
-async def api_review_today(db: AsyncSession = Depends(get_db)):
+async def api_review_today(request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = await get_current_user_id(request)
     """Return today's reviewed highlights as JSON (for review log / sharing)."""
-    rows = await _get_today_reviews(db)
+    rows = await _get_today_reviews(db, user_id)
     return [{
         "highlight_id": r["hl_id"],
         "text": r["text"],
@@ -256,6 +263,7 @@ async def api_review_today(db: AsyncSession = Depends(get_db)):
 
 @router.post("/review/rate")
 async def review_rate(
+    user_id: int = Depends(get_current_user_id),
     request: Request,
     hl_id: int = Form(...),
     rating: int = Form(...),
@@ -266,12 +274,12 @@ async def review_rate(
     _check_review_rate_limit(request)
     if rating not in (0, 1, 2, 3):
         raise HTTPException(status_code=400, detail="Invalid rating")
-    await _log_review(db, hl_id, rating)
+    await _log_review(db, hl_id, user_id, rating)
     await db.commit()
-    await mark_reviewed(hl_id)
+    await mark_reviewed(hl_id, user_id)
 
     # Check for newly unlocked achievements
-    streaks = await calculate_streaks(db)
+    streaks = await calculate_streaks(db, user_id)
     daily_limit = get_review_count()
     review_hour = central_now().hour
     new_achievements = await check_and_unlock(db, streaks["current"], review_hour=review_hour, daily_limit=daily_limit)
@@ -287,6 +295,7 @@ async def review_rate(
 
 @router.post("/review/next")
 async def review_next(
+    user_id: int = Depends(get_current_user_id),
     request: Request,
     hl_id: int = Form(...),
     csrf_token: str = Form(default=""),
@@ -294,12 +303,12 @@ async def review_next(
 ):
     csrf_guard(request, csrf_token)
     _check_review_rate_limit(request)
-    await _log_review(db, hl_id)
+    await _log_review(db, hl_id, user_id)
     await db.commit()
-    await mark_reviewed(hl_id)
+    await mark_reviewed(hl_id, user_id)
 
     # Check for newly unlocked achievements
-    streaks = await calculate_streaks(db)
+    streaks = await calculate_streaks(db, user_id)
     daily_limit = get_review_count()
     review_hour = central_now().hour
     new_achievements = await check_and_unlock(db, streaks["current"], review_hour=review_hour, daily_limit=daily_limit)
@@ -310,7 +319,8 @@ async def review_next(
 
 
 @router.post("/review/favorite")
-async def review_favorite(
+async def toggle_favorite(
+    user_id: int = Depends(get_current_user_id),
     request: Request,
     hl_id: int = Form(...),
     csrf_token: str = Form(default=""),
@@ -321,14 +331,14 @@ async def review_favorite(
     hl = await db.get(Highlight, hl_id)
     if hl:
         hl.favorite = 0 if hl.favorite else 1
-    await _log_review(db, hl_id)
+    await _log_review(db, hl_id, user_id)
     await db.commit()
-    await mark_reviewed(hl_id)
+    await mark_reviewed(hl_id, user_id)
 
-    streaks = await calculate_streaks(db)
+    streaks = await calculate_streaks(db, user_id)
     daily_limit = get_review_count()
     review_hour = central_now().hour
-    new_achievements = await check_and_unlock(db, streaks["current"], review_hour=review_hour, daily_limit=daily_limit)
+    new_achievements = await check_and_unlock(db, streaks["current"], review_hour=review_hour, daily_limit=daily_limit, user_id=user_id)
     if new_achievements:
         request.session["new_achievements"] = new_achievements
 
@@ -337,6 +347,7 @@ async def review_favorite(
 
 @router.post("/review/delete")
 async def review_delete(
+    user_id: int = Depends(get_current_user_id),
     request: Request,
     hl_id: int = Form(...),
     csrf_token: str = Form(default=""),
@@ -347,14 +358,14 @@ async def review_delete(
     hl = await db.get(Highlight, hl_id)
     if hl:
         await db.delete(hl)
-    await _log_review(db, hl_id)
+    await _log_review(db, hl_id, user_id)
     await db.commit()
-    await mark_reviewed(hl_id)
+    await mark_reviewed(hl_id, user_id)
 
-    streaks = await calculate_streaks(db)
+    streaks = await calculate_streaks(db, user_id)
     daily_limit = get_review_count()
     review_hour = central_now().hour
-    new_achievements = await check_and_unlock(db, streaks["current"], review_hour=review_hour, daily_limit=daily_limit)
+    new_achievements = await check_and_unlock(db, streaks["current"], review_hour=review_hour, daily_limit=daily_limit, user_id=user_id)
     if new_achievements:
         request.session["new_achievements"] = new_achievements
 
@@ -366,9 +377,11 @@ async def review_delete(
 
 @router.get("/api/review/heatmap")
 async def review_heatmap_data(
+    request: Request,
     year: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    user_id = await get_current_user_id(request)
     """Return daily review counts for a given year (default: this year).
     Counts are bucketed by Central timezone date.
     """
@@ -384,9 +397,9 @@ async def review_heatmap_data(
     rows = await db.execute(
         sqltext(
             "SELECT reviewed_at FROM review_log "
-            "WHERE reviewed_at >= :start AND reviewed_at < :end "
+            "WHERE user_id = :uid AND reviewed_at >= :start AND reviewed_at < :end "
         ),
-        {"start": start_utc, "end": end_utc},
+        {"uid": user_id, "start": start_utc, "end": end_utc},
     )
     # Group by Central date in Python
     counts_by_date = {}
@@ -403,6 +416,7 @@ async def review_heatmap_data(
 
 @router.get("/review/heatmap", response_class=HTMLResponse)
 async def review_heatmap_page(
+    user_id: int = Depends(get_current_user_id),
     request: Request,
     year: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
@@ -419,9 +433,9 @@ async def review_heatmap_page(
     rows = await db.execute(
         sqltext(
             "SELECT reviewed_at FROM review_log "
-            "WHERE reviewed_at >= :start AND reviewed_at < :end "
+            "WHERE user_id = :uid AND reviewed_at >= :start AND reviewed_at < :end "
         ),
-        {"start": start_utc, "end": end_utc},
+        {"uid": user_id, "start": start_utc, "end": end_utc},
     )
     # Group by Central date
     counts_by_date = {}
@@ -492,12 +506,13 @@ async def review_heatmap_page(
 
 @router.get("/api/review/next")
 async def api_review_next(
+    user_id: int = Depends(get_current_user_id),
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Return the next unreviewed highlight from today's queue as JSON."""
     daily_limit = get_review_count()
-    queue = await get_or_create_queue(daily_limit)
+    queue = await get_or_create_queue(daily_limit, user_id)
 
     for entry in queue:
         if not entry["reviewed"]:
@@ -506,7 +521,7 @@ async def api_review_next(
     return {"highlight_id": None, "done": True}
 
 
-def _review_entry_to_json(entry: dict) -> dict:
+@router.post("/api/review/rate")
     """Convert a queue entry to the JSON shape the iOS app expects."""
     return {
         "highlight_id": entry["id"],
@@ -522,6 +537,7 @@ def _review_entry_to_json(entry: dict) -> dict:
 
 @router.post("/api/review/rate")
 async def api_review_rate(
+    user_id: int = Depends(get_current_user_id),
     request: Request,
     body: dict,
     db: AsyncSession = Depends(get_db),
@@ -536,15 +552,15 @@ async def api_review_rate(
         raise HTTPException(status_code=400, detail="rating must be 0-3")
 
     _check_review_rate_limit(request)
-    await _log_review(db, hl_id, rating)
+    await _log_review(db, hl_id, user_id, rating)
     await db.commit()
-    await mark_reviewed(hl_id)
+    await mark_reviewed(hl_id, user_id)
 
     # Check for newly unlocked achievements (reward regardless of client)
-    streaks = await calculate_streaks(db)
+    streaks = await calculate_streaks(db, user_id)
     daily_limit = get_review_count()
     review_hour = central_now().hour
-    new_achievements = await check_and_unlock(db, streaks["current"], review_hour=review_hour, daily_limit=daily_limit)
+    new_achievements = await check_and_unlock(db, streaks["current"], review_hour=review_hour, daily_limit=daily_limit, user_id=user_id)
 
     resp = {"ok": True, "highlight_id": hl_id, "rating": rating}
     if new_achievements:

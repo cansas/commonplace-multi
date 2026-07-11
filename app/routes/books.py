@@ -7,6 +7,8 @@ from sqlalchemy import select, func as sa_func, or_, text as sqltext
 from app.database import get_db
 from app.models import Highlight, BookCover
 from app.services.book_covers import search_cover, list_cover_options
+from app.auth import get_current_user_id
+from app.auth import get_current_user_id
 from app.csrf import template_context
 from app.services.settings_service import get_hardcover_api_key
 from app.template import render
@@ -34,9 +36,11 @@ COVERS_DIR = os.environ.get("COVERS_DIR", os.path.join(os.path.dirname(os.path.a
 
 @router.get("/books", response_class=HTMLResponse)
 async def books_page(
+    user_id: int = Depends(get_current_user_id),
     request: Request,
-    search: Optional[str] = Query(default=""),
-    sort: str = Query(default="highlights"),
+    db: AsyncSession = Depends(get_db),
+):
+    # Book queries scoped by user_id
     page: int = Query(default=1, ge=1),
     db: AsyncSession = Depends(get_db),
 ):

@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.services.achievements import get_all_achievements, _get_achievement
 from app.services.achievement_card import generate_achievement_card
+from app.auth import get_current_user_id
+from app.auth import get_current_user_id
 from app.csrf import template_context
 from app.template import render
 
@@ -15,15 +17,22 @@ router = APIRouter(tags=["achievements"])
 
 
 @router.get("/api/achievements")
-async def api_achievements(db: AsyncSession = Depends(get_db)):
+async def api_achievements(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     """Return all achievements with unlock status."""
-    return await get_all_achievements(db)
+    return await get_all_achievements(db, user_id)
 
 
 @router.get("/achievements", response_class=HTMLResponse)
-async def achievements_page(request: Request, db: AsyncSession = Depends(get_db)):
+async def achievements_page(
+    user_id: int = Depends(get_current_user_id),
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Achievements display page."""
-    achievements = await get_all_achievements(db)
+    achievements = await get_all_achievements(db, user_id)
     unlocked_count = sum(1 for a in achievements if a["unlocked"])
 
     # Check for new achievements from session

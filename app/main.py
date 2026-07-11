@@ -93,8 +93,8 @@ async def lifespan(app: FastAPI):
         async with async_session() as db:
             from app.services.streaks import calculate_streaks
             from app.services.achievements import backfill_achievements
-            streaks = await calculate_streaks(db)
-            count = await backfill_achievements(db, streaks["current"])
+            streaks = await calculate_streaks(db, 1)
+            count = await backfill_achievements(db, streaks["current"], 1)
             if count:
                 print(f"  Backfilled {count} achievements for {streaks['current']}-day streak")
 
@@ -253,7 +253,8 @@ async def dashboard(
     today_str = datetime.now(ZoneInfo("America/Chicago")).strftime("%A, %B %-d, %Y")
 
     # Streak tracking
-    streak = await calculate_streaks(db)
+    user_id = request.session.get("user_id", 1)
+    streak = await calculate_streaks(db, user_id)
 
     return templates.TemplateResponse(
         request,
