@@ -36,14 +36,12 @@ COVERS_DIR = os.environ.get("COVERS_DIR", os.path.join(os.path.dirname(os.path.a
 
 @router.get("/books", response_class=HTMLResponse)
 async def books_page(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    # Book queries scoped by user_id
+    user_id: int = Depends(get_current_user_id),
     page: int = Query(default=1, ge=1),
     db: AsyncSession = Depends(get_db),
 ):
+    # Book queries scoped by user_id
     per_page = 30
 
     # Build query for distinct books with counts

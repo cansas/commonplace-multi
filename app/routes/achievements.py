@@ -27,8 +27,8 @@ async def api_achievements(
 
 @router.get("/achievements", response_class=HTMLResponse)
 async def achievements_page(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Achievements display page."""

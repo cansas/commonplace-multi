@@ -49,7 +49,7 @@ async def _check_reminder_for_user(db, user_id: int):
     from app.services.push_service import send_push_to_all
 
     done = await _reviewed_today_count(db, user_id)
-        if done > 0:
+    if done > 0:
         # Already reviewed — mark sent so we don't keep reminding
         await _set(db, user_id, "last_push_reminder_sent", today_str)
         await db.commit()
@@ -103,7 +103,7 @@ async def _check_streak_alert_for_user(db, user_id: int):
         return
 
     done = await _reviewed_today_count(db, user_id)
-        if done > 0:
+    if done > 0:
         return
 
     result = await send_push_to_all(

@@ -31,8 +31,8 @@ router = APIRouter(tags=["highlights"])
 
 @router.get("/highlights", response_class=HTMLResponse)
 async def highlights_page(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
+    user_id: int = Depends(get_current_user_id),
     search: Optional[str] = Query(default=""),
     source: Optional[str] = Query(default=""),
     book: Optional[str] = Query(default=""),

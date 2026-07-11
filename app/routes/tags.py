@@ -161,7 +161,10 @@ async def set_highlight_tags(
 
 @router.get("/tags", response_class=HTMLResponse)
 async def tags_page(
-    user_id: int = Depends(get_current_user_id),request: Request, db: AsyncSession = Depends(get_db)):
+    request: Request,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     """Tag browser page."""
     result = await db.execute(
         select(
@@ -191,8 +194,8 @@ async def tags_page(
 
 @router.get("/tags/{tag_id}", response_class=HTMLResponse)
 async def tags_page(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     # Tag queries are scoped by user_id via the Tag model

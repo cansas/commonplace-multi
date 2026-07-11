@@ -77,8 +77,8 @@ async def _get_today_reviews(db, user_id: int = 1):
 
 @router.get("/review", response_class=HTMLResponse)
 async def review_page(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     daily_limit = get_review_count()
@@ -129,8 +129,8 @@ async def review_page(
 
 @router.get("/review/today", response_class=HTMLResponse)
 async def review_today_page(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Display all reviews from today with their ratings."""
@@ -154,8 +154,8 @@ async def review_today_page(
 
 @router.get("/review/stats", response_class=HTMLResponse)
 async def review_stats_page(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Review statistics dashboard."""
@@ -232,7 +232,10 @@ _RATING_LABELS = {0: "Forgot", 1: "Hard", 2: "Good", 3: "Easy"}
 
 @router.get("/api/review/stats")
 async def review_stats(
-    user_id: int = Depends(get_current_user_id),db: AsyncSession = Depends(get_db)):
+    request: Request,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     """Return review statistics for today."""
     streaks = await calculate_streaks(db, user_id)
     done_today = await _reviewed_today_count(db, user_id)
@@ -263,8 +266,8 @@ async def api_review_today(request: Request, db: AsyncSession = Depends(get_db))
 
 @router.post("/review/rate")
 async def review_rate(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
+    user_id: int = Depends(get_current_user_id),
     hl_id: int = Form(...),
     rating: int = Form(...),
     csrf_token: str = Form(default=""),
@@ -295,8 +298,8 @@ async def review_rate(
 
 @router.post("/review/next")
 async def review_next(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
+    user_id: int = Depends(get_current_user_id),
     hl_id: int = Form(...),
     csrf_token: str = Form(default=""),
     db: AsyncSession = Depends(get_db),
@@ -320,8 +323,8 @@ async def review_next(
 
 @router.post("/review/favorite")
 async def toggle_favorite(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
+    user_id: int = Depends(get_current_user_id),
     hl_id: int = Form(...),
     csrf_token: str = Form(default=""),
     db: AsyncSession = Depends(get_db),
@@ -347,8 +350,8 @@ async def toggle_favorite(
 
 @router.post("/review/delete")
 async def review_delete(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
+    user_id: int = Depends(get_current_user_id),
     hl_id: int = Form(...),
     csrf_token: str = Form(default=""),
     db: AsyncSession = Depends(get_db),
@@ -416,8 +419,8 @@ async def review_heatmap_data(
 
 @router.get("/review/heatmap", response_class=HTMLResponse)
 async def review_heatmap_page(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
+    user_id: int = Depends(get_current_user_id),
     year: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
 ):
@@ -506,8 +509,8 @@ async def review_heatmap_page(
 
 @router.get("/api/review/next")
 async def api_review_next(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Return the next unreviewed highlight from today's queue as JSON."""
@@ -521,7 +524,7 @@ async def api_review_next(
     return {"highlight_id": None, "done": True}
 
 
-@router.post("/api/review/rate")
+def _review_entry_to_json(entry: dict) -> dict:
     """Convert a queue entry to the JSON shape the iOS app expects."""
     return {
         "highlight_id": entry["id"],
@@ -537,9 +540,9 @@ async def api_review_next(
 
 @router.post("/api/review/rate")
 async def api_review_rate(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
     body: dict,
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Rate a highlight (JSON API). Body: {\"highlight_id\": int, \"rating\": 0-3}"""

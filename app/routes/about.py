@@ -19,8 +19,8 @@ router = APIRouter(tags=["about"])
 
 @router.get("/about", response_class=HTMLResponse)
 async def about_page(
-    user_id: int = Depends(get_current_user_id),
     request: Request,
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     # Defer import to avoid circular import (main.py imports this module)
