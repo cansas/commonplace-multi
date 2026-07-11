@@ -210,7 +210,9 @@ async def set_theme(
     csrf_guard(request, csrf_token)
     user_id = request.session.get("user_id", 1)
     t = theme.strip().lower()
-    if t not in ("modern", "reader", "dark", "glass", "contemporary", "contemporary-dark"):
+    from app.services.theme_service import get_all_themes
+    valid = {th["name"] for th in get_all_themes()}
+    if t not in valid:
         t = "modern"
     await _user_set(db, user_id, "theme", t)
     await db.commit()
