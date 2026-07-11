@@ -267,35 +267,46 @@ async def dedup_highlights(
     merged = 0
     removed = 0
     for group in dup_groups:
-        dup_rows = await db.execute(sqltext(
-            "SELECT id FROM highlights "
-            "WHERE text = :text AND book_title = :bt AND (book_author = :ba OR (book_author IS NULL AND :ba = '')) "
-            "ORDER BY id ASC",
+        dup_rows = await db.execute(
+            sqltext(
+                "SELECT id FROM highlights "
+                "WHERE text = :text AND book_title = :bt "
+                "AND (book_author = :ba OR (book_author IS NULL AND :ba = '')) "
+                "ORDER BY id ASC"
+            ),
             {"text": group["text"], "bt": group["book_title"], "ba": group["book_author"] or ""},
-        ))
+        )
         ids = [r[0] for r in dup_rows.fetchall()]
         keep_id = ids[0]
         del_ids = ids[1:]
 
         # Merge tags from duplicates into the kept one
         for did in del_ids:
-            await db.execute(sqltext(
-                "INSERT OR IGNORE INTO highlight_tags (highlight_id, tag_id) "
-                "SELECT :keep, tag_id FROM highlight_tags WHERE highlight_id = :del",
+            await db.execute(
+                sqltext(
+                    "INSERT OR IGNORE INTO highlight_tags (highlight_id, tag_id) "
+                    "SELECT :keep, tag_id FROM highlight_tags WHERE highlight_id = :del"
+                ),
                 {"keep": keep_id, "del": did},
-            ))
+            )
 
-        # Reassign review_logs one at a time (avoids SQLite IN clause binding)
+        # Reassign review_logs one at a time
         for did in del_ids:
-            await db.execute(sqltext(
-                "UPDATE review_log SET highlight_id = :keep WHERE highlight_id = :del",
+            await db.execute(
+                sqltext("UPDATE review_log SET highlight_id = :keep WHERE highlight_id = :del"),
                 {"keep": keep_id, "del": did},
-            ))
+            )
 
-        # Delete duplicate highlights (cascade handles review_log re-flag? no — we already moved them)
+        # Delete duplicate highlights
         for did in del_ids:
-            await db.execute(sqltext("DELETE FROM highlight_tags WHERE highlight_id = :id", {"id": did}))
-            await db.execute(sqltext("DELETE FROM highlights WHERE id = :id", {"id": did}))
+            await db.execute(
+                sqltext("DELETE FROM highlight_tags WHERE highlight_id = :id"),
+                {"id": did},
+            )
+            await db.execute(
+                sqltext("DELETE FROM highlights WHERE id = :id"),
+                {"id": did},
+            )
 
         merged += 1
         removed += len(del_ids)
