@@ -39,7 +39,7 @@ async def _reviewed_today_count(db, user_id: int) -> int:
     return result.scalar() or 0
 
 
-async def _log_review(db, hl_id: int, user_id: int = 1, rating: int | None = None):
+async def _log_review(db, hl_id: int, user_id: int, rating: int | None = None):
     """Record a review. Does NOT commit — caller is responsible for committing."""
     log = ReviewLog(
         user_id=user_id,
@@ -50,8 +50,8 @@ async def _log_review(db, hl_id: int, user_id: int = 1, rating: int | None = Non
     db.add(log)
 
 
-async def _get_today_reviews(db, user_id: int = 1):
-    """Return all reviews from today with their highlight data."""
+async def _get_today_reviews(db, user_id: int):
+    """Return all reviews from today with their highlight data for this user."""
     today_start = _today_start()
     result = await db.execute(
         select(ReviewLog, Highlight)

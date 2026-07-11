@@ -199,7 +199,7 @@ class BookCover(Base):
     cover_url = Column(String(1024), nullable=True)
     hardcover_id = Column(Integer, nullable=True)
     isbn = Column(String(20), nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", foreign_keys=[user_id])
 

@@ -29,11 +29,11 @@ async def about_page(
     version = app.version
 
     # Stats
-    hl_count = (await db.execute(select(func.count(Highlight.id)))).scalar() or 0
+    hl_count = (await db.execute(select(func.count(Highlight.id)).where(Highlight.user_id == user_id))).scalar() or 0
     book_count = (
-        await db.execute(select(func.count(func.distinct(Highlight.book_title))))
+        await db.execute(select(func.count(func.distinct(Highlight.book_title))).where(Highlight.user_id == user_id))
     ).scalar() or 0
-    tag_count = (await db.execute(select(func.count(Tag.id)))).scalar() or 0
+    tag_count = (await db.execute(select(func.count(Tag.id)).where(Tag.user_id == user_id))).scalar() or 0
     ach_count = (
         await db.execute(select(func.count(UserAchievement.id)).where(UserAchievement.user_id == user_id))
     ).scalar() or 0

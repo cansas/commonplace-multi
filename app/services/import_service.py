@@ -41,7 +41,7 @@ def highlight_fingerprint(text: str, book_title: str, book_author: str = "") -> 
 class DedupService:
     """Batch dedup against the fingerprint index, scoped to a single user."""
 
-    def __init__(self, items: List[dict], user_id: int = 1):
+    def __init__(self, items: List[dict], user_id: int):
         self.items = items
         self.fingerprints: List[str] = []
         self.existing: set = set()
@@ -73,7 +73,7 @@ class HighlightPersister:
     """Creates Highlight ORM rows from parsed dicts."""
 
     @staticmethod
-    def build(item: dict, source_type: str, fingerprint: str, user_id: int = 1) -> Highlight:
+    def build(item: dict, source_type: str, fingerprint: str, user_id: int) -> Highlight:
         return Highlight(
             text=item.get("text", ""),
             note=item.get("note"),
