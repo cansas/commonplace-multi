@@ -210,7 +210,7 @@ async def set_theme(
     csrf_guard(request, csrf_token)
     user_id = request.session.get("user_id", 1)
     t = theme.strip().lower()
-    if t not in ("modern", "reader", "dark"):
+    if t not in ("modern", "reader", "dark", "glass", "contemporary", "contemporary-dark"):
         t = "modern"
     await _user_set(db, user_id, "theme", t)
     await db.commit()
