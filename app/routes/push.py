@@ -18,6 +18,10 @@ async def subscribe(
     body = await request.json()
     endpoint = body.get("endpoint", "").strip()
     keys = body.get("keys", {}) or {}
+    user_id = request.session.get("user_id")
+
+    if not user_id:
+        return {"ok": False, "error": "Not authenticated"}
 
     if not endpoint:
         return {"ok": False, "error": "Missing endpoint"}
@@ -34,11 +38,13 @@ async def subscribe(
     if sub:
         sub.p256dh_key = keys["p256dh"]
         sub.auth_key = keys["auth"]
+        sub.user_id = user_id
     else:
         sub = PushSubscription(
             endpoint=endpoint,
             p256dh_key=keys["p256dh"],
             auth_key=keys["auth"],
+            user_id=user_id,
         )
         db.add(sub)
 
