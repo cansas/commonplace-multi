@@ -512,14 +512,17 @@ async def send_test_email(
     if not api_key or not secret_key:
         raise HTTPException(status_code=400, detail="Mailjet API credentials required")
 
-    result = await _send_test(
-        api_key=api_key,
-        secret_key=secret_key,
-        from_name=from_name,
-        from_email=from_email,
-        to_email=to_email,
-    )
-    return result
+    try:
+        await _send_test(
+            api_key=api_key,
+            secret_key=secret_key,
+            from_name=from_name,
+            from_email=from_email,
+            to_email=to_email,
+        )
+        return {"ok": True, "message": "Test email sent successfully"}
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 # ── Push notification settings ─────────────────────────────────────────────
