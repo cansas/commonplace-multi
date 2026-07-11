@@ -83,20 +83,35 @@ async def check_and_send_digest():
 
 
 async def check_and_run_bookorbit_sync():
-    """Check if BookOrbit sync is enabled and run it if so."""
-    enabled = get("bookorbit_sync_enabled", False)
-    if not enabled:
-        return
-    try:
-        from app.services.bookorbit_sync import sync_from_bookorbit
-        result = await sync_from_bookorbit()
-        if result["posted"] > 0 or result["errors"] > 0:
-            logger.info(
-                "BookOrbit sync: posted=%d skipped=%d errors=%d",
-                result["posted"], result["skipped"], result["errors"],
-            )
-    except Exception as e:
-        logger.error("BookOrbit sync failed: %s", e)
+    """Check BookOrbit sync for every user and run it if enabled."""
+    from app.database import async_session
+    from app.models import User
+    from sqlalchemy import select
+
+    async with async_session() as db:
+        users = (await db.execute(select(User))).scalars().all()
+    user_ids = [u.id for u in users] if users else [1]
+
+    for uid in user_ids:
+        try:
+            async with async_session() as db:
+                from app.services.bookorbit_sync import sync_from_bookorbit
+                config_enabled = await _get_user_setting(db, uid, "bookorbit_sync_enabled", False)
+                if not config_enabled:
+                    continue
+                result = await sync_from_bookorbit(db, user_id=uid)
+                if result["posted"] > 0 or result["errors"] > 0:
+                    logger.info(
+                        "BookOrbit sync (user %d): posted=%d skipped=%d errors=%d",
+                        uid, result["posted"], result["skipped"], result["errors"],
+                    )
+        except Exception as e:
+            logger.error("BookOrbit sync failed for user %d: %s", uid, e)
+
+
+async def _get_user_setting(db, user_id: int, key: str, default=None):
+    from app.services.user_settings import get as _ug
+    return await _ug(db, user_id, key, default)
 
 
 def start_scheduler():

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
 from app.database import get_db
 from app.models import Highlight, Source, User, ApiToken
-from app.auth import generate_api_token, hash_password, verify_password
+from app.auth import generate_api_token, hash_password, verify_password, get_current_user_id
 from app.routes.share import get_share_token
 from app.csrf import template_context, csrf_guard
 from app.services.settings_service import (
@@ -84,9 +84,16 @@ async def settings_page(
     push_streak_alert_enabled = await _user_get(db, user_id, "push_streak_alert_enabled", False)
     push_streak_alert_time = await _user_get(db, user_id, "push_streak_alert_time", "20:00")
 
-    # BookOrbit sync config (still global/file-backed)
-    from app.services.bookorbit_sync import get_sync_config
-    bookorbit_config = get_sync_config()
+    # BookOrbit sync config (per-user DB-backed)
+    bookorbit_config = {
+        "url": await _user_get(db, user_id, "bookorbit_url", ""),
+        "username": await _user_get(db, user_id, "bookorbit_username", ""),
+        "password": await _user_get(db, user_id, "bookorbit_password", ""),
+        "enabled": await _user_get(db, user_id, "bookorbit_sync_enabled", False),
+        "last_synced_id": await _user_get(db, user_id, "bookorbit_last_synced_id", 0),
+        "last_synced_at": await _user_get(db, user_id, "bookorbit_last_synced_at", ""),
+        "disabled_reason": await _user_get(db, user_id, "bookorbit_disabled_reason", ""),
+    }
 
     return render(
         request,
@@ -121,15 +128,19 @@ async def settings_page(
 async def save_bookorbit_sync_settings(
     request: Request,
     body: dict,
+    db: AsyncSession = Depends(get_db),
 ):
-    """Save BookOrbit sync configuration (global/file-backed)."""
+    """Save BookOrbit sync configuration (per-user DB-backed)."""
+    user_id = await get_current_user_id(request)
+    from app.services.user_settings import set_ as _us
     allowed = {"bookorbit_url", "bookorbit_username", "bookorbit_password",
                "bookorbit_sync_enabled"}
     for k in allowed:
         if k in body:
-            _set_file(k, body[k])
+            await _us(db, user_id, k, body[k])
     if "bookorbit_password" in body or "bookorbit_sync_enabled" in body:
-        _set_file("bookorbit_disabled_reason", "")
+        await _us(db, user_id, "bookorbit_disabled_reason", "")
+    await db.commit()
     return {"ok": True}
 
 
@@ -137,20 +148,23 @@ async def save_bookorbit_sync_settings(
 async def test_bookorbit_connection(
     request: Request,
     body: dict,
+    db: AsyncSession = Depends(get_db),
 ):
     """Test BookOrbit connection."""
     from app.services.bookorbit_sync import test_connection
+    user_id = await get_current_user_id(request)
+    from app.services.user_settings import get as _ug
 
     url = body.get("bookorbit_url", "").strip()
     username = body.get("bookorbit_username", "").strip()
     password = body.get("bookorbit_password", "").strip()
 
     if not url:
-        url = _get_file("bookorbit_url", "")
+        url = await _ug(db, user_id, "bookorbit_url", "")
     if not username:
-        username = _get_file("bookorbit_username", "")
+        username = await _ug(db, user_id, "bookorbit_username", "")
     if not password:
-        password = _get_file("bookorbit_password", "")
+        password = await _ug(db, user_id, "bookorbit_password", "")
 
     result = await test_connection(url, username, password)
     return result
@@ -159,11 +173,12 @@ async def test_bookorbit_connection(
 @router.post("/api/settings/bookorbit-sync-now")
 async def trigger_bookorbit_sync(
     request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
-    """Manually trigger a BookOrbit sync."""
+    """Manually trigger a BookOrbit sync for the current user."""
     from app.services.bookorbit_sync import sync_from_bookorbit
-
-    result = await sync_from_bookorbit()
+    user_id = await get_current_user_id(request)
+    result = await sync_from_bookorbit(db, user_id=user_id)
     return {"ok": True, "result": result}
 
 

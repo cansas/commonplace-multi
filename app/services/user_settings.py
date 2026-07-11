@@ -114,6 +114,9 @@ async def migrate_from_file(db: AsyncSession, user_id: int) -> int:
         "push_enabled", "push_reminder_time",
         "push_streak_alert_enabled", "push_streak_alert_time",
         "last_push_reminder_sent", "last_push_streak_alert_sent",
+        "bookorbit_url", "bookorbit_username", "bookorbit_password",
+        "bookorbit_sync_enabled", "bookorbit_last_synced_id",
+        "bookorbit_last_synced_at", "bookorbit_disabled_reason",
     }
 
     count = 0
