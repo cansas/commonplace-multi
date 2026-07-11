@@ -80,7 +80,7 @@ class HighlightPersister:
     """Creates Highlight ORM rows from parsed dicts."""
 
     @staticmethod
-    def build(item: dict, source_type: str, fingerprint: str) -> Highlight:
+    def build(item: dict, source_type: str, fingerprint: str, user_id: int = 1) -> Highlight:
         return Highlight(
             text=item.get("text", ""),
             note=item.get("note"),
@@ -97,6 +97,7 @@ class HighlightPersister:
             favorite=item.get("favorite", 0),
             share_token=get_share_token(),
             fingerprint=fingerprint,
+            user_id=user_id,
         )
 
 
@@ -104,12 +105,13 @@ class ImportTracker:
     """Manages Source records for import history."""
 
     @staticmethod
-    def record(source_name: str, source_type: str, imported_count: int) -> Source:
+    def record(source_name: str, source_type: str, imported_count: int, user_id: int = 1) -> Source:
         return Source(
             name=source_name,
             source_type=source_type,
             last_import_at=datetime.now(timezone.utc),
             highlights_imported=imported_count,
+            user_id=user_id,
         )
 
 
@@ -127,6 +129,7 @@ class ImportService:
         source_type: str,
         *,
         dry_run: bool = False,
+        user_id: int = 1,
     ) -> ImportResult:
         result = ImportResult(dry_run=dry_run)
         if not items:
@@ -145,13 +148,13 @@ class ImportService:
             if dry_run:
                 result.imported += 1
                 continue
-            hl = HighlightPersister.build(item, source_type, dedup.fingerprints[i])
+            hl = HighlightPersister.build(item, source_type, dedup.fingerprints[i], user_id=user_id)
             new_rows.append(hl)
             result.imported += 1
 
         if not dry_run and new_rows:
             db.add_all(new_rows)
-            db.add(ImportTracker.record(source_name, source_type, len(new_rows)))
+            db.add(ImportTracker.record(source_name, source_type, len(new_rows), user_id=user_id))
             await db.commit()
 
         return result

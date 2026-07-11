@@ -26,10 +26,13 @@ router = APIRouter(tags=["import"])
 
 
 
-async def _render_import(request, db, import_result=None):
+async def _render_import(request, db, import_result=None, user_id: int = 1):
     """Render the import page with recent imports and optional import result."""
     result = await db.execute(
-        select(Source).order_by(Source.last_import_at.desc().nullslast()).limit(10)
+        select(Source)
+        .where(Source.user_id == user_id)
+        .order_by(Source.last_import_at.desc().nullslast())
+        .limit(10)
     )
     sources = result.scalars().all()
 
@@ -57,8 +60,9 @@ async def _render_import(request, db, import_result=None):
 async def import_page(
     request: Request,
     db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
 ):
-    return await _render_import(request, db)
+    return await _render_import(request, db, user_id=user_id)
 
 
 def _build_result(import_result, source_name: str, source_type: str, action: str, pasted_content: str = "") -> dict:
@@ -86,6 +90,7 @@ async def import_readwise(
     content: str = Form(default=""),
     dry_run: str = Form(default=""),
     db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
 ):
     csrf_guard(request, csrf_token)
     all_highlights = []
@@ -127,6 +132,7 @@ async def import_readwise(
             source_name=source_name,
             source_type="readwise",
             dry_run=is_dry_run,
+            user_id=user_id,
         )
 
     # For dry runs with files, carry the raw content through so the
@@ -137,6 +143,7 @@ async def import_readwise(
     return await _render_import(
         request, db,
         _build_result(result, source_name, "readwise", "/import/readwise", pasted),
+        user_id=user_id,
     )
 
 
@@ -148,6 +155,7 @@ async def import_koreader_json(
     content: str = Form(default=""),
     dry_run: str = Form(default=""),
     db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
 ):
     csrf_guard(request, csrf_token)
     is_dry_run = dry_run == "true"
@@ -192,6 +200,7 @@ async def import_koreader_json(
         source_name=source_name,
         source_type="koreader",
         dry_run=is_dry_run,
+        user_id=user_id,
     )
 
     # For dry runs, serialize the JSON back to text so the
@@ -204,19 +213,24 @@ async def import_koreader_json(
         request, db,
         _build_result(result, source_name,
                        "koreader", "/import/koreader-json", pasted),
+        user_id=user_id,
     )
 
 
 # Readwise-compatible API endpoint (what KOReader Readwise plugin sends)
 @router.post("/api/v2/highlights")
 async def readwise_api_import(
+    request: Request,
     data: ReadwiseBatchImport,
     db: AsyncSession = Depends(get_db),
 ):
+    from app.auth import get_current_user_id as _get_uid
+    user_id = await _get_uid(request)
     items = [item.model_dump() for item in data.highlights]
     result = await ImportService.save_highlights(
         db, items,
         source_name=f"KOReader API ({datetime.now(ZoneInfo('America/Chicago')).strftime('%Y-%m-%d %H:%M')})",
         source_type="koreader",
+        user_id=user_id,
     )
     return {"imported": result.imported, "skipped": result.skipped}
