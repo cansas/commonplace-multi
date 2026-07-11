@@ -57,15 +57,21 @@ async def unsubscribe(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Remove a browser push subscription."""
+    """Remove a browser push subscription for the current user."""
     body = await request.json()
     endpoint = body.get("endpoint", "").strip()
+    user_id = request.session.get("user_id")
 
     if not endpoint:
         return {"ok": False, "error": "Missing endpoint"}
+    if not user_id:
+        return {"ok": False, "error": "Not authenticated"}
 
     await db.execute(
-        delete(PushSubscription).where(PushSubscription.endpoint == endpoint)
+        delete(PushSubscription).where(
+            PushSubscription.endpoint == endpoint,
+            PushSubscription.user_id == user_id,
+        )
     )
     await db.commit()
     return {"ok": True}

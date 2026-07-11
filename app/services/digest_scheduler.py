@@ -62,7 +62,13 @@ async def check_and_send_digest():
         from app.services.email_digest import send_email_via_mailjet, build_digest_html
 
         async with async_session() as db:
-            html_content = await build_digest_html(db)
+            # Look up admin user (first created user) instead of hardcoding user_id=1
+            from app.models import User
+            from sqlalchemy import select
+            admin_result = await db.execute(select(User).order_by(User.id.asc()).limit(1))
+            admin_user = admin_result.scalar_one_or_none()
+            admin_id = admin_user.id if admin_user else 1
+            html_content = await build_digest_html(db, user_id=admin_id)
 
         if not html_content or "No highlights" in html_content:
             logger.info("No highlights to send in digest today")

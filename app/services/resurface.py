@@ -25,14 +25,20 @@ async def get_random_highlights(db: AsyncSession, count: int = 10, exclude_ids: 
     return result.scalars().all()
 
 
-async def get_dashboard_counts(db: AsyncSession):
-    """Return stats for the dashboard."""
+async def get_dashboard_counts(db: AsyncSession, user_id: int = 0):
+    """Return stats for the dashboard, scoped to user_id if provided."""
     # Total highlights
-    result = await db.execute(select(func.count(Highlight.id)))
+    q = select(func.count(Highlight.id))
+    if user_id:
+        q = q.where(Highlight.user_id == user_id)
+    result = await db.execute(q)
     total = result.scalar() or 0
 
     # Distinct books
-    result = await db.execute(select(func.count(func.distinct(Highlight.book_title))))
+    q = select(func.count(func.distinct(Highlight.book_title)))
+    if user_id:
+        q = q.where(Highlight.user_id == user_id)
+    result = await db.execute(q)
     books = result.scalar() or 0
 
     # Reviews done today
@@ -50,11 +56,13 @@ async def get_dashboard_counts(db: AsyncSession):
     return total, books, remaining
 
 
-async def get_recent_sources(db: AsyncSession, limit: int = 5):
-    """Recent import sources."""
+async def get_recent_sources(db: AsyncSession, user_id: int = 0, limit: int = 5):
+    """Recent import sources for a specific user."""
+    q = select(Source)
+    if user_id:
+        q = q.where(Source.user_id == user_id)
     result = await db.execute(
-        select(Source)
-        .order_by(Source.last_import_at.desc().nullslast())
+        q.order_by(Source.last_import_at.desc().nullslast())
         .limit(limit)
     )
     return result.scalars().all()

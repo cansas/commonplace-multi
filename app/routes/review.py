@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text as sqltext
 from app.database import get_db
-from app.models import Highlight, ReviewLog
+from app.models import Highlight, ReviewLog, DailyReviewQueue
 from app.services.settings_service import get_review_count
 from app.services.streaks import calculate_streaks
 from app.services.achievements import check_and_unlock
@@ -29,12 +29,12 @@ def _today_start() -> datetime:
     return today_start_utc()
 
 
-async def _reviewed_today_count(db, user_id: int = 1) -> int:
-    """How many highlights have been reviewed so far today (UTC)."""
+async def _reviewed_today_count(db, user_id: int) -> int:
+    """How many highlights have been reviewed so far today (UTC) for this user."""
     today_start = _today_start()
     result = await db.execute(
         select(func.count(ReviewLog.id))
-        .where(ReviewLog.reviewed_at >= today_start)
+        .where(ReviewLog.reviewed_at >= today_start, ReviewLog.user_id == user_id)
     )
     return result.scalar() or 0
 
@@ -96,7 +96,7 @@ async def review_page(
 
     # If no unreviewed entries left, you're done
     if not current_entry:
-        today_reviews = await _get_today_reviews(db)
+        today_reviews = await _get_today_reviews(db, user_id)
         return render(
             request,
             "review.html",
@@ -135,7 +135,7 @@ async def review_today_page(
 ):
     """Display all reviews from today with their ratings."""
     streaks = await calculate_streaks(db, user_id)
-    today_reviews = await _get_today_reviews(db)
+    today_reviews = await _get_today_reviews(db, user_id)
     daily_limit = get_review_count()
 
     return render(
@@ -219,7 +219,9 @@ def _check_review_rate_limit(request: Request):
     ip = request.client.host if request.client else "unknown"
     now = time.time()
     window = 60
-    _REVIEW_LIMIT_ENTRIES[ip] = [t for t in _REVIEW_LIMIT_ENTRIES.get(ip, []) if now - t < window]
+    entries = _REVIEW_LIMIT_ENTRIES.get(ip, [])
+    # Prune expired entries
+    _REVIEW_LIMIT_ENTRIES[ip] = [t for t in entries if now - t < window]
     if len(_REVIEW_LIMIT_ENTRIES[ip]) >= _REVIEW_MAX_PER_MIN:
         raise HTTPException(status_code=429, detail="Too many review actions. Slow down.")
     _REVIEW_LIMIT_ENTRIES[ip].append(now)
@@ -360,7 +362,16 @@ async def review_delete(
     _check_review_rate_limit(request)
     hl = await db.get(Highlight, hl_id)
     if hl:
-        await db.delete(hl)
+        # Core deletes: children first, then parent — avoid NOT NULL FK crash
+        await db.execute(
+            ReviewLog.__table__.delete().where(ReviewLog.highlight_id == hl_id)
+        )
+        await db.execute(
+            DailyReviewQueue.__table__.delete().where(DailyReviewQueue.highlight_id == hl_id)
+        )
+        await db.execute(
+            Highlight.__table__.delete().where(Highlight.id == hl_id)
+        )
     await _log_review(db, hl_id, user_id)
     await db.commit()
     await mark_reviewed(hl_id, user_id)

@@ -65,16 +65,18 @@ async def send_email_via_mailjet(
 # ── Digest builder ─────────────────────────────────────────────────────────
 
 
-async def build_digest_html(db) -> str:
+async def build_digest_html(db, user_id: int = 1) -> str:
     """Query the daily review queue and build an HTML email body.
 
     Uses the same queue as the review page so the email matches
     what the user will see when they open /review.
+
+    Digest is admin-only, defaults to user_id=1.
     """
     from app.services.review_queue import get_or_create_queue
     from app.services.settings_service import get_review_count
 
-    queue = await get_or_create_queue(get_review_count())
+    queue = await get_or_create_queue(get_review_count(), user_id=user_id)
     # Show up to 3 un-reviewed entries from the queue
     highlights = [h for h in queue if not h["reviewed"]][:3]
 

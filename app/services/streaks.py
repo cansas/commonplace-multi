@@ -2,9 +2,8 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select
 from app.models import ReviewLog
-from app.services.settings_service import get_all as get_settings, set as set_setting
 
 _CENTRAL = ZoneInfo("America/Chicago")
 
@@ -16,6 +15,8 @@ async def calculate_streaks(db: AsyncSession, user_id: int = 1) -> dict:
     review reset).  The current streak counts consecutive days ending
     with today *or* yesterday (so you don't lose it if you miss a day
     but haven't broken the habit).
+
+    Best streak is persisted per-user in user_settings.
     """
     # Fetch all raw reviewed_at datetimes (full precision, not func.date())
     result = await db.execute(
@@ -25,7 +26,7 @@ async def calculate_streaks(db: AsyncSession, user_id: int = 1) -> dict:
     )
     rows = result.all()
     if not rows:
-        return {"current": 0, "best": _load_best_streak()}
+        return {"current": 0, "best": await _load_best_streak(db, user_id)}
 
     # Convert each UTC datetime to Central date in Python
     central_dates = set()
@@ -54,16 +55,23 @@ async def calculate_streaks(db: AsyncSession, user_id: int = 1) -> dict:
             else:
                 break
 
-    # Persist best streak
-    best = _load_best_streak()
+    # Persist best streak per-user
+    best = await _load_best_streak(db, user_id)
     if current > best:
         best = current
-        set_setting("best_streak", best)
+        await _save_best_streak(db, user_id, best)
 
     return {"current": current, "best": best}
 
 
-def _load_best_streak() -> int:
-    """Read the persisted best streak."""
-    settings = get_settings()
-    return settings.get("best_streak", 0)
+async def _load_best_streak(db: AsyncSession, user_id: int) -> int:
+    """Read the persisted best streak per-user."""
+    from app.services.user_settings import get as _ug
+    val = await _ug(db, user_id, "best_streak", 0)
+    return int(val) if val else 0
+
+
+async def _save_best_streak(db: AsyncSession, user_id: int, value: int) -> None:
+    from app.services.user_settings import set_ as _us
+    await _us(db, user_id, "best_streak", value)
+    await db.commit()

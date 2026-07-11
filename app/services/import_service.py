@@ -39,21 +39,13 @@ def highlight_fingerprint(text: str, book_title: str, book_author: str = "") -> 
 
 
 class DedupService:
-    """Batch dedup against the fingerprint index.
+    """Batch dedup against the fingerprint index, scoped to a single user."""
 
-    Usage::
-
-        dedup = DedupService(items)
-        await dedup.check(db)
-        for i, item in enumerate(items):
-            if dedup.is_duplicate(i):
-                continue
-    """
-
-    def __init__(self, items: List[dict]):
+    def __init__(self, items: List[dict], user_id: int = 1):
         self.items = items
         self.fingerprints: List[str] = []
         self.existing: set = set()
+        self.user_id = user_id
 
         for item in items:
             text = item.get("text", "")
@@ -62,12 +54,13 @@ class DedupService:
             self.fingerprints.append(highlight_fingerprint(text, title, author))
 
     async def check(self, db: AsyncSession) -> None:
-        """Batch-query which fingerprints already exist in the DB."""
+        """Batch-query which fingerprints already exist in the DB for this user."""
         if not self.fingerprints:
             return
         result = await db.execute(
             select(Highlight.fingerprint).where(
-                Highlight.fingerprint.in_(self.fingerprints)
+                Highlight.fingerprint.in_(self.fingerprints),
+                Highlight.user_id == self.user_id,
             )
         )
         self.existing = {row[0] for row in result.all()}
@@ -135,8 +128,8 @@ class ImportService:
         if not items:
             return result
 
-        # Dedup
-        dedup = DedupService(items)
+        # Dedup — scoped to this user
+        dedup = DedupService(items, user_id=user_id)
         await dedup.check(db)
 
         # Persist (or count in dry-run mode)

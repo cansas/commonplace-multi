@@ -117,7 +117,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="commonplace-multi", version="2.0.0-alpha.1", lifespan=lifespan)
+app = FastAPI(title="commonplace-multi", version="2.0.0", lifespan=lifespan)
 
 # Ensure covers directory exists on the mounted volume
 COVERS_DIR = os.environ.get("COVERS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "covers"))
@@ -240,7 +240,9 @@ async def dashboard(
     imported: int = 0,
     db: AsyncSession = Depends(get_db),
 ):
-    total, books, pending = await get_dashboard_counts(db)
+    from app.auth import get_current_user_id
+    user_id = await get_current_user_id(request)
+    total, books, pending = await get_dashboard_counts(db, user_id)
 
     # Random highlight — use random offset instead of ORDER BY random() for efficiency
     random_hl = None
@@ -254,7 +256,6 @@ async def dashboard(
     today_str = datetime.now(ZoneInfo("America/Chicago")).strftime("%A, %B %-d, %Y")
 
     # Streak tracking
-    user_id = request.session.get("user_id", 1)
     streak = await calculate_streaks(db, user_id)
 
     return templates.TemplateResponse(
