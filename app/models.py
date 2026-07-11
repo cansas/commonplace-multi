@@ -157,6 +157,22 @@ class DailyReviewQueue(Base):
     )
 
 
+class UserSetting(Base):
+    """Per-user key-value settings store — replaces file-backed .settings.json for user-scoped settings."""
+    __tablename__ = "user_settings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    key = Column(String(64), nullable=False)
+    value = Column(Text, nullable=False)
+
+    user = relationship("User", foreign_keys=[user_id])
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "key", name="uq_user_setting"),
+    )
+
+
 class BookCover(Base):
     __tablename__ = "book_covers"
 

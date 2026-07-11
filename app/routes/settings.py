@@ -1,8 +1,9 @@
 """Settings page routes + API token management.
 
-Settings storage has moved to app.services.settings_service.
-This module re-exports convenience functions for backward compat
-and provides the web routes that configure them.
+Settings storage has moved to app.services.user_settings for per-user
+settings (theme, review_count, hardcover_api_key, push prefs).
+Global settings (Mailjet config, BookOrbit config) stay file-backed
+in app.services.settings_service.
 """
 from fastapi import APIRouter, Depends, Request, Form, HTTPException, status, Header
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -14,18 +15,13 @@ from app.auth import generate_api_token, hash_password, verify_password
 from app.routes.share import get_share_token
 from app.csrf import template_context, csrf_guard
 from app.services.settings_service import (
-    get as _get,
-    set as _set,
-    get_all,
-    set_setting,
-    get_review_count,
-    get_theme,
-    set_theme as _set_theme,
-    get_hardcover_api_key,
-    set_hardcover_api_key,
+    get_all as get_file_settings,
     get_email_config,
     save_email_config,
+    set as _set_file,
+    get as _get_file,
 )
+from app.services.user_settings import get as _user_get, set_ as _user_set
 from app.template import render
 from io import BytesIO
 import base64
@@ -61,7 +57,9 @@ async def settings_page(
     if not new_token:
         new_token = request.session.pop("new_token", "")
     new_token_qr = request.session.pop("new_token_qr", "")
-    
+
+    user_id = request.session.get("user_id", 1)
+
     result = await db.execute(select(func.count(Highlight.id)))
     total = result.scalar() or 0
 
@@ -69,7 +67,6 @@ async def settings_page(
     books = result.scalar() or 0
 
     # Fetch API tokens for display
-    user_id = request.session.get("user_id")
     tokens = []
     if user_id:
         result = await db.execute(
@@ -78,7 +75,16 @@ async def settings_page(
         )
         tokens = result.scalars().all()
 
-    # BookOrbit sync config
+    # Per-user settings from DB
+    review_count = await _user_get(db, user_id, "review_count", 10)
+    theme = await _user_get(db, user_id, "theme", "modern")
+    hc_key = await _user_get(db, user_id, "hardcover_api_key", "")
+    push_enabled = await _user_get(db, user_id, "push_enabled", False)
+    push_reminder_time = await _user_get(db, user_id, "push_reminder_time", "09:00")
+    push_streak_alert_enabled = await _user_get(db, user_id, "push_streak_alert_enabled", False)
+    push_streak_alert_time = await _user_get(db, user_id, "push_streak_alert_time", "20:00")
+
+    # BookOrbit sync config (still global/file-backed)
     from app.services.bookorbit_sync import get_sync_config
     bookorbit_config = get_sync_config()
 
@@ -91,21 +97,21 @@ async def settings_page(
             tokens=tokens,
             total_highlights=total,
             total_books=books,
-            review_count=get_review_count(),
+            review_count=review_count,
             saved=saved,
             new_token=new_token,
             new_token_qr=new_token_qr,
             username=request.session.get("username", ""),
-            hardcover_key=get_hardcover_api_key(),
+            hardcover_key=hc_key,
             email_config=get_email_config(),
             bookorbit_config=bookorbit_config,
+            user_theme=theme,
+            push_enabled=push_enabled,
+            push_reminder_time=push_reminder_time,
+            push_streak_alert_enabled=push_streak_alert_enabled,
+            push_streak_alert_time=push_streak_alert_time,
         ),
     )
-
-
-def get_bookorbit_config() -> dict:
-    from app.services.bookorbit_sync import get_sync_config
-    return get_sync_config()
 
 
 # ── BookOrbit Sync Settings ────────────────────────────────────────────────
@@ -116,17 +122,14 @@ async def save_bookorbit_sync_settings(
     request: Request,
     body: dict,
 ):
-    """Save BookOrbit sync configuration."""
-    from app.services.settings_service import set as _set
-
+    """Save BookOrbit sync configuration (global/file-backed)."""
     allowed = {"bookorbit_url", "bookorbit_username", "bookorbit_password",
                "bookorbit_sync_enabled"}
     for k in allowed:
         if k in body:
-            _set(k, body[k])
-    # Clear any previous disabled reason when saving new settings
+            _set_file(k, body[k])
     if "bookorbit_password" in body or "bookorbit_sync_enabled" in body:
-        _set("bookorbit_disabled_reason", "")
+        _set_file("bookorbit_disabled_reason", "")
     return {"ok": True}
 
 
@@ -142,13 +145,12 @@ async def test_bookorbit_connection(
     username = body.get("bookorbit_username", "").strip()
     password = body.get("bookorbit_password", "").strip()
 
-    # Fall back to stored values for fields not provided
     if not url:
-        url = _get("bookorbit_url", "")
+        url = _get_file("bookorbit_url", "")
     if not username:
-        username = _get("bookorbit_username", "")
+        username = _get_file("bookorbit_username", "")
     if not password:
-        password = _get("bookorbit_password", "")
+        password = _get_file("bookorbit_password", "")
 
     result = await test_connection(url, username, password)
     return result
@@ -165,7 +167,7 @@ async def trigger_bookorbit_sync(
     return {"ok": True, "result": result}
 
 
-# ── Password change ────────────────────────────────────────────────────────
+# ── Review count ───────────────────────────────────────────────────────────
 
 
 @router.post("/settings/review-count")
@@ -173,10 +175,13 @@ async def set_review_count(
     request: Request,
     csrf_token: str = Form(default=""),
     count: int = Form(default=10),
+    db: AsyncSession = Depends(get_db),
 ):
     csrf_guard(request, csrf_token)
+    user_id = request.session.get("user_id", 1)
     n = max(5, min(30, count))
-    _set("review_count", n)
+    await _user_set(db, user_id, "review_count", n)
+    await db.commit()
     return RedirectResponse(url="/settings?saved=1", status_code=303)
 
 
@@ -185,11 +190,17 @@ async def set_theme(
     request: Request,
     csrf_token: str = Form(default=""),
     theme: str = Form(default="modern"),
+    db: AsyncSession = Depends(get_db),
 ):
     csrf_guard(request, csrf_token)
-    _set_theme(theme)
-    request.session["theme"] = theme
-    return {"ok": True, "theme": theme}
+    user_id = request.session.get("user_id", 1)
+    t = theme.strip().lower()
+    if t not in ("modern", "reader", "dark"):
+        t = "modern"
+    await _user_set(db, user_id, "theme", t)
+    await db.commit()
+    request.session["theme"] = t
+    return {"ok": True, "theme": t}
 
 
 @router.post("/settings/cover-source")
@@ -198,6 +209,7 @@ async def set_cover_source(
     csrf_token: str = Form(default=""),
     hardcover_key: str = Form(default=""),
     action: str = Form(default="set"),
+    db: AsyncSession = Depends(get_db),
 ):
     csrf_guard(request, csrf_token)
     user_id = request.session.get("user_id")
@@ -205,19 +217,19 @@ async def set_cover_source(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     if action == "clear":
-        set_hardcover_api_key("")
+        await _user_set(db, user_id, "hardcover_api_key", "")
+        await db.commit()
         return {"ok": True, "message": "Hardcover API key removed"}
 
-    # Validate the key looks plausible
     key = hardcover_key.strip()
     if key and len(key) < 4:
         raise HTTPException(status_code=400, detail="Key too short")
     if len(key) > 2048:
         raise HTTPException(status_code=400, detail="Key too long")
 
-    set_hardcover_api_key(key)
+    await _user_set(db, user_id, "hardcover_api_key", key)
+    await db.commit()
 
-    # Test the connection if a key was provided
     if key:
         try:
             import httpx
@@ -237,7 +249,7 @@ async def set_cover_source(
     return {"ok": True, "connected": False, "message": "Key cleared"}
 
 
-# ── Password change ───────────────────────────────────────────────────────
+# ── Password change ────────────────────────────────────────────────────────
 
 
 @router.post("/settings/change-password")
@@ -473,7 +485,7 @@ async def save_email_settings(
     request: Request,
     body: dict,
 ):
-    """Save email/Mailjet configuration."""
+    """Save email/Mailjet configuration (global/file-backed)."""
     config = {k: v for k, v in body.items()
               if k in ("mailjet_api_key", "mailjet_secret_key", "email_from_name",
                        "email_from_addr", "email_to_addr", "email_digest_enabled",
@@ -491,19 +503,41 @@ async def send_test_email(
     from app.services.email_digest import send_test_email as _send_test
     from os import environ
 
-    api_key = body.get("mailjet_api_key") or _get("mailjet_api_key", "")
-    secret_key = body.get("mailjet_secret_key") or _get("mailjet_secret_key", "")
-    from_name = body.get("email_from_name") or _get("email_from_name", "Commonplace")
-    from_email = body.get("email_from_addr") or _get("email_from_addr", "")
-    to_email = body.get("email_to_addr") or _get("email_to_addr", "")
+    api_key = body.get("mailjet_api_key") or _get_file("mailjet_api_key", "")
+    secret_key = body.get("mailjet_secret_key") or _get_file("mailjet_secret_key", "")
+    from_name = body.get("email_from_name") or _get_file("email_from_name", "Commonplace")
+    from_email = body.get("email_from_addr") or _get_file("email_from_addr", "")
+    to_email = body.get("email_to_addr") or _get_file("email_to_addr", "")
 
     if not api_key or not secret_key:
-        raise HTTPException(status_code=400, detail="Mailjet API key and secret key are required")
-    if not from_email or not to_email:
-        raise HTTPException(status_code=400, detail="From and To email addresses are required")
+        raise HTTPException(status_code=400, detail="Mailjet API credentials required")
 
-    try:
-        result = await _send_test(api_key, secret_key, from_name, from_email, to_email)
-        return {"ok": True, "message": "Test email sent successfully"}
-    except RuntimeError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+    result = await _send_test(
+        api_key=api_key,
+        secret_key=secret_key,
+        from_name=from_name,
+        from_email=from_email,
+        to_email=to_email,
+    )
+    return result
+
+
+# ── Push notification settings ─────────────────────────────────────────────
+
+
+@router.post("/api/settings/push")
+async def save_push_settings(
+    request: Request,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """Save push notification preferences per-user."""
+    user_id = request.session.get("user_id", 1)
+
+    for key in ("push_enabled", "push_reminder_time",
+                "push_streak_alert_enabled", "push_streak_alert_time",
+                "last_push_reminder_sent", "last_push_streak_alert_sent"):
+        if key in body:
+            await _user_set(db, user_id, key, body[key])
+    await db.commit()
+    return {"ok": True}

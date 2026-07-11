@@ -22,7 +22,8 @@ from app.routes import highlights, review, import_routes, settings as settings_r
 from app.services.resurface import get_dashboard_counts
 from app.services.book_covers import batch_search
 from app.services.streaks import calculate_streaks
-from app.services.settings_service import get_hardcover_api_key
+from app.services.settings_service import get_hardcover_api_key as get_hardcover_api_key_file
+from app.services.user_settings import get as _user_get
 
 
 @asynccontextmanager
@@ -75,7 +76,8 @@ async def lifespan(app: FastAPI):
 
             if need_cover:
                 print(f"  Fetching covers for {len(need_cover)} books...")
-                hc_key = get_hardcover_api_key()
+                # User 1's hardcover key for background cover backfill
+                hc_key = get_hardcover_api_key_file() or ""
                 covers = await batch_search(need_cover, rate_limit=1.0, hardcover_key=hc_key)
                 for (title, author), (url, source) in covers.items():
                     if url:

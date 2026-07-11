@@ -10,7 +10,7 @@ from app.database import get_db, async_session
 from app.models import User
 from app.auth import verify_password, hash_password, ensure_admin
 from app.csrf import template_context, csrf_guard, generate_csrf_token
-from app.services.settings_service import get_theme
+from app.services.user_settings import get as _user_get
 from app.template import render
 
 router = APIRouter(tags=["auth"])
@@ -65,7 +65,8 @@ async def login(
     if user and verify_password(password, user.password_hash):
         request.session["user_id"] = user.id
         request.session["username"] = user.username
-        request.session["theme"] = get_theme()
+        theme = await _user_get(db, user.id, "theme", "modern")
+        request.session["theme"] = theme
         return RedirectResponse(url="/", status_code=303)
 
     _login_attempts[ip].append(now)
@@ -150,6 +151,7 @@ async def setup_admin(
     if user:
         request.session["user_id"] = user.id
         request.session["username"] = user.username
-        request.session["theme"] = get_theme()
+        theme = await _user_get(db, user.id, "theme", "modern")
+        request.session["theme"] = theme
 
     return RedirectResponse(url="/", status_code=303)

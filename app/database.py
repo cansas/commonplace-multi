@@ -317,6 +317,36 @@ async def init_db():
             ))
             print("  Migration: created user_achievements table")
 
+    # ── UserSettings table (multi-user fork) ──────────────────────────────
+    async with engine.begin() as conn:
+        pragma_usr = await conn.execute(sqltext(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='user_settings'"
+        ))
+        if not pragma_usr.fetchone():
+            await conn.execute(sqltext(
+                "CREATE TABLE user_settings ("
+                "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "  user_id INTEGER NOT NULL REFERENCES users(id),"
+                "  key VARCHAR(64) NOT NULL,"
+                "  value TEXT NOT NULL,"
+                "  UNIQUE(user_id, key)"
+                ")"
+            ))
+            print("  Migration: created user_settings table")
+
+    # Seed user_settings from file for existing single-user DBs
+    async with async_session() as session:
+        from app.models import UserSetting
+        from sqlalchemy import select, func
+        usr_count = await session.execute(
+            select(func.count(UserSetting.id)).where(UserSetting.user_id == 1)
+        )
+        if usr_count.scalar() == 0:
+            from app.services.user_settings import migrate_from_file
+            n = await migrate_from_file(session, 1)
+            if n:
+                print(f"  Seeded {n} user_settings from .settings.json for user_id=1")
+
     # ── Tags color column ───────────────────────────────────────────────────
     async with engine.begin() as conn:
         pragma4 = await conn.execute(sqltext("PRAGMA table_info('tags')"))
