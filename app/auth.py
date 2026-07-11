@@ -7,6 +7,8 @@ import os
 import secrets
 import time
 from datetime import datetime
+from typing import Optional
+from typing import Optional
 
 import bcrypt
 from fastapi import Request, status
@@ -85,24 +87,25 @@ async def ensure_admin(db: AsyncSession):
 # opening a DB session in the middleware AND another in the route handler on
 # every API request. last_used_at is still written, but lazily (only on
 # cache miss, which is every TOKEN_CACHE_TTL seconds per token).
-_TOKEN_CACHE: dict[str, tuple[int, float]] = {}
+# Stores (token_id, user_id, timestamp).
+_TOKEN_CACHE: dict[str, tuple[int, int, float]] = {}
 _TOKEN_CACHE_TTL = 300  # 5 minutes
 
 
-def _cached_token_check(raw_token: str) -> int | None:
-    """Return token_id from cache, or None if missing/expired."""
+def _cached_token_check(raw_token: str) -> Optional[tuple[int, int]]:
+    """Return (token_id, user_id) from cache, or None if missing/expired."""
     entry = _TOKEN_CACHE.get(raw_token)
     if entry is None:
         return None
-    tid, cached_at = entry
+    tid, uid, cached_at = entry
     if time.time() - cached_at > _TOKEN_CACHE_TTL:
         del _TOKEN_CACHE[raw_token]
         return None
-    return tid
+    return tid, uid
 
 
-def _cache_token(raw_token: str, token_id: int):
-    _TOKEN_CACHE[raw_token] = (token_id, time.time())
+def _cache_token(raw_token: str, token_id: int, user_id: int):
+    _TOKEN_CACHE[raw_token] = (token_id, user_id, time.time())
 
 
 def _invalidate_token_cache(raw_token: str):
@@ -183,8 +186,10 @@ class AuthMiddleware:
             raw_token = auth[6:]
 
             # Check cache first — avoids a DB session on most requests
-            cached_tid = _cached_token_check(raw_token)
-            if cached_tid is not None:
+            cached = _cached_token_check(raw_token)
+            if cached is not None:
+                cached_tid, cached_uid = cached
+                request.state.user_id = cached_uid
                 await self.app(scope, receive, send)
                 return
 
@@ -205,15 +210,36 @@ class AuthMiddleware:
                     .values(last_used_at=datetime.utcnow())
                 )
                 await db.commit()
-                _cache_token(raw_token, tok.id)
+                _cache_token(raw_token, tok.id, tok.user_id)
+                request.state.user_id = tok.user_id
 
             await self.app(scope, receive, send)
             return
 
         # ── Web UI routes ─────────────────────────────────────────────
-        if request.session.get("user_id"):
+        uid = request.session.get("user_id")
+        if uid:
+            request.state.user_id = uid
             await self.app(scope, receive, send)
             return
 
         response = RedirectResponse(url="/login", status_code=303)
         await response(scope, receive, send)
+
+
+# ── User identity helper ─────────────────────────────────────────────────
+
+
+async def get_current_user_id(request: Request) -> int:
+    """Return the authenticated user's ID from session or API token.
+
+    The AuthMiddleware sets ``request.state.user_id`` for both web sessions
+    (from session['user_id']) and API token requests (from token's user_id).
+    This helper provides a single call site for route handlers.
+    """
+    uid = getattr(request.state, "user_id", None) or request.session.get("user_id")
+    if uid is not None:
+        return uid
+    # Should not reach here if AuthMiddleware is working, but guard anyway.
+    from fastapi import HTTPException
+    raise HTTPException(status_code=401, detail="Not authenticated")
