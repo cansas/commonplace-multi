@@ -95,6 +95,16 @@ async def settings_page(
         "disabled_reason": await _user_get(db, user_id, "bookorbit_disabled_reason", ""),
     }
 
+    # Readeck sync config (per-user DB-backed)
+    readeck_config = {
+        "url": await _user_get(db, user_id, "readeck_url", ""),
+        "api_token": await _user_get(db, user_id, "readeck_api_token", ""),
+        "enabled": await _user_get(db, user_id, "readeck_sync_enabled", False),
+        "last_synced_at": await _user_get(db, user_id, "readeck_last_synced_at", ""),
+        "last_imported_count": await _user_get(db, user_id, "readeck_last_imported_count", 0),
+        "disabled_reason": await _user_get(db, user_id, "readeck_disabled_reason", ""),
+    }
+
     return render(
         request,
         "settings.html",
@@ -112,6 +122,7 @@ async def settings_page(
             hardcover_key=hc_key,
             email_config=get_email_config(),
             bookorbit_config=bookorbit_config,
+            readeck_config=readeck_config,
             user_theme=theme,
             push_enabled=push_enabled,
             push_reminder_time=push_reminder_time,
@@ -179,6 +190,64 @@ async def trigger_bookorbit_sync(
     from app.services.bookorbit_sync import sync_from_bookorbit
     user_id = await get_current_user_id(request)
     result = await sync_from_bookorbit(db, user_id=user_id)
+    return {"ok": True, "result": result}
+
+
+# ── Readeck Sync Settings ───────────────────────────────────────────────────
+
+
+@router.post("/api/settings/readeck-sync")
+async def save_readeck_sync_settings(
+    request: Request,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """Save Readeck sync configuration (per-user DB-backed)."""
+    user_id = await get_current_user_id(request)
+    from app.services.user_settings import set_ as _us
+    allowed = {"readeck_url", "readeck_api_token", "readeck_sync_enabled"}
+    for k in allowed:
+        if k in body:
+            await _us(db, user_id, k, body[k])
+    if "readeck_api_token" in body or "readeck_sync_enabled" in body:
+        await _us(db, user_id, "readeck_disabled_reason", "")
+    await db.commit()
+    return {"ok": True}
+
+
+@router.post("/api/settings/readeck-test")
+async def test_readeck_connection(
+    request: Request,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """Test Readeck connection."""
+    from app.services.readeck_sync import test_connection
+    user_id = await get_current_user_id(request)
+    from app.services.user_settings import get as _ug
+
+    url = body.get("readeck_url", "").strip()
+    api_token = body.get("readeck_api_token", "").strip()
+
+    if not url:
+        url = await _ug(db, user_id, "readeck_url", "")
+    if not api_token:
+        api_token = await _ug(db, user_id, "readeck_api_token", "")
+
+    result = await test_connection(url, api_token)
+    return result
+
+
+@router.post("/api/settings/readeck-sync-now")
+async def trigger_readeck_sync(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Manually trigger a Readeck sync for the current user."""
+    user_id = await get_current_user_id(request)
+    from app.services.readeck_sync import sync_from_readeck
+
+    result = await sync_from_readeck(db, user_id=user_id)
     return {"ok": True, "result": result}
 
 
