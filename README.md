@@ -3,7 +3,7 @@
 A multi-user fork of [Commonplace](https://github.com/cansas/commonplace) — the self-hosted Readwise alternative. Same app, now with isolated accounts for family or small teams.
 
 - **Multi-user**: Admin invites users. No public signup. All data (highlights, reviews, tags, streaks, achievements, push subscriptions) partitioned by `user_id`.
-- **All the same features**: Capture from KOReader/Kindle/Obsidian/Readwise, full-text search, daily review, achievements, themes, BookOrbit sync, Readest sync, push notifications, Obsidian sync plugin.
+- **All the same features**: Capture from KOReader/Kindle/Obsidian/Readwise, full-text search, daily review, achievements, themes, BookOrbit sync, Readeck sync, Readest sync, push notifications, Obsidian sync plugin.
 - **Self-hosted**: Single Docker container, SQLite database, no external services.
 
 ## Upgrading from Single-User Commonplace
@@ -53,6 +53,7 @@ Open `http://localhost:8765` and the setup wizard creates the admin account. The
 - **Themes** — Modern, Reader, Dark, plus custom themes — drop a `.css` file into `data/themes/` or upload via Settings
 - **Streaks** — track daily review streaks with current and best counters
 - **BookOrbit Sync** — auto-import annotations from BookOrbit (kobo, koreader, web) with SHA256 fingerprint dedup
+- **Readeck Sync** — pull annotations from a self-hosted Readeck instance (read-it-later) with SHA256 fingerprint dedup and per-bookmark source tracking. Configure in Settings → Readeck tab: server URL, API token (Readeck profile → API token), and an auto-sync toggle. Manual Sync Now runs on demand; token and connection failures surface as errors instead of a silent 0-import report
 - **Readest Sync** — push highlights from the Readest reader (desktop, web, mobile) via its built-in Readwise integration. Configure in Readest → Settings → Integrations → Readwise: paste a Commonplace API token and set the base URL to `https://your-commonplace-host/api`. Highlights auto-push while reading (5s debounce) plus a manual "Push All" per book
 - **Push notifications** — review reminders and streak-at-risk alerts via Web Push (VAPID)
 - **First-run wizard** — web-based admin creation, no env vars required
