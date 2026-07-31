@@ -78,9 +78,10 @@ async def _json_request(
 
 async def _fetch_all_bookmarks(
     client: httpx.AsyncClient, clean_url: str, headers: dict,
-) -> list[dict]:
-    """Paginate GET /api/bookmarks. Returns list of bookmark dicts."""
+) -> tuple[list[dict], int]:
+    """Paginate GET /api/bookmarks. Returns (bookmarks, failed_page_count)."""
     bookmarks: list[dict] = []
+    failed_pages = 0
     offset = 0
     while True:
         status, body = await _json_request(
@@ -89,6 +90,7 @@ async def _fetch_all_bookmarks(
             headers=headers,
         )
         if status != 200 or not isinstance(body, list):
+            failed_pages += 1
             logger.warning("Readeck bookmarks fetch failed (offset=%d): %s", offset, body)
             break
         if not body:
@@ -97,20 +99,21 @@ async def _fetch_all_bookmarks(
         if len(body) < _PAGE_SIZE:
             break
         offset += _PAGE_SIZE
-    return bookmarks
+    return bookmarks, failed_pages
 
 
 async def _fetch_annotations(
     client: httpx.AsyncClient, clean_url: str, bookmark_id: str, headers: dict,
-) -> list[dict]:
+) -> tuple[list[dict], bool]:
+    """Fetch annotations for one bookmark. Returns (annotations, failed_flag)."""
     status, body = await _json_request(
         client,
         f"{clean_url}/api/bookmarks/{bookmark_id}/annotations",
         headers=headers,
     )
     if status != 200 or not isinstance(body, list):
-        return []
-    return body
+        return [], True
+    return body, False
 
 
 async def test_connection(url: str, api_token: str) -> dict:
@@ -170,20 +173,19 @@ async def sync_from_readeck(db, user_id: int = 1) -> dict:
         # Valid token clears any previous disabled reason
         await _save_config(db, user_id, {"readeck_disabled_reason": ""})
         await db.commit()
-
         # ── 2. Fetch bookmarks + annotations (concurrently) ────────────
-        bookmarks = await _fetch_all_bookmarks(client, clean_url, headers)
+        bookmarks, page_errors = await _fetch_all_bookmarks(client, clean_url, headers)
 
         sem = asyncio.Semaphore(_FETCH_CONCURRENCY)
 
         async def _fetch_one(bm: dict):
             async with sem:
                 if bm.get("is_deleted"):
-                    return bm, []
-                anns = await _fetch_annotations(
+                    return bm, [], False
+                anns, failed = await _fetch_annotations(
                     client, clean_url, str(bm.get("id")), headers
                 )
-                return bm, anns
+                return bm, anns, failed
 
         results = await asyncio.gather(
             *[_fetch_one(bm) for bm in bookmarks],
@@ -193,7 +195,7 @@ async def sync_from_readeck(db, user_id: int = 1) -> dict:
     # ── 3. Build existing fingerprint/source_id sets (per user) ────────
     posted = 0
     skipped = 0
-    errors = 0
+    errors = page_errors
 
     result = await db.execute(
         sqltext(
@@ -219,7 +221,14 @@ async def sync_from_readeck(db, user_id: int = 1) -> dict:
             logger.warning("Readeck annotation fetch error (user %d): %s", user_id, item)
             continue
 
-        bookmark, annotations = item
+        bookmark, annotations, failed = item
+        if failed:
+            errors += 1
+            logger.warning(
+                "Readeck annotation fetch failed for bookmark %s (user %d)",
+                bookmark.get("id"), user_id,
+            )
+            continue
         if not annotations:
             continue
 

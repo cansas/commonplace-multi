@@ -187,8 +187,13 @@ async def trigger_bookorbit_sync(
     db: AsyncSession = Depends(get_db),
 ):
     """Manually trigger a BookOrbit sync for the current user."""
-    from app.services.bookorbit_sync import sync_from_bookorbit
+    from app.services.bookorbit_sync import sync_from_bookorbit, _get_config
     user_id = await get_current_user_id(request)
+    config = await _get_config(db, user_id)
+    if not config["enabled"]:
+        return {"ok": False, "error": "BookOrbit sync is not enabled. Save settings first."}
+    if not config["url"] or not config["username"]:
+        return {"ok": False, "error": "BookOrbit URL and username are not configured."}
     result = await sync_from_bookorbit(db, user_id=user_id)
     return {"ok": True, "result": result}
 
@@ -245,7 +250,13 @@ async def trigger_readeck_sync(
 ):
     """Manually trigger a Readeck sync for the current user."""
     user_id = await get_current_user_id(request)
-    from app.services.readeck_sync import sync_from_readeck
+    from app.services.readeck_sync import sync_from_readeck, _get_config
+
+    config = await _get_config(db, user_id)
+    if not config["enabled"]:
+        return {"ok": False, "error": "Readeck sync is not enabled. Save settings first."}
+    if not config["url"] or not config["api_token"]:
+        return {"ok": False, "error": "Readeck URL and API token are not configured."}
 
     result = await sync_from_readeck(db, user_id=user_id)
     return {"ok": True, "result": result}
