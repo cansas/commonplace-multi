@@ -37,11 +37,12 @@ async def highlights_page(
     source: Optional[str] = Query(default=""),
     book: Optional[str] = Query(default=""),
     favorites: Optional[str] = Query(default=""),
+    category: Optional[str] = Query(default=""),
     page: int = Query(default=1, ge=1),
     db: AsyncSession = Depends(get_db),
 ):
     per_page = 20
-    query = select(Highlight).order_by(Highlight.created_at.desc())
+    query = select(Highlight).where(Highlight.user_id == user_id).order_by(Highlight.created_at.desc())
 
     if search:
         fts_q = text(
@@ -63,6 +64,8 @@ async def highlights_page(
         query = query.where(Highlight.book_title.ilike(f"%{_escape_ilike(book)}%", escape="\\"))
     if favorites == "1":
         query = query.where(Highlight.favorite == 1)
+    if category and category != "all":
+        query = query.where(Highlight.category == category)
 
     # Count total
     count_q = select(sa_func.count()).select_from(query.subquery())
@@ -101,6 +104,7 @@ async def highlights_page(
             source_filter=source,
             book=book,
             favorites_filter=favorites,
+            category_filter=category,
             page=page,
             total_pages=total_pages,
             total_count=total,
@@ -174,6 +178,7 @@ async def list_highlights(
     since: Optional[str] = "",
     search: Optional[str] = "",
     book_title: Optional[str] = "",
+    category: Optional[str] = "",
     db: AsyncSession = Depends(get_db),
 ):
     user_id = await get_current_user_id(request)
@@ -190,6 +195,8 @@ async def list_highlights(
         query = select(Highlight).where(Highlight.user_id == user_id).order_by(Highlight.created_at.desc())
     if book_title:
         query = query.where(Highlight.book_title == book_title)
+    if category:
+        query = query.where(Highlight.category == category)
     if since:
         try:
             since_dt = datetime.fromisoformat(since)

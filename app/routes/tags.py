@@ -173,6 +173,7 @@ async def tags_page(
             func.count(highlight_tags.c.highlight_id).label("count"),
         )
         .outerjoin(highlight_tags, Tag.id == highlight_tags.c.tag_id)
+        .where(Tag.user_id == user_id)
         .group_by(Tag.id, Tag.name)
         .order_by(Tag.name)
     )

@@ -261,7 +261,7 @@ async def dashboard(
     if total > 0:
         offset = random.randint(0, total - 1)
         random_hl_result = await db.execute(
-            select(Highlight).offset(offset).limit(1)
+            select(Highlight).where(Highlight.user_id == user_id).offset(offset).limit(1)
         )
         random_hl = random_hl_result.scalar_one_or_none()
 
