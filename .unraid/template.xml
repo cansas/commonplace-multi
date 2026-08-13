@@ -2,7 +2,7 @@
 <Container version="2">
   <Name>commonplace-multi</Name>
   <Repository>ghcr.io/cansas/commonplace-multi:latest</Repository>
-  <Registry>https://github.com/cansas/commonplace-multi</Registry>
+  <Registry>https://ghcr.io</Registry>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
@@ -20,7 +20,7 @@ Features:
 • Full-text search with filter by source, tags, favorites, and book
 • Multi-source cover art via Hardcover.app and Open Library
 • Achievement system with per-user streak tracking
-• Backup & restore database and covers as ZIP
+• Backup &amp; restore database and covers as ZIP
 • Responsive mobile UI with PWA push notification support
 
 First run: Open the web UI and the setup wizard will guide you through creating your admin account. Then invite additional users via the Admin panel.</Overview>

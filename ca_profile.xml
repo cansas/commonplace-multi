@@ -1,0 +1,13 @@
+<CommunityApplications>
+  <!-- Repository profile for Community Apps (ca.unraid.net) -->
+  <Profile>
+    This repository provides the Unraid Community Apps template for **Commonplace Multi-User**, a self-hosted Readwise alternative with multi-user support. Capture, browse, review, and resurface your book and article highlights - import from KOReader, Kindle, Obsidian, and Readwise, or sync from Readeck and BookOrbit. Supports invite-based registration for family and friends, per-user review queues, streaks, achievements, push notifications, and book cover art from Hardcover and Open Library.
+
+    Docker image: `ghcr.io/cansas/commonplace-multi:latest`
+
+    Support and bug reports: open an issue on GitHub. Installation, configuration, and environment variable documentation live in the repo README.
+  </Profile>
+  <Icon>https://raw.githubusercontent.com/cansas/commonplace-multi/main/.unraid/icon.svg</Icon>
+  <WebPage>https://github.com/cansas/commonplace-multi</WebPage>
+  <Forum>https://github.com/cansas/commonplace-multi/issues</Forum>
+</CommunityApplications>
