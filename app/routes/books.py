@@ -8,7 +8,6 @@ from app.database import get_db
 from app.models import Highlight, BookCover
 from app.services.book_covers import search_cover, list_cover_options
 from app.auth import get_current_user_id
-from app.auth import get_current_user_id
 from app.csrf import template_context
 from app.services.settings_service import get_hardcover_api_key
 from app.template import render
@@ -30,6 +29,22 @@ def _safe_filename(name: str) -> str:
 
 router = APIRouter(tags=["books"])
 COVERS_DIR = os.environ.get("COVERS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "covers"))
+
+
+async def _get_cover(db: AsyncSession, user_id: int, title: str, author: str) -> Optional[BookCover]:
+    """Fetch a single user's cover row for a book — never another user's.
+
+    Uses ``.first()`` rather than ``scalar_one_or_none()`` so a duplicate row
+    (e.g. from a pre-constraint sync) can't turn into a MultipleResultsFound 500.
+    """
+    result = await db.execute(
+        select(BookCover).where(
+            BookCover.user_id == user_id,
+            BookCover.book_title == title,
+            BookCover.book_author == author,
+        )
+    )
+    return result.scalars().first()
 
 
 
@@ -93,10 +108,11 @@ async def books_page(
     if cover_keys:
         cover_result = await db.execute(
             select(BookCover).where(
+                BookCover.user_id == user_id,
                 or_(*[
                     (BookCover.book_title == t) & (BookCover.book_author == a)
                     for t, a in cover_keys
-                ]) if cover_keys else False
+                ]),
             )
         )
         for cover in cover_result.scalars().all():
@@ -139,20 +155,16 @@ async def save_cover_selection(
     title: str = Form(...), author: str = Form(default=""),
     cover_url: str = Form(...), source: str = Form(default=""),
     hardcover_id: str = Form(default=""), isbn: str = Form(default=""),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Save a cover selected from the cover picker modal."""
     try:
+        author = author or ""
         hc_id: int | None = int(hardcover_id) if hardcover_id.strip() else None
         isbn_val: str | None = isbn.strip() or None
 
-        result = await db.execute(
-            select(BookCover).where(
-                BookCover.book_title == title,
-                BookCover.book_author == author,
-            )
-        )
-        cover = result.scalar_one_or_none()
+        cover = await _get_cover(db, user_id, title, author)
         if cover:
             cover.cover_url = cover_url
             cover.cover_source = source
@@ -162,6 +174,7 @@ async def save_cover_selection(
                 cover.isbn = isbn_val
         else:
             db.add(BookCover(
+                user_id=user_id,
                 book_title=title, book_author=author,
                 cover_url=cover_url, cover_source=source,
                 hardcover_id=hc_id, isbn=isbn_val,
@@ -175,18 +188,14 @@ async def save_cover_selection(
 @router.post("/api/books/cover/search")
 async def search_covers(
     title: str = Form(...), author: str = Form(default=""),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Search all cover sources and return multiple options for the cover selector."""
     try:
+        author = author or ""
         # Get known_id and isbn from existing BookCover if available
-        existing = await db.execute(
-            select(BookCover).where(
-                BookCover.book_title == title,
-                BookCover.book_author == author,
-            )
-        )
-        existing_cover = existing.scalar_one_or_none()
+        existing_cover = await _get_cover(db, user_id, title, author)
         known_id: int | None = existing_cover.hardcover_id if existing_cover else None
         hc_key = get_hardcover_api_key()
 
@@ -200,16 +209,11 @@ async def search_covers(
 
 
 @router.post("/api/books/cover/fetch")
-async def fetch_cover(title: str = Form(...), author: str = Form(default=""), source: str = Form(default="auto"), db: AsyncSession = Depends(get_db)):
+async def fetch_cover(title: str = Form(...), author: str = Form(default=""), source: str = Form(default="auto"), user_id: int = Depends(get_current_user_id), db: AsyncSession = Depends(get_db)):
     try:
+        author = author or ""
         # Check for existing BookCover to pass known_id (skip fuzzy search)
-        existing = await db.execute(
-            select(BookCover).where(
-                BookCover.book_title == title,
-                BookCover.book_author == author,
-            )
-        )
-        existing_cover = existing.scalar_one_or_none()
+        existing_cover = await _get_cover(db, user_id, title, author)
         known_id = existing_cover.hardcover_id if existing_cover else None
         existing_isbn = existing_cover.isbn if existing_cover else None
 
@@ -218,13 +222,7 @@ async def fetch_cover(title: str = Form(...), author: str = Form(default=""), so
         if not url:
             return {"ok": False, "error": "No cover found on Open Library, Hardcover, or Goodreads"}
 
-        result = await db.execute(
-            select(BookCover).where(
-                BookCover.book_title == title,
-                BookCover.book_author == author,
-            )
-        )
-        cover = result.scalar_one_or_none()
+        cover = await _get_cover(db, user_id, title, author)
         if cover:
             cover.cover_url = url
             cover.cover_source = cover_source
@@ -234,6 +232,7 @@ async def fetch_cover(title: str = Form(...), author: str = Form(default=""), so
                 cover.isbn = isbn
         else:
             db.add(BookCover(
+                user_id=user_id,
                 book_title=title, book_author=author,
                 cover_url=url, cover_source=cover_source,
                 hardcover_id=hc_id, isbn=isbn,
@@ -265,7 +264,8 @@ def _validate_image_header(data: bytes) -> str | None:
 
 
 @router.post("/api/books/cover/upload")
-async def upload_cover(title: str = Form(...), author: str = Form(default=""), file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+async def upload_cover(title: str = Form(...), author: str = Form(default=""), file: UploadFile = File(...), user_id: int = Depends(get_current_user_id), db: AsyncSession = Depends(get_db)):
+    author = author or ""
     # Validate file extension
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in (".jpg", ".jpeg", ".png", ".webp"):
@@ -285,7 +285,9 @@ async def upload_cover(title: str = Form(...), author: str = Form(default=""), f
     ext = detected_ext  # trust the actual bytes, not the extension
 
     # Build destination path
-    dest = os.path.join(COVERS_DIR, f"{_safe_filename(title)}_{_safe_filename(author)}{ext}")
+    # Salt the filename with user_id so two users with the same book title
+    # never share (or overwrite) a cover file.
+    dest = os.path.join(COVERS_DIR, f"{_safe_filename(f'{user_id}:{title}')}_{_safe_filename(author)}{ext}")
     os.makedirs(os.path.dirname(dest), exist_ok=True)
 
     # Write file
@@ -300,13 +302,7 @@ async def upload_cover(title: str = Form(...), author: str = Form(default=""), f
     cover_url = f"/static/covers/{os.path.basename(dest)}"
 
     # Update DB
-    result = await db.execute(
-        select(BookCover).where(
-            BookCover.book_title == title,
-            BookCover.book_author == author,
-        )
-    )
-    cover = result.scalar_one_or_none()
+    cover = await _get_cover(db, user_id, title, author)
     if cover:
         # Clean up old file if it exists and is different
         old_path = os.path.join(COVERS_DIR, os.path.basename(cover.cover_url or ""))
@@ -318,7 +314,7 @@ async def upload_cover(title: str = Form(...), author: str = Form(default=""), f
         cover.cover_url = cover_url
         cover.cover_source = "upload"
     else:
-        db.add(BookCover(book_title=title, book_author=author, cover_url=cover_url, cover_source="upload"))
+        db.add(BookCover(user_id=user_id, book_title=title, book_author=author, cover_url=cover_url, cover_source="upload"))
     await db.commit()
     return {"ok": True, "cover_url": cover_url}
 
@@ -329,6 +325,7 @@ async def set_book_metadata(
     author: str = Form(default=""),
     hardcover_id: str = Form(default=""),
     isbn: str = Form(default=""),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Manually set or update HardCover ID and ISBN for a book.
@@ -347,18 +344,13 @@ async def set_book_metadata(
 
     isbn_val = isbn.strip() or None
 
-    result = await db.execute(
-        select(BookCover).where(
-            BookCover.book_title == title,
-            BookCover.book_author == author,
-        )
-    )
-    cover = result.scalar_one_or_none()
+    cover = await _get_cover(db, user_id, title, author)
     if cover:
         cover.hardcover_id = hc_id
         cover.isbn = isbn_val
     else:
         cover = BookCover(
+            user_id=user_id,
             book_title=title, book_author=author,
             hardcover_id=hc_id, isbn=isbn_val,
         )
@@ -406,6 +398,7 @@ async def rename_book(
     new_title: str = Form(...),
     new_author: str = Form(default=""),
     merge: str = Form(default=""),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Rename a book across all highlights. Merges if target already exists.
@@ -427,6 +420,7 @@ async def rename_book(
     # Count source highlights
     src_count = await db.execute(
         select(sa_func.count(Highlight.id)).where(
+            Highlight.user_id == user_id,
             Highlight.book_title == old_title,
             Highlight.book_author == old_author,
         )
@@ -442,6 +436,7 @@ async def rename_book(
     if new_title.strip() != old_title or new_author != old_author:
         tgt = await db.execute(
             select(sa_func.count(Highlight.id)).where(
+                Highlight.user_id == user_id,
                 Highlight.book_title == new_title.strip(),
                 Highlight.book_author == new_author,
             )
@@ -468,13 +463,14 @@ async def rename_book(
     await db.execute(
         sqltext(
             "UPDATE highlights SET book_title = :new_title, book_author = :new_author "
-            "WHERE book_title = :old_title AND book_author = :old_author"
+            "WHERE user_id = :user_id AND book_title = :old_title AND book_author = :old_author"
         ),
         {
             "new_title": new_title.strip(),
             "new_author": new_author,
             "old_title": old_title,
             "old_author": old_author,
+            "user_id": user_id,
         },
     )
 
@@ -501,18 +497,12 @@ async def rename_book(
     if target_exists:
         # Delete old source cover (target cover already exists or will persist)
         await db.execute(
-            sqltext("DELETE FROM book_covers WHERE book_title = :t AND book_author = :a"),
-            {"t": old_title, "a": old_author},
+            sqltext("DELETE FROM book_covers WHERE user_id = :uid AND book_title = :t AND book_author = :a"),
+            {"t": old_title, "a": old_author, "uid": user_id},
         )
     else:
         # Simple rename: update the old cover to the new title
-        cover = await db.execute(
-            select(BookCover).where(
-                BookCover.book_title == old_title,
-                BookCover.book_author == old_author,
-            )
-        )
-        cover_row = cover.scalar_one_or_none()
+        cover_row = await _get_cover(db, user_id, old_title, old_author)
         if cover_row:
             cover_row.book_title = new_title.strip()
             cover_row.book_author = new_author
@@ -536,6 +526,7 @@ async def rename_book(
 async def delete_book(
     title: str = Form(...),
     author: str = Form(default=""),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete an entire book and all its highlights, with a two-step confirmation."""
@@ -544,6 +535,7 @@ async def delete_book(
     # Count what we're about to delete
     count_result = await db.execute(
         select(sa_func.count(Highlight.id)).where(
+            Highlight.user_id == user_id,
             Highlight.book_title == title,
             Highlight.book_author == author,
         )
@@ -560,14 +552,14 @@ async def delete_book(
 
     # Delete highlights (no triggers to interfere)
     await db.execute(
-        sqltext("DELETE FROM highlights WHERE book_title = :t AND book_author = :a"),
-        {"t": title, "a": author},
+        sqltext("DELETE FROM highlights WHERE user_id = :uid AND book_title = :t AND book_author = :a"),
+        {"t": title, "a": author, "uid": user_id},
     )
 
     # Delete BookCover
     await db.execute(
-        sqltext("DELETE FROM book_covers WHERE book_title = :t AND book_author = :a"),
-        {"t": title, "a": author},
+        sqltext("DELETE FROM book_covers WHERE user_id = :uid AND book_title = :t AND book_author = :a"),
+        {"t": title, "a": author, "uid": user_id},
     )
 
     # Rebuild FTS index from scratch (simpler than per-row deletion)
@@ -602,10 +594,11 @@ async def delete_book(
 
 
 @router.post("/api/books/cover/backfill")
-async def backfill_covers(db: AsyncSession = Depends(get_db)):
+async def backfill_covers(user_id: int = Depends(get_current_user_id), db: AsyncSession = Depends(get_db)):
     hc_key = get_hardcover_api_key()
     result = await db.execute(
         select(Highlight.book_title, Highlight.book_author)
+        .where(Highlight.user_id == user_id)
         .distinct()
     )
     books = result.all()
@@ -613,6 +606,7 @@ async def backfill_covers(db: AsyncSession = Depends(get_db)):
     # Bulk check which books already have covers — one query, not N
     existing_result = await db.execute(
         select(BookCover.book_title, BookCover.book_author)
+        .where(BookCover.user_id == user_id)
     )
     existing_covers = {
         (r.book_title, r.book_author) for r in existing_result.all()
@@ -620,7 +614,7 @@ async def backfill_covers(db: AsyncSession = Depends(get_db)):
 
     # Pre-load existing BookCover records that have hardcover_id
     existing_detail = await db.execute(
-        select(BookCover)
+        select(BookCover).where(BookCover.user_id == user_id)
     )
     cover_map = {
         (c.book_title, c.book_author): c for c in existing_detail.scalars().all()
@@ -675,6 +669,7 @@ async def backfill_covers(db: AsyncSession = Depends(get_db)):
                     cover_row.isbn = isbn
             else:
                 db.add(BookCover(
+                    user_id=user_id,
                     book_title=row.book_title,
                     book_author=row.book_author or "",
                     cover_url=url, cover_source=cover_source,
@@ -686,19 +681,19 @@ async def backfill_covers(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/api/books/cover/fetch/{hl_id}")
-async def fetch_cover_by_hl(hl_id: int, db: AsyncSession = Depends(get_db)):
+async def fetch_cover_by_hl(hl_id: int, user_id: int = Depends(get_current_user_id), db: AsyncSession = Depends(get_db)):
     hl = await db.get(Highlight, hl_id)
-    if not hl:
+    if not hl or hl.user_id != user_id:
         return {"ok": False, "error": "Highlight not found"}
-    return await fetch_cover(title=hl.book_title, author=hl.book_author or "", source="auto", db=db)
+    return await fetch_cover(title=hl.book_title, author=hl.book_author or "", source="auto", user_id=user_id, db=db)
 
 
 @router.post("/api/books/cover/upload/{hl_id}")
-async def upload_cover_by_hl(hl_id: int, file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+async def upload_cover_by_hl(hl_id: int, file: UploadFile = File(...), user_id: int = Depends(get_current_user_id), db: AsyncSession = Depends(get_db)):
     hl = await db.get(Highlight, hl_id)
-    if not hl:
+    if not hl or hl.user_id != user_id:
         return JSONResponse({"ok": False, "error": "Highlight not found"}, status_code=404)
-    return await upload_cover(title=hl.book_title, author=hl.book_author or "", file=file, db=db)
+    return await upload_cover(title=hl.book_title, author=hl.book_author or "", file=file, user_id=user_id, db=db)
 
 
 @router.get("/api/books")
@@ -706,6 +701,7 @@ async def api_books(
     request: Request,
     search: Optional[str] = Query(default=""),
     sort: str = Query(default="highlights"),
+    user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """Return books with highlight counts and cover info as JSON."""
@@ -718,6 +714,7 @@ async def api_books(
             sa_func.max(Highlight.highlighted_at).label("last_highlighted"),
             sa_func.max(Highlight.id).label("sample_hl_id"),
         )
+        .where(Highlight.user_id == user_id)
         .group_by(Highlight.book_title, Highlight.book_author)
     )
 
@@ -744,10 +741,11 @@ async def api_books(
     if cover_keys:
         cover_result = await db.execute(
             select(BookCover).where(
+                BookCover.user_id == user_id,
                 or_(*[
                     (BookCover.book_title == t) & (BookCover.book_author == a)
                     for t, a in cover_keys
-                ])
+                ]),
             )
         )
         for cover in cover_result.scalars().all():

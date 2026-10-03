@@ -115,6 +115,7 @@ async def _get_cover_data(hl: Highlight, db: AsyncSession) -> str | None:
         return None
     result = await db.execute(
         select(BookCover).where(
+            BookCover.user_id == hl.user_id,
             BookCover.book_title == hl.book_title,
             BookCover.book_author == (hl.book_author or ""),
         )

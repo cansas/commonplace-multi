@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 from contextlib import asynccontextmanager
 
 from app.database import init_db, get_db, async_session
-from app.models import Highlight, Source, BookCover
+from app.models import Highlight, Source, BookCover, User
 from app.auth import AuthMiddleware, ensure_admin
 from app.csrf import CSRFMiddleware, generate_csrf_token, template_context, SecurityHeadersMiddleware
 from app.routes import highlights, review, import_routes, settings as settings_routes, books, auth as auth_routes, share as share_routes, backup as backup_routes, tags as tags_routes, achievements as achievements_routes, about as about_routes, push as push_routes, themes as themes_routes, admin as admin_routes
@@ -57,31 +57,38 @@ async def lifespan(app: FastAPI):
     # Backfill book covers in the background (don't block startup)
     async def _backfill_covers():
         async with async_session() as db:
-            result = await db.execute(
-                select(Highlight.book_title, Highlight.book_author)
-                .distinct()
-            )
-            all_books = [(r.book_title, r.book_author or "") for r in result.all()]
+            # Covers are per-user, so backfill each user's library separately.
+            user_ids = (await db.execute(select(User.id))).scalars().all()
+            for uid in user_ids:
+                result = await db.execute(
+                    select(Highlight.book_title, Highlight.book_author)
+                    .where(Highlight.user_id == uid)
+                    .distinct()
+                )
+                all_books = [(r.book_title, r.book_author or "") for r in result.all()]
 
-            existing_result = await db.execute(
-                select(BookCover.book_title, BookCover.book_author)
-            )
-            existing_covers = {
-                (r.book_title, r.book_author) for r in existing_result.all()
-            }
+                existing_result = await db.execute(
+                    select(BookCover.book_title, BookCover.book_author)
+                    .where(BookCover.user_id == uid)
+                )
+                existing_covers = {
+                    (r.book_title, r.book_author) for r in existing_result.all()
+                }
 
-            need_cover = [
-                (t, a) for t, a in all_books if (t, a) not in existing_covers
-            ]
+                need_cover = [
+                    (t, a) for t, a in all_books if (t, a) not in existing_covers
+                ]
 
-            if need_cover:
-                print(f"  Fetching covers for {len(need_cover)} books...")
+                if not need_cover:
+                    continue
+
+                print(f"  Fetching covers for {len(need_cover)} books (user {uid})...")
                 # User 1's hardcover key for background cover backfill
                 hc_key = get_hardcover_api_key_file() or ""
                 covers = await batch_search(need_cover, rate_limit=1.0, hardcover_key=hc_key)
                 for (title, author), (url, source) in covers.items():
                     if url:
-                        db.add(BookCover(book_title=title, book_author=author, cover_url=url, cover_source=source))
+                        db.add(BookCover(user_id=uid, book_title=title, book_author=author, cover_url=url, cover_source=source))
                 await db.commit()
                 found = sum(1 for url, _ in covers.values() if url)
                 print(f"  Found covers for {found} of {len(need_cover)} books")
@@ -117,7 +124,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="commonplace-multi", version="2.1.1", lifespan=lifespan)
+app = FastAPI(title="commonplace-multi", version="2.1.2", lifespan=lifespan)
 
 # Ensure covers directory exists on the mounted volume
 COVERS_DIR = os.environ.get("COVERS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "covers"))

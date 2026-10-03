@@ -558,6 +558,7 @@ async def highlight_card(hl_id: int, request: Request, db: AsyncSession = Depend
     if hl.book_title:
         cover_result = await db.execute(
             select(BookCover).where(
+                BookCover.user_id == hl.user_id,
                 BookCover.book_title == hl.book_title,
                 BookCover.book_author == (hl.book_author or ""),
             )
@@ -591,6 +592,7 @@ async def highlight_cover_image(hl_id: int, request: Request, db: AsyncSession =
 
     cover_result = await db.execute(
         select(BookCover).where(
+            BookCover.user_id == hl.user_id,
             BookCover.book_title == hl.book_title,
             BookCover.book_author == (hl.book_author or ""),
         )
