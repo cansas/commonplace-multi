@@ -11,7 +11,7 @@
     {% if new_achievements %}
     <!-- Toast for newly unlocked achievements -->
     {% for ach in new_achievements %}
-    <div class="achievement-toast bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-6 text-center shadow-lg animate-bounce-in relative overflow-hidden">
+    <div class="achievement-toast bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-6 text-center shadow-lg relative overflow-hidden">
         <div class="confetti-container">
             <div class="confetti-piece c1"></div>
             <div class="confetti-piece c2"></div>
@@ -81,14 +81,13 @@
 {% block scripts %}
 {% if new_achievements %}
 <style>
-    @keyframes bounce-in {
-        0% { transform: scale(0.3); opacity: 0; }
-        50% { transform: scale(1.05); }
-        70% { transform: scale(0.95); }
-        100% { transform: scale(1); opacity: 1; }
+    /* Exponential ease-out: the toast arrives and settles instead of bouncing. */
+    @keyframes toast-in {
+        from { transform: translateY(8px) scale(0.98); opacity: 0; }
+        to   { transform: none; opacity: 1; }
     }
     .achievement-toast {
-        animation: bounce-in 0.6s ease-out;
+        animation: toast-in 0.38s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     /* ── Confetti ──────────────────────────────────── */
@@ -107,7 +106,7 @@
         top: -10px;
         width: 10px;
         height: 10px;
-        border-radius: 2px;
+        border-radius: 3px; /* --rounded-xs */
         animation: confetti-fall 2.5s ease-in forwards;
     }
     .confetti-piece:nth-child(odd) { border-radius: 50%; }

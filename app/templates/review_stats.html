@@ -29,7 +29,7 @@
             <div class="flex-1 flex flex-col items-center justify-end h-full">
                 {% if day_counts[i] > 0 %}
                 <div class="w-full rounded-t relative group cursor-pointer"
-                     style="height: {{ (day_counts[i] / max_count * 100)|round }}%; min-height: 4px; background: var(--interactive-accent, #6366f1);">
+                     style="height: {{ (day_counts[i] / max_count * 100)|round }}%; min-height: 4px; background: var(--color-accent);">
                     <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-lg">
                         {{ day_counts[i] }} review{% if day_counts[i] != 1 %}s{% endif %}
                     </div>

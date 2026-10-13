@@ -23,7 +23,7 @@
   {% endif %}
 
   {% if request.query_params.get("error") %}
-  <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6 text-sm">
+  <div class="alert-danger rounded-lg p-4 mb-6 text-sm">
     {{ request.query_params.get("error") }}
   </div>
   {% endif %}

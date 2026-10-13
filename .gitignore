@@ -50,3 +50,11 @@ test.db
 
 
 docker-compose.dev.yml
+
+# Impeccable design artifacts: the generated viewer is rebuilt with
+# `python3 .impeccable/build-preview.py`; config.local.json holds per-machine
+# detector overrides. PRODUCT.md, DESIGN.md, design.json and config.json
+# are committed so the design record and detector baseline travel with the repo.
+.impeccable/design-preview.html
+.impeccable/config.local.json
+.impeccable/live/

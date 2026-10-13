@@ -1,0 +1,76 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [
+      "app/static/tailwind.min.js"
+    ],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-10-13T01:49:36.115Z",
+        "reason": "Inter is the established body face; the swap is an identity change, not polish (DESIGN.md typography)"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "roboto",
+        "files": [
+          "app/templates/email/**"
+        ],
+        "createdAt": "2026-10-13T01:49:36.174Z",
+        "reason": "Email clients cannot load webfonts; the system stack is deliberate"
+      },
+      {
+        "rule": "nested-cards",
+        "value": "*",
+        "files": [
+          "app/templates/login.html"
+        ],
+        "createdAt": "2026-10-13T01:49:36.193Z",
+        "reason": "No second surface in that markup; the max-width wrapper is read as a card"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "app/templates/base.html"
+        ],
+        "createdAt": "2026-10-13T01:49:42.897Z",
+        "reason": "Glass theme accent glow - deliberate theme identity (DESIGN.md: The Glass Exception Rule)"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "app/templates/login.html"
+        ],
+        "createdAt": "2026-10-13T01:49:42.916Z",
+        "reason": "Glass theme accent glow - deliberate theme identity (DESIGN.md: The Glass Exception Rule)"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(0, 0, 0)",
+        "createdAt": "2026-10-13T01:56:57.785Z",
+        "reason": "Detector does not resolve inheritance or the app's own .text-primary class; body sets the token and children inherit"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "app/templates/achievements.html"
+        ],
+        "createdAt": "2026-10-13T01:56:57.806Z",
+        "reason": "Confetti palette: 11 one-off decorative pieces inside the toast, each used once, nothing to reuse"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "*",
+        "files": [
+          "app/templates/email/**"
+        ],
+        "createdAt": "2026-10-13T01:56:57.825Z",
+        "reason": "Email clients cannot resolve a token scale; fixed px is the deliberate choice here"
+      }
+    ]
+  }
+}

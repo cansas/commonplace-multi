@@ -1,0 +1,993 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-13T01:16:08Z",
+  "title": "Design System: Commonplace",
+  "extensions": {
+    "colorMeta": {
+      "ink-indigo": {
+        "role": "neutral",
+        "displayName": "Ink Indigo",
+        "canonical": "#4f46e5",
+        "tonalRamp": [
+          "#0d0046",
+          "#1d0074",
+          "#3223a5",
+          "#4b44d8",
+          "#676aff",
+          "#8994ff",
+          "#aebcff",
+          "#d6e5ff"
+        ]
+      },
+      "ink-indigo-deep": {
+        "role": "neutral",
+        "displayName": "Ink Indigo Deep",
+        "canonical": "#4338ca",
+        "tonalRamp": [
+          "#0b0042",
+          "#1c036f",
+          "#32289e",
+          "#4c48d1",
+          "#696df8",
+          "#8b96ff",
+          "#b0beff",
+          "#d7e6ff"
+        ]
+      },
+      "ink-indigo-wash": {
+        "role": "neutral",
+        "displayName": "Indigo Wash",
+        "canonical": "#eef2ff",
+        "tonalRamp": [
+          "#090b10",
+          "#23252c",
+          "#3f424a",
+          "#5e616b",
+          "#7f828d",
+          "#a2a5af",
+          "#c6c9d2",
+          "#eceef6"
+        ]
+      },
+      "ink-indigo-wash-2": {
+        "role": "neutral",
+        "displayName": "Indigo Wash Deep",
+        "canonical": "#e0e7ff",
+        "tonalRamp": [
+          "#080b14",
+          "#212431",
+          "#3d4151",
+          "#5b6074",
+          "#7c8296",
+          "#9fa4b7",
+          "#c3c9da",
+          "#e9eefd"
+        ]
+      },
+      "indigo-highlight": {
+        "role": "primary",
+        "displayName": "Indigo Highlight",
+        "canonical": "#6366f1",
+        "tonalRamp": [
+          "#0b0040",
+          "#1c096b",
+          "#322b9a",
+          "#4c4bcb",
+          "#6a6ff3",
+          "#8c97ff",
+          "#b1bfff",
+          "#d8e7ff"
+        ]
+      },
+      "amber-annotation": {
+        "role": "secondary",
+        "displayName": "Amber Annotation",
+        "canonical": "#f59e0b",
+        "tonalRamp": [
+          "#230000",
+          "#471100",
+          "#6e2d00",
+          "#974b00",
+          "#bc6d00",
+          "#dc9430",
+          "#fcbb6c",
+          "#ffe3a0"
+        ]
+      },
+      "review-green": {
+        "role": "tertiary",
+        "displayName": "Review Green",
+        "canonical": "#16a34a",
+        "tonalRamp": [
+          "#001500",
+          "#003300",
+          "#005509",
+          "#007825",
+          "#1c9c48",
+          "#5bbd72",
+          "#8ce09c",
+          "#bbffc7"
+        ]
+      },
+      "slate-paper": {
+        "role": "neutral",
+        "displayName": "Slate Paper",
+        "canonical": "#f8fafc",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#242526",
+          "#414243",
+          "#606163",
+          "#818284",
+          "#a4a5a7",
+          "#c8c9cb",
+          "#edeef0"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "surface-alt": {
+        "role": "neutral",
+        "displayName": "Surface Alt",
+        "canonical": "#f1f5f9",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232527",
+          "#404245",
+          "#5e6265",
+          "#7f8386",
+          "#a2a5a8",
+          "#c7c9cc",
+          "#eceff1"
+        ]
+      },
+      "surface-active": {
+        "role": "neutral",
+        "displayName": "Surface Active",
+        "canonical": "#e2e8f0",
+        "tonalRamp": [
+          "#090b0f",
+          "#22252a",
+          "#3e4248",
+          "#5d6268",
+          "#7e838a",
+          "#a1a5ac",
+          "#c5c9cf",
+          "#ebeff4"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1e293b",
+        "tonalRamp": [
+          "#060b15",
+          "#1d2532",
+          "#384253",
+          "#566275",
+          "#768398",
+          "#9aa6b9",
+          "#bfcadb",
+          "#e6efff"
+        ]
+      },
+      "ink-secondary": {
+        "role": "neutral",
+        "displayName": "Ink Secondary",
+        "canonical": "#475569",
+        "tonalRamp": [
+          "#050b15",
+          "#1c2633",
+          "#374353",
+          "#556276",
+          "#758398",
+          "#99a6b9",
+          "#becadc",
+          "#e5efff"
+        ]
+      },
+      "margin-gray": {
+        "role": "neutral",
+        "displayName": "Margin Gray",
+        "canonical": "#607087",
+        "tonalRamp": [
+          "#050b16",
+          "#1c2634",
+          "#364355",
+          "#536278",
+          "#74849a",
+          "#98a6bb",
+          "#bdcadd",
+          "#e4f0ff"
+        ]
+      },
+      "margin-gray-light": {
+        "role": "neutral",
+        "displayName": "Margin Gray Light",
+        "canonical": "#94a3b8",
+        "tonalRamp": [
+          "#060b14",
+          "#1d2632",
+          "#384352",
+          "#556274",
+          "#768397",
+          "#99a6b8",
+          "#bfcada",
+          "#e5effe"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Rule",
+        "canonical": "#e2e8f0",
+        "tonalRamp": [
+          "#090b0f",
+          "#22252a",
+          "#3e4248",
+          "#5d6268",
+          "#7e838a",
+          "#a1a5ac",
+          "#c5c9cf",
+          "#ebeff4"
+        ]
+      },
+      "charcoal-deep": {
+        "role": "neutral",
+        "displayName": "Charcoal Deep",
+        "canonical": "#07070e",
+        "tonalRamp": [
+          "#0a0b0f",
+          "#24242b",
+          "#414149",
+          "#60606a",
+          "#81818b",
+          "#a4a4ae",
+          "#c8c8d1",
+          "#edeef5"
+        ]
+      },
+      "charcoal-card": {
+        "role": "neutral",
+        "displayName": "Charcoal Card",
+        "canonical": "#11111e",
+        "tonalRamp": [
+          "#0a0a12",
+          "#24242e",
+          "#40414e",
+          "#5f606f",
+          "#808191",
+          "#a3a4b3",
+          "#c7c8d6",
+          "#ededfa"
+        ]
+      },
+      "koreader-surface": {
+        "role": "tertiary",
+        "displayName": "Koreader Surface",
+        "canonical": "#d1fae5",
+        "tonalRamp": [
+          "#000f07",
+          "#122b20",
+          "#2c493b",
+          "#486a59",
+          "#688c7a",
+          "#8dae9d",
+          "#b4d1c2",
+          "#dcf6e8"
+        ]
+      },
+      "koreader-ink": {
+        "role": "tertiary",
+        "displayName": "Koreader Ink",
+        "canonical": "#065f46",
+        "tonalRamp": [
+          "#001206",
+          "#002e1e",
+          "#0a4e3a",
+          "#287057",
+          "#4d9278",
+          "#77b49b",
+          "#a1d7c0",
+          "#ccfbe7"
+        ]
+      },
+      "koreader-rule": {
+        "role": "tertiary",
+        "displayName": "Koreader Rule",
+        "canonical": "#a7f3d0",
+        "tonalRamp": [
+          "#001205",
+          "#002f1c",
+          "#0a4e37",
+          "#297054",
+          "#4d9275",
+          "#77b499",
+          "#a1d7be",
+          "#ccfbe4"
+        ]
+      },
+      "readwise-surface": {
+        "role": "tertiary",
+        "displayName": "Readwise Surface",
+        "canonical": "#dbeafe",
+        "tonalRamp": [
+          "#060b14",
+          "#1e2630",
+          "#394350",
+          "#566272",
+          "#778495",
+          "#9aa6b6",
+          "#bfcad9",
+          "#e6effc"
+        ]
+      },
+      "readwise-ink": {
+        "role": "tertiary",
+        "displayName": "Readwise Ink",
+        "canonical": "#1e40af",
+        "tonalRamp": [
+          "#01003a",
+          "#061864",
+          "#1a3791",
+          "#3257c1",
+          "#507be8",
+          "#77a1ff",
+          "#a0c7ff",
+          "#caedff"
+        ]
+      },
+      "readwise-rule": {
+        "role": "tertiary",
+        "displayName": "Readwise Rule",
+        "canonical": "#bfdbfe",
+        "tonalRamp": [
+          "#020b1a",
+          "#162639",
+          "#30435b",
+          "#4c6380",
+          "#6c84a3",
+          "#91a7c3",
+          "#b7cbe5",
+          "#def0ff"
+        ]
+      },
+      "manual-surface": {
+        "role": "tertiary",
+        "displayName": "Manual Surface",
+        "canonical": "#fef3c7",
+        "tonalRamp": [
+          "#100b00",
+          "#2b250a",
+          "#4a4222",
+          "#6b613c",
+          "#8c835c",
+          "#aea583",
+          "#d1caaa",
+          "#f6efd3"
+        ]
+      },
+      "manual-ink": {
+        "role": "tertiary",
+        "displayName": "Manual Ink",
+        "canonical": "#92400e",
+        "tonalRamp": [
+          "#220000",
+          "#461000",
+          "#6d2b01",
+          "#96481d",
+          "#bb6a41",
+          "#dc906b",
+          "#fcb796",
+          "#ffdfc2"
+        ]
+      },
+      "manual-rule": {
+        "role": "tertiary",
+        "displayName": "Manual Rule",
+        "canonical": "#fde68a",
+        "tonalRamp": [
+          "#150900",
+          "#322300",
+          "#524000",
+          "#746000",
+          "#968128",
+          "#b7a55b",
+          "#dac989",
+          "#fdefb7"
+        ]
+      },
+      "action-favorite": {
+        "role": "tertiary",
+        "displayName": "Favorite Action",
+        "canonical": "#b45309",
+        "tonalRamp": [
+          "#250000",
+          "#4a0900",
+          "#722600",
+          "#9c4300",
+          "#c2652c",
+          "#e38c5d",
+          "#ffb48a",
+          "#ffddb8"
+        ]
+      },
+      "action-delete": {
+        "role": "tertiary",
+        "displayName": "Delete Action",
+        "canonical": "#b91c1c",
+        "tonalRamp": [
+          "#2e0000",
+          "#570000",
+          "#830002",
+          "#b1201e",
+          "#d94a41",
+          "#f9786b",
+          "#ffa496",
+          "#ffcfc2"
+        ]
+      },
+      "action-share": {
+        "role": "tertiary",
+        "displayName": "Share Action",
+        "canonical": "#4f46e5",
+        "tonalRamp": [
+          "#0d0046",
+          "#1d0074",
+          "#3223a5",
+          "#4b44d8",
+          "#676aff",
+          "#8994ff",
+          "#aebcff",
+          "#d6e5ff"
+        ]
+      },
+      "danger-surface": {
+        "role": "tertiary",
+        "displayName": "Danger Surface",
+        "canonical": "#fef2f2",
+        "tonalRamp": [
+          "#0e0a0a",
+          "#2a2323",
+          "#484040",
+          "#685f5f",
+          "#8a8080",
+          "#aca2a2",
+          "#cfc7c7",
+          "#f4ecec"
+        ]
+      },
+      "danger-border": {
+        "role": "tertiary",
+        "displayName": "Danger Border",
+        "canonical": "#fecaca",
+        "tonalRamp": [
+          "#180506",
+          "#381c1d",
+          "#5a3738",
+          "#7e5455",
+          "#a17575",
+          "#c39999",
+          "#e5bebe",
+          "#ffe5e5"
+        ]
+      },
+      "danger-ink": {
+        "role": "tertiary",
+        "displayName": "Danger Ink",
+        "canonical": "#b91c1c",
+        "tonalRamp": [
+          "#2e0000",
+          "#570000",
+          "#830002",
+          "#b1201e",
+          "#d94a41",
+          "#f9786b",
+          "#ffa496",
+          "#ffcfc2"
+        ]
+      },
+      "danger-solid": {
+        "role": "tertiary",
+        "displayName": "Danger Solid",
+        "canonical": "#dc2626",
+        "tonalRamp": [
+          "#310000",
+          "#5c0000",
+          "#8a0000",
+          "#b9000d",
+          "#e33c36",
+          "#ff6f63",
+          "#ff9d8f",
+          "#ffcabc"
+        ]
+      },
+      "heat-light-1": {
+        "role": "tertiary",
+        "displayName": "Heat Step 1 (light)",
+        "canonical": "#bbf7d0",
+        "tonalRamp": [
+          "#001103",
+          "#042d18",
+          "#1f4d32",
+          "#3a6e4f",
+          "#5b906f",
+          "#82b293",
+          "#abd5b9",
+          "#d4f9e0"
+        ]
+      },
+      "heat-light-2": {
+        "role": "tertiary",
+        "displayName": "Heat Step 2 (light)",
+        "canonical": "#4ade80",
+        "tonalRamp": [
+          "#001500",
+          "#003400",
+          "#00560b",
+          "#007a26",
+          "#009e49",
+          "#4bc073",
+          "#81e29d",
+          "#b3ffc8"
+        ]
+      },
+      "heat-light-3": {
+        "role": "tertiary",
+        "displayName": "Heat Step 3 (light)",
+        "canonical": "#16a34a",
+        "tonalRamp": [
+          "#001500",
+          "#003300",
+          "#005509",
+          "#007825",
+          "#1c9c48",
+          "#5bbd72",
+          "#8ce09c",
+          "#bbffc7"
+        ]
+      },
+      "heat-light-4": {
+        "role": "tertiary",
+        "displayName": "Heat Step 4 (light)",
+        "canonical": "#15803d",
+        "tonalRamp": [
+          "#001300",
+          "#003104",
+          "#00521c",
+          "#0f7536",
+          "#3d9857",
+          "#6cb97e",
+          "#99dca6",
+          "#c5ffd0"
+        ]
+      },
+      "heat-dark-1": {
+        "role": "tertiary",
+        "displayName": "Heat Step 1 (dark)",
+        "canonical": "#14532d",
+        "tonalRamp": [
+          "#001101",
+          "#022e14",
+          "#1d4d2e",
+          "#376f49",
+          "#599169",
+          "#81b38e",
+          "#a9d6b5",
+          "#d3fadc"
+        ]
+      },
+      "heat-dark-2": {
+        "role": "tertiary",
+        "displayName": "Heat Step 2 (dark)",
+        "canonical": "#166534",
+        "tonalRamp": [
+          "#001200",
+          "#002f0f",
+          "#0f4f28",
+          "#2c7142",
+          "#4f9462",
+          "#79b688",
+          "#a3d9af",
+          "#cefcd8"
+        ]
+      },
+      "heat-dark-3": {
+        "role": "tertiary",
+        "displayName": "Heat Step 3 (dark)",
+        "canonical": "#15803d",
+        "tonalRamp": [
+          "#001300",
+          "#003104",
+          "#00521c",
+          "#0f7536",
+          "#3d9857",
+          "#6cb97e",
+          "#99dca6",
+          "#c5ffd0"
+        ]
+      },
+      "heat-dark-4": {
+        "role": "tertiary",
+        "displayName": "Heat Step 4 (dark)",
+        "canonical": "#22c55e",
+        "tonalRamp": [
+          "#001500",
+          "#003500",
+          "#005700",
+          "#007b19",
+          "#009e3f",
+          "#4ac06b",
+          "#81e396",
+          "#b2ffc2"
+        ]
+      },
+      "sidebar-active": {
+        "role": "neutral",
+        "displayName": "Sidebar Active",
+        "canonical": "#0f172a",
+        "tonalRamp": [
+          "#060b16",
+          "#1e2534",
+          "#394254",
+          "#576177",
+          "#78829a",
+          "#9ba5bb",
+          "#c0c9dd",
+          "#e6efff"
+        ]
+      },
+      "sidebar-muted": {
+        "role": "neutral",
+        "displayName": "Sidebar Muted",
+        "canonical": "#68768a",
+        "tonalRamp": [
+          "#060b15",
+          "#1d2632",
+          "#384352",
+          "#556275",
+          "#768397",
+          "#9aa6b8",
+          "#bfcadb",
+          "#e5effe"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Stat numbers and the few real page titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card and section headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "The default interface voice, 233 uses across the templates."
+      },
+      "reading": {
+        "displayName": "Reading",
+        "purpose": "Highlight text on cards and in review - the only type allowed to grow."
+      },
+      "quote": {
+        "displayName": "Quote",
+        "purpose": "Review quotes; serif, 1.75 line-height, never below 15px."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Form labels, section eyebrows, badges. The only uppercase in the system."
+      },
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Mobile bottom-nav labels."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Keyboard shortcut keys."
+      },
+      "body-reader": {
+        "displayName": "Body (Reader theme)",
+        "purpose": "The Reader theme's body voice: warm serif on cream."
+      },
+      "body-contemporary": {
+        "displayName": "Body (Contemporary themes)",
+        "purpose": "Both Contemporary themes' body voice."
+      },
+      "mono-contemporary": {
+        "displayName": "Mono (Contemporary themes)",
+        "purpose": "Keyboard shortcut keys under the Contemporary themes."
+      },
+      "badge": {
+        "displayName": "Badge",
+        "purpose": "Source badges and the mobile swipe labels - the 11px floor."
+      },
+      "control": {
+        "displayName": "Control",
+        "purpose": "The sidebar theme toggle."
+      },
+      "headline-compact": {
+        "displayName": "Headline Compact",
+        "purpose": "Stat numerals inside the mobile breakpoint."
+      },
+      "quote-compact": {
+        "displayName": "Quote Compact",
+        "purpose": "The review quote inside the mobile card."
+      }
+    },
+    "shadows": [
+      {
+        "name": "hairline",
+        "value": "0 1px 2px rgba(0,0,0,0.05)",
+        "purpose": "Resting buttons and cards; Tailwind shadow-sm, barely there."
+      },
+      {
+        "name": "ambient-lift",
+        "value": "0 8px 24px rgba(0,0,0,0.06)",
+        "purpose": "A stat card on hover, paired with translateY(-2px)."
+      },
+      {
+        "name": "dialog",
+        "value": "0 25px 50px -12px rgba(0,0,0,0.25)",
+        "purpose": "The confirm dialog - the one genuinely raised surface."
+      },
+      {
+        "name": "glass-card",
+        "value": "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)",
+        "purpose": "Glass theme blurred cards at rest."
+      },
+      {
+        "name": "glass-card-hover",
+        "value": "0 16px 48px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)",
+        "purpose": "Glass theme cards on hover."
+      },
+      {
+        "name": "glass-accent-glow",
+        "value": "0 4px 14px rgba(99,102,241,0.3)",
+        "purpose": "Glass theme accent surfaces; buttons deepen to 0 6px 20px rgba(99,102,241,0.4)."
+      },
+      {
+        "name": "key-edge",
+        "value": "0 1px 0 #cbd5e1",
+        "purpose": "Physical bottom edge on a keyboard shortcut key."
+      },
+      {
+        "name": "range-thumb",
+        "value": "0 1px 4px rgba(0,0,0,0.15)",
+        "purpose": "Range slider thumb; hover becomes 0 2px 8px rgba(99,102,241,0.3)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "duration-state",
+        "value": "150ms ease",
+        "purpose": "Hover and focus on rows, links, buttons, tag pills."
+      },
+      {
+        "name": "duration-shadow",
+        "value": "200ms ease",
+        "purpose": "Shadow and transform on cards."
+      },
+      {
+        "name": "duration-enter",
+        "value": "250ms-350ms ease-out",
+        "purpose": "Entrances: fadeInUp 0.35s for review cards, fadeIn 0.25s for detail rows."
+      },
+      {
+        "name": "duration-sheet",
+        "value": "300ms ease-out",
+        "purpose": "Mobile bottom sheet slideUp; theme switch fades background and color over 300ms."
+      },
+      {
+        "name": "duration-spin",
+        "value": "600ms linear",
+        "purpose": "Button loading spinner."
+      },
+      {
+        "name": "transform-hover-lift",
+        "value": "translateY(-2px)",
+        "purpose": "Stat card hover lift."
+      },
+      {
+        "name": "transform-press",
+        "value": "scale(0.99)",
+        "purpose": "Mobile highlight card press feedback."
+      },
+      {
+        "name": "transform-heatmap-hover",
+        "value": "scale(1.4)",
+        "purpose": "Heatmap cell hover zoom."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "mobile-card-swap",
+        "value": "767px"
+      },
+      {
+        "name": "mobile-page-padding",
+        "value": "639px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The accent action. One per view earns it: start review, save, confirm.",
+      "html": "<button class=\"ds-btn-primary\">Start Review</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background-color:var(--btn-primary-bg,#4f46e5);color:var(--btn-primary-text,#ffffff);font:500 0.875rem/1.25 Inter,system-ui,sans-serif;border:1px solid transparent;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);cursor:pointer;transition:background-color 0.15s ease,box-shadow 0.15s ease}.ds-btn-primary:hover{background-color:var(--btn-primary-hover,#4338ca)}.ds-btn-primary:focus-visible{outline:none;box-shadow:0 0 0 2px color-mix(in srgb,var(--color-accent,#4f46e5) 40%,transparent)}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Ruled action beside a primary, or a standalone row action.",
+      "html": "<button class=\"ds-btn-secondary\">View in Context</button>",
+      "css": ".ds-btn-secondary{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;background-color:var(--bg-card,#ffffff);color:var(--text-secondary,#475569);font:500 0.875rem/1.25 Inter,system-ui,sans-serif;border:1px solid var(--border-card,#e2e8f0);border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);cursor:pointer;transition:background-color 0.15s ease,color 0.15s ease}.ds-btn-secondary:hover{background-color:var(--bg-page-alt,#f1f5f9);color:var(--text-primary,#1e293b)}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input-text",
+      "description": "Uppercase 12px label over a surface input with an accent focus border.",
+      "html": "<label class=\"ds-field\" for=\"ds-q\">Search highlights</label><input class=\"ds-input\" id=\"ds-q\" placeholder=\"Search highlights\">",
+      "css": ".ds-field{display:block;margin-bottom:4px;color:var(--text-muted,#64748b);font:600 0.75rem/1.33 Inter,system-ui,sans-serif;letter-spacing:0.05em;text-transform:uppercase}.ds-input{width:100%;box-sizing:border-box;padding:8px 12px;background-color:var(--bg-card,#ffffff);color:var(--text-primary,#1e293b);font:400 0.875rem/1.5 Inter,system-ui,sans-serif;border:1px solid var(--border-card,#e2e8f0);border-radius:8px;transition:border-color 0.15s ease,box-shadow 0.15s ease}.ds-input::placeholder{color:var(--text-muted,#64748b)}.ds-input:focus{outline:none;border-color:var(--color-accent,#4f46e5);box-shadow:0 0 0 2px color-mix(in srgb,var(--color-accent,#4f46e5) 40%,transparent)}"
+    },
+    {
+      "name": "Stat Card",
+      "kind": "card",
+      "refersTo": "stat-card",
+      "description": "Dashboard counter. Flat at rest; hover lifts 2px and draws a 2px accent gradient across the top.",
+      "html": "<div class=\"ds-stat\"><div class=\"ds-stat-value\">1,284</div><div class=\"ds-stat-label\">Highlights</div></div>",
+      "css": ".ds-stat{position:relative;overflow:hidden;padding:24px;background-color:var(--bg-card,#ffffff);border:1px solid var(--border-card,#e2e8f0);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,0.05);transition:box-shadow 0.2s ease,transform 0.2s ease}.ds-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--color-accent,#4f46e5),transparent);opacity:0;transition:opacity 0.3s ease}.ds-stat:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.06)}.ds-stat:hover::before{opacity:1}.ds-stat-value{color:var(--text-primary,#1e293b);font:700 1.875rem/1.2 Inter,system-ui,sans-serif}.ds-stat-label{margin-top:4px;color:var(--text-muted,#64748b);font:600 0.75rem/1.33 Inter,system-ui,sans-serif;letter-spacing:0.05em;text-transform:uppercase}"
+    },
+    {
+      "name": "Highlight Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "A saved highlight on mobile: 12px card, 15px reading text clamped to three lines, meta row, ruled action row.",
+      "html": "<div class=\"ds-hlcard\"><div class=\"ds-hlcard-text\">The unexamined life is not worth living.</div><div class=\"ds-hlcard-meta\"><strong>Socrates</strong> \u00b7 <span class=\"ds-badge ds-badge-koreader\">Koreader</span> \u00b7 <span class=\"ds-tag\">philosophy</span></div><div class=\"ds-hlcard-actions\"><span>&#9733; Favorite</span><span>Share</span></div></div>",
+      "css": ".ds-hlcard{padding:14px 16px;background-color:var(--bg-card,#ffffff);border:1px solid var(--border-card,#e2e8f0);border-radius:12px;transition:box-shadow 0.15s ease,transform 0.15s ease}.ds-hlcard:hover{box-shadow:0 8px 24px rgba(0,0,0,0.06)}.ds-hlcard:active{transform:scale(0.99)}.ds-hlcard-text{color:var(--text-primary,#1e293b);font:400 0.9375rem/1.625 Inter,system-ui,sans-serif;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.ds-hlcard-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;color:var(--text-muted,#64748b);font-size:0.75rem}.ds-hlcard-actions{display:flex;align-items:center;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border-card,#e2e8f0);color:var(--text-muted,#64748b);font-size:0.75rem;cursor:pointer}"
+    },
+    {
+      "name": "Tag Pill",
+      "kind": "chip",
+      "refersTo": "tag-pill",
+      "description": "User tag. Quiet by design: it labels without competing with the highlight it sits under.",
+      "html": "<span class=\"ds-tag\">philosophy</span> <span class=\"ds-tag\">stoicism</span>",
+      "css": ".ds-tag{display:inline-block;padding:1px 8px;background-color:var(--bg-page-alt,#f1f5f9);color:var(--text-muted,#64748b);font:500 0.65rem/1.5 Inter,system-ui,sans-serif;border:1px solid var(--border-card,#e2e8f0);border-radius:9999px;white-space:nowrap;transition:background-color 0.15s ease,color 0.15s ease;cursor:default}.ds-tag:hover{background-color:var(--bg-sidebar-active,#e2e8f0);color:var(--text-secondary,#475569)}"
+    },
+    {
+      "name": "Source Badge",
+      "kind": "chip",
+      "refersTo": "source-badge",
+      "description": "Capture provenance. Color carries meaning here, so the badge never appears without its source name.",
+      "html": "<span class=\"ds-badge ds-badge-koreader\">Koreader</span> <span class=\"ds-badge ds-badge-readwise\">Readwise</span> <span class=\"ds-badge ds-badge-manual\">Manual</span>",
+      "css": ".ds-badge{display:inline-flex;align-items:center;padding:2px 10px;border-radius:9999px;font:600 0.7rem/1.5 Inter,system-ui,sans-serif;letter-spacing:0.04em;text-transform:uppercase;white-space:nowrap}.ds-badge-koreader{background:#d1fae5;color:#065f46;border:1px solid #a7f3d0}.ds-badge-readwise{background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe}.ds-badge-manual{background:#fef3c7;color:#92400e;border:1px solid #fde68a}"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Sidebar row: emoji icon, 14px medium label, 8px radius. Active row fills with the deepest surface step and goes semibold.",
+      "html": "<div class=\"ds-nav-shell\"><a class=\"ds-nav ds-nav-active\" href=\"#\"><span>&#128221;</span>Highlights</a><a class=\"ds-nav\" href=\"#\"><span>&#127991;&#65039;</span>Tags</a></div>",
+      "css": ".ds-nav-shell{width:240px;padding:12px;background-color:var(--bg-sidebar,#ffffff);border:1px solid var(--border-sidebar,#e2e8f0);border-radius:12px;display:flex;flex-direction:column;gap:4px}.ds-nav{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:var(--text-sidebar,#475569);font:500 0.875rem/1.25 Inter,system-ui,sans-serif;text-decoration:none;transition:background-color 0.15s ease,color 0.15s ease}.ds-nav:hover{background-color:var(--bg-sidebar-hover,#f1f5f9);color:var(--text-sidebar-active,#0f172a)}.ds-nav-active{background-color:var(--bg-sidebar-active,#e2e8f0);color:var(--text-sidebar-active,#0f172a);font-weight:600}"
+    },
+    {
+      "name": "Bottom Nav Item",
+      "kind": "nav",
+      "refersTo": "bottom-nav-item",
+      "description": "Mobile navigation row: 22px SVG stroked at 1.8, 10px label, safe-area padding, active colors icon and label together.",
+      "html": "<nav class=\"ds-bottomnav\"><a class=\"ds-bnitem\" href=\"#\"><svg viewBox=\"0 0 24 24\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/></svg><span>Home</span></a><a class=\"ds-bnitem ds-bnitem-active\" href=\"#\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 20h16a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1z\"/><path d=\"M8 8h8M8 12h6M8 16h4\"/></svg><span>Highlights</span></a><a class=\"ds-bnitem\" href=\"#\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 19.5A2.5 2.5 0 0 1 6.5 17H20\"/><path d=\"M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z\"/></svg><span>Review</span></a></nav>",
+      "css": ".ds-bottomnav{display:flex;align-items:center;justify-content:space-around;padding:6px 8px;background-color:var(--bg-sidebar,#ffffff);border-top:1px solid var(--border-sidebar,#e2e8f0);border-radius:0 0 12px 12px}.ds-bnitem{display:flex;flex:1;flex-direction:column;align-items:center;gap:1px;padding:6px 10px 4px;border-radius:8px;color:var(--text-sidebar-muted,#94a3b8);font:500 0.625rem/1.3 Inter,system-ui,sans-serif;text-decoration:none;transition:color 0.15s,background-color 0.15s}.ds-bnitem:hover{color:var(--text-sidebar-active,#0f172a);background-color:var(--bg-sidebar-hover,#f1f5f9)}.ds-bnitem-active{color:var(--text-sidebar-active,#0f172a)}.ds-bnitem svg{width:22px;height:22px;display:block}.ds-bnitem svg rect,.ds-bnitem svg path{stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}"
+    },
+    {
+      "name": "Review Heatmap Cell",
+      "kind": "custom",
+      "refersTo": "heatmap-cell",
+      "description": "The only data visualization in the product and the only component allowed a saturated ramp. Scales 1.4 on hover.",
+      "html": "<div class=\"ds-heat\"><span class=\"ds-heat-cell ds-heat-1\"></span><span class=\"ds-heat-cell ds-heat-2\"></span><span class=\"ds-heat-cell ds-heat-3\"></span><span class=\"ds-heat-cell ds-heat-0\"></span><span class=\"ds-heat-cell ds-heat-4\"></span><span class=\"ds-heat-cell ds-heat-2\"></span><span class=\"ds-heat-cell ds-heat-0\"></span></div>",
+      "css": ".ds-heat{display:flex;gap:3px;padding:12px;background-color:var(--bg-card,#ffffff);border:1px solid var(--border-card,#e2e8f0);border-radius:12px}.ds-heat-cell{width:14px;height:14px;border-radius:3px;transition:transform 0.1s ease,opacity 0.1s ease}.ds-heat-cell:hover{transform:scale(1.4);position:relative;z-index:5}.ds-heat-0{background-color:var(--bg-page-alt,#f1f5f9)}.ds-heat-1{background-color:#bbf7d0}.ds-heat-2{background-color:#4ade80}.ds-heat-3{background-color:#16a34a}.ds-heat-4{background-color:#15803d}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Reading Room",
+    "overview": "Commonplace is a reading room, not a workspace. Every surface exists to hold text and then get out of the way: a page is a stack of pale cards on slate paper, one accent color for the thing you should do next, and text carrying everything else. Density is low on purpose. A class census across app/templates/*.html counts 233 uses of text-sm and 195 of text-muted against zero uses of any display or hero type - the interface speaks in one quiet mid-size voice.\n\nThe room is themeable by design, and that is the load-bearing property of the whole system. Six built-in themes (Modern, Reader, Dark, Glass, Contemporary, Contemporary Dark) are nothing but CSS custom-property overwrites of the same ~40 token names in app/static/themes.css, and a user can drop a seventh into data/themes/. No template names a color; the theme swap is one class on <body> (base.html:22). The frontmatter records the Modern values as the normative source, and the other five themes re-key the same variables.\n\nComponents are quietly tactile. Cards lift 2px on hover and take a soft shadow, buttons respond on press, the heatmap cell scales under the cursor - small answers that stay small, so a wall of thirty highlight cards still reads as a page rather than a dashboard. Motion runs 150ms for state, 250-350ms for entrances, and always eases out. The Glass theme is the single place the system permits literal light: translucent cards over deep navy, blurred at 16px, with a shadowed accent. That glow is a deliberate theme identity, not a house style.",
+    "keyCharacteristics": [
+      "One accent per theme, spent sparingly and only on the next action",
+      "Six theme sheets sharing a single token vocabulary, plus user-droppable themes",
+      "Quiet type scale: 14px body, no display face, uppercase reserved for 12px labels",
+      "Flat surfaces at rest; elevation appears only as a response to state",
+      "Mobile is a real second layout - fixed bottom nav, bottom sheets, swipe rows",
+      "Text-first proportions: highlight text is the largest recurring type on any page"
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "section": "colors",
+        "body": "A theme declares exactly one accent. Anything that wants a second color argues for a state (hover, wash, border) instead of a hue, and no screen spends the accent on more than roughly a tenth of its pixels. Its scarcity is what makes the next action legible."
+      },
+      {
+        "name": "The Six-Shelf Rule",
+        "section": "colors",
+        "body": "Every color decision has to resolve in all six themes. A literal hex inside a template is a bug, because the theme swap is a single class on the body and hard-coded color breaks it silently - in the theme nobody testing happens to be using."
+      },
+      {
+        "name": "The Legible Ramp Rule",
+        "section": "colors",
+        "body": "Three steps carry text; the fourth does not. A caption that needs to be quieter than Margin Gray gets more space or a smaller role, never the decorative token - reaching past the last legible step is what put 2.6:1 text in the shell."
+      },
+      {
+        "name": "The Reading Line Rule",
+        "section": "typography",
+        "body": "Quoted material is serif where the theme offers one, set at 1.75 line-height, never smaller than 15px, and never truncated mid-sentence to make a card fit."
+      },
+      {
+        "name": "The Uppercase Reserve Rule",
+        "section": "typography",
+        "body": "Uppercase belongs to labels and badges at 12px with 0.05em tracking. Titles, buttons, and navigation are sentence case."
+      },
+      {
+        "name": "The Flat-Until-Touched Rule",
+        "section": "elevation",
+        "body": "Surfaces are flat at rest. Shadows are a response to state - hover, focus, or an actual physical metaphor like a key cap - never a way to rank importance."
+      },
+      {
+        "name": "The Glass Exception Rule",
+        "section": "elevation",
+        "body": "Colored glow is fenced inside the Glass theme. No other theme gains a chromatic box-shadow or halo, because a glow that appears in one shelf has to be justified in all six."
+      }
+    ],
+    "dos": [
+      "**Do** define every color, border, and surface as a token in `app/static/themes.css` and consume it through `var()` or a semantic class. Six themes read the same variable names, so a token is what makes a change themeable at all.",
+      "**Do** check any visual change in all six themes before calling it done - Modern, Reader, Dark, Glass, Contemporary, Contemporary Dark - since a low-contrast pair that passes on slate paper can fail on cream or on translucent glass.",
+      "**Do** keep the accent rare. One action per view earns it; the rest belongs to type and surface.",
+      "**Do** keep quoted material serif where the theme offers one, at 1.75 line-height and at least 15px.",
+      "**Do** reuse the incumbent's tactile values - `translateY(-2px)` with `0 8px 24px rgba(0,0,0,0.06)`, press-scale 0.99 - so dozens of cards behave identically instead of each inventing its own lift.",
+      "**Do** build mobile as its own layout (bottom nav, bottom sheets, swipe rows, safe-area padding) rather than shrinking the desktop column.",
+      "**Do** keep UI edits portable to upstream `cansas/commonplace`; friction here is paid twice.",
+      "**Do** theme the browser's own surfaces from the palette - caret, placeholder, selection, scrollbars, focus. They are the cheapest signal that a page was built rather than assembled: `caret-color: var(--color-accent)`, placeholders at `var(--text-muted)`, focus authored once as `outline: 2px solid var(--color-accent)`.",
+      "**Do** draw icons as SVG in one stroke weight (1.8, round caps and joins) and mark them `aria-hidden`; the row label carries the meaning.",
+      "**Do** give the accent's text-bearing pair to anything that puts text on the accent (`--btn-primary-bg` + `--btn-primary-text`), so a dark theme reads dark-on-amber instead of white-on-amber at 2.1:1.",
+      "**Do** give a repeated literal a token before the third copy. Provenance, swipe actions, the heat ramp and the error surface were all extracted this pass; each had been a literal repeated across files, and the error surface had drifted into five different reds.",
+      "**Do** confirm a token exists before referencing it. Seven `var()` references here pointed at names that were never defined (`--sidebar-muted`, `--sidebar-active`, `--sidebar-hover`, `--page-alt`, `--interactive-accent`), so the mobile bottom nav silently lost its colours and the review chart stayed indigo in all six themes. A missing token fails without a warning; check the name against `themes.css`.",
+      "**Do** keep pre-auth and first-run surfaces on the same tokens as the app. `/setup` used to be a self-contained page with eleven hardcoded colours; it now links `themes.css` and reads every colour from tokens, so a new user's first screen follows the theme system instead of freezing the Modern palette."
+    ],
+    "donts": [
+      "**Don't** ship a second shade of a colour that already has a meaning. One danger set, one accent per theme, one ramp per data surface; a new shade is a new intent or a bug.",
+      "**Don't** introduce a color literal outside `themes.css`. The theme swap is one class on `<body>` (`base.html:22`), and a hard-coded hex silently breaks the theme nobody happens to be testing. The three source-badge tints in `style.css:97-113` are the existing debt of this kind.",
+      "**Don't** write Tailwind classes that need a config file. `tailwind.min.js` is the 3.4.17 Play CDN bundle with no config, so palette utilities like `ring-accent/40` and `accent-accent` resolve to nothing - which is why 37 call sites paired `focus:outline-none` with a ring that painted Tailwind's default blue. The project's own semantic classes (`.bg-accent`, `.text-primary`, `.border-card`) are the supported path. `themes.css` now maps `--tw-ring-color` to the accent so those call sites are correct until they are rewritten; new work should not add more of them.",
+      "**Don't** check in a build step. The frontend is Jinja, hand-written CSS, a bundled Tailwind, and vanilla JS; parity with upstream depends on there being no npm toolchain.",
+      "**Don't** add motion without a reduced-motion guard. `prefers-reduced-motion` appears nowhere in the codebase today, so every animation added widens that gap.",
+      "**Don't** extend the Glass theme's glow, blur, or translucent cards into the other five themes. Glass is an identity, not a technique to borrow.",
+      "**Don't** put emoji in chrome. Page copy may use one as a content glyph, but navigation, toggles, and badges use drawn SVG; emoji carry a different weight, color, and baseline on every platform, which is why the shell stopped using them.",
+      "**Don't** introduce a display face or hero type. Hierarchy is bought with size, weight, and position in the existing scale."
+    ]
+  }
+}

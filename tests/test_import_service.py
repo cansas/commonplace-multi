@@ -54,17 +54,18 @@ class TestDedupService:
             {"text": "hello", "book_title": "A"},
             {"text": "world", "book_title": "B"},
         ]
-        dedup = DedupService(items)
+        dedup = DedupService(items, user_id=1)
         assert len(dedup.fingerprints) == 2
         assert dedup.fingerprints[0] == highlight_fingerprint("hello", "A")
 
     def test_empty_items(self):
-        dedup = DedupService([])
+        dedup = DedupService([], user_id=1)
         assert dedup.fingerprints == []
+        assert dedup.user_id == 1  # the fork scopes duplicate checks per user
 
     def test_missing_book_title_defaults(self):
         items = [{"text": "hello"}]
-        dedup = DedupService(items)
+        dedup = DedupService(items, user_id=1)
         assert dedup.fingerprints[0] == highlight_fingerprint("hello", "Untitled")
 
     def test_is_duplicate_detects_matches(self):
@@ -72,7 +73,7 @@ class TestDedupService:
             {"text": "dup", "book_title": "X"},
             {"text": "new", "book_title": "X"},
         ]
-        dedup = DedupService(items)
+        dedup = DedupService(items, user_id=1)
         dedup.existing = {dedup.fingerprints[0]}  # Mark first as existing
         assert dedup.is_duplicate(0) is True
         assert dedup.is_duplicate(1) is False

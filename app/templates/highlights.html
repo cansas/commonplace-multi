@@ -139,7 +139,7 @@
                                     <button data-action="copy-text" data-text="{{ h.text }}" data-label="Highlight" class="px-3 py-1 bg-card border border-card text-secondary rounded text-xs font-medium hover:bg-page-alt transition-colors">📋 Copy</button>
                                     <button data-action="toggle-edit" data-hl-id="{{ h.id }}" class="px-3 py-1 bg-card border border-card text-secondary rounded text-xs font-medium hover:bg-page-alt transition-colors">✏️ Edit</button>
                                     <button data-action="load-context" data-hl-id="{{ h.id }}" class="px-3 py-1 bg-card border border-card text-secondary rounded text-xs font-medium hover:bg-page-alt transition-colors">📖 Context</button>
-                                    <button data-action="delete-hl" data-hl-id="{{ h.id }}" class="px-3 py-1 bg-red-50 border border-red-200 text-red-600 rounded text-xs font-medium hover:bg-red-100 transition-colors">🗑️ Delete</button>
+                                    <button data-action="delete-hl" data-hl-id="{{ h.id }}" class="px-3 py-1 btn-danger-quiet rounded text-xs font-medium transition-colors">🗑️ Delete</button>
                                     {% if h.share_token %}
                                     <a href="/share/{{ h.share_token }}" target="_blank" class="px-3 py-1 bg-accent-light text-accent rounded text-xs font-medium hover:bg-indigo-100 transition-colors">📤 Share</a>
                                     {% endif %}
@@ -233,7 +233,7 @@
                                     {% if h.share_token %}
                                     <a href="/share/{{ h.share_token }}" target="_blank" class="flex-1 px-3 py-2 bg-accent-light text-accent rounded-lg text-xs font-medium hover:bg-indigo-100 text-center">📤 Share</a>
                                     {% endif %}
-                                    <button data-action="delete-hl" data-hl-id="{{ h.id }}" class="flex-1 px-3 py-2 bg-red-50 border border-red-200 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100">🗑️ Delete</button>
+                                    <button data-action="delete-hl" data-hl-id="{{ h.id }}" class="flex-1 px-3 py-2 btn-danger-quiet rounded-lg text-xs font-medium">🗑️ Delete</button>
                                 </div>
                                 <!-- Inline Edit Form -->
                                 <div id="edit-{{ h.id }}" class="hidden p-4 bg-card border border-card rounded-lg">
@@ -278,10 +278,10 @@
             </div>
             <!-- Swipe-to-reveal actions -->
             <div class="hl-card-swipe-reveal" id="swipe-{{ h.id }}">
-                <button class="swipe-fav" data-action="toggle-fav" data-hl-id="{{ h.id }}">{% if h.favorite %}☆{% else %}⭐{% endif %}<br><span style="font-size:9px">{% if h.favorite %}Unfav{% else %}Fav{% endif %}</span></button>
-                <button class="swipe-delete" data-action="delete-hl" data-hl-id="{{ h.id }}">🗑️<br><span style="font-size:9px">Delete</span></button>
+                <button class="swipe-fav" data-action="toggle-fav" data-hl-id="{{ h.id }}">{% if h.favorite %}☆{% else %}⭐{% endif %}<br><span style="font-size:11px">{% if h.favorite %}Unfav{% else %}Fav{% endif %}</span></button>
+                <button class="swipe-delete" data-action="delete-hl" data-hl-id="{{ h.id }}">🗑️<br><span style="font-size:11px">Delete</span></button>
                 {% if h.share_token %}
-                <a href="/share/{{ h.share_token }}" class="swipe-share" target="_blank">📤<br><span style="font-size:9px">Share</span></a>
+                <a href="/share/{{ h.share_token }}" class="swipe-share" target="_blank">📤<br><span style="font-size:11px">Share</span></a>
                 {% endif %}
             </div>
         </div>
@@ -316,7 +316,7 @@
             <span class="text-muted">|</span>
             <button data-action="batch-add-tag" class="hover:text-emerald-400 transition-colors whitespace-nowrap">🏷️ Add Tag</button>
             <span class="text-secondary">|</span>
-            <button data-action="batch-delete" class="hover:text-red-400 transition-colors whitespace-nowrap">🗑️ Delete</button>
+            <button data-action="batch-delete" class="hover-danger transition-colors whitespace-nowrap">🗑️ Delete</button>
             <span class="text-secondary">|</span>
             <button data-action="clear-selection" class="text-muted hover:text-white transition-colors">Cancel</button>
         </div>

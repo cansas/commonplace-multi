@@ -30,11 +30,11 @@
 
     {% set error = request.query_params.get('error', '') %}
     {% if error == 'wrong-password' %}
-    <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg mb-4">❌ Current password is incorrect.</div>
+    <div class="alert-danger text-sm px-4 py-3 rounded-lg mb-4">❌ Current password is incorrect.</div>
     {% elif error == 'weak-password' %}
-    <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg mb-4">❌ New password must be at least 8 characters.</div>
+    <div class="alert-danger text-sm px-4 py-3 rounded-lg mb-4">❌ New password must be at least 8 characters.</div>
     {% elif error == 'mismatch' %}
-    <div class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg mb-4">❌ Passwords do not match.</div>
+    <div class="alert-danger text-sm px-4 py-3 rounded-lg mb-4">❌ Passwords do not match.</div>
     {% endif %}
 
     <!-- Tab Navigation -->
@@ -131,7 +131,7 @@
                     <button disabled class="px-4 py-2 bg-page-alt text-muted-lighter text-sm font-medium rounded-lg cursor-not-allowed" title="Coming soon">
                         📦 Export All Highlights
                     </button>
-                    <button data-action="confirm-reset" class="px-4 py-2 bg-red-50 border border-red-200 text-red-700 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors">
+                    <button data-action="confirm-reset" class="px-4 py-2 btn-danger-quiet text-sm font-medium rounded-lg transition-colors">
                         🗑️ Reset Database
                     </button>
                 </div>
@@ -168,7 +168,7 @@
                             ⚠️ Restore replaces your current database. You'll need to restart the container afterwards.
                         </p>
                         <button type="submit" id="restore-btn"
-                                class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                                class="px-4 py-2 btn-danger text-sm font-medium rounded-lg transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
                             🔄 Restore
                         </button>
                     </form>
@@ -198,14 +198,14 @@
                                 <span class="text-sm font-medium text-primary">{{ tok.name }}</span>
                                 <code class="text-xs text-muted font-mono">{{ tok.token_prefix }}</code>
                             </div>
-                            <p class="text-xs text-muted-lighter mt-0.5">
+                            <p class="text-xs text-muted mt-0.5">
                                 Created {{ tok.created_at.strftime('%Y-%m-%d %H:%M') if tok.created_at else '?' }}
                                 {% if tok.last_used_at %} · Last used {{ tok.last_used_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}
                             </p>
                         </div>
                         <form method="POST" action="/settings/revoke-token/{{ tok.id }}" data-action="revoke-token" data-token-name="{{ tok.name }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                            <button type="submit" class="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors">Revoke</button>
+                            <button type="submit" class="px-3 py-1.5 text-xs font-medium btn-danger-quiet rounded-lg transition-colors">Revoke</button>
                         </form>
                     </div>
                     {% endfor %}
@@ -370,7 +370,7 @@
                     <div class="theme-option flex-1 min-w-[140px] relative">
                         {% if not t.builtin %}
                         <button data-action="delete-theme" data-theme-name="{{ t.name }}"
-                                class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center hover:bg-red-600 z-10 shadow-sm"
+                                class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full badge-danger text-xs flex items-center justify-center z-10 shadow-sm"
                                 title="Delete {{ t.label }}">&times;</button>
                         {% endif %}
                         <button data-action="set-theme" data-theme="{{ t.name }}"
@@ -385,7 +385,7 @@
                                     {{ t.label[:1] }}
                                 </div>
                                 <span class="font-semibold text-primary">{{ t.label }}</span>
-                                {% if not t.builtin %}<span class="text-[10px] text-muted-lighter uppercase tracking-wider ml-1">Custom</span>{% endif %}
+                                {% if not t.builtin %}<span class="text-[10px] text-muted uppercase tracking-wider ml-1">Custom</span>{% endif %}
                             </div>
                             <p class="text-xs text-muted">{{ t.description }}</p>
                         </button>

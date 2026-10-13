@@ -13,36 +13,18 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-::selection {
-    background: #6366f1; /* indigo-500 */
-    color: #ffffff;
-}
-
 /* ---------- Custom Scrollbar ---------- */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
 
-::-webkit-scrollbar-track {
-    background: #f1f5f9; /* slate-100 */
-    border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #cbd5e1; /* slate-300 */
-    border-radius: 3px;
-    transition: background 0.2s ease;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8; /* slate-400 */
-}
+/* Track and thumb colours live in themes.css (--scrollbar-*), so one theme
+   swap repaints the scrollbars too. Only the geometry belongs here. */
 
 /* Firefox scrollbar */
 * {
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 #f1f5f9;
 }
 
 /* ---------- Stat Cards (Dashboard) ---------- */
@@ -94,23 +76,8 @@ body {
     white-space: nowrap;
 }
 
-.source-koreader {
-    background: #d1fae5; /* emerald-100 */
-    color: #065f46;       /* emerald-800 */
-    border: 1px solid #a7f3d0; /* emerald-200 */
-}
-
-.source-readwise {
-    background: #dbeafe; /* blue-100 */
-    color: #1e40af;       /* blue-800 */
-    border: 1px solid #bfdbfe; /* blue-200 */
-}
-
-.source-manual {
-    background: #fef3c7; /* amber-100 */
-    color: #92400e;       /* amber-800 */
-    border: 1px solid #fde68a; /* amber-200 */
-}
+/* The per-source tints are tokenized in themes.css (.source-badge.source-*),
+   so provenance keeps one definition and can be restyled per theme. */
 
 /* ---------- Tag Pills ---------- */
 .tag-pill {
@@ -118,17 +85,17 @@ body {
     padding: 1px 8px;
     font-size: 0.65rem;
     font-weight: 500;
-    color: #64748b;       /* slate-500 */
-    background: #f1f5f9;  /* slate-100 */
+    color: var(--text-muted);
+    background: var(--bg-page-alt);
     border-radius: 9999px;
-    border: 1px solid #e2e8f0; /* slate-200 */
+    border: 1px solid var(--border-card);
     white-space: nowrap;
     transition: background 0.15s ease, color 0.15s ease;
 }
 
 .tag-pill:hover {
-    background: #e2e8f0;  /* slate-200 */
-    color: #475569;       /* slate-600 */
+    background: var(--bg-sidebar-active);
+    color: var(--text-secondary);
 }
 
 /* ---------- Highlight Table Rows ---------- */
@@ -152,13 +119,13 @@ body {
     font-size: 0.65rem;
     font-weight: 600;
     font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-    color: #475569;
-    background: #f1f5f9;
-    border: 1px solid #cbd5e1;
+    color: var(--text-secondary);
+    background: var(--bg-page-alt);
+    border: 1px solid var(--border-card);
     border-radius: 4px;
     min-width: 20px;
     text-align: center;
-    box-shadow: 0 1px 0 #cbd5e1;
+    box-shadow: 0 1px 0 var(--border-card);
 }
 
 /* ---------- Form Elements ---------- */
@@ -166,7 +133,7 @@ input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
     height: 8px;
-    background: #e2e8f0;
+    background: var(--border-card);
     border-radius: 4px;
     outline: none;
 }
@@ -177,7 +144,7 @@ input[type="range"]::-webkit-slider-thumb {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #6366f1; /* indigo-500 */
+    /* accent fill comes from themes.css; this keeps the physical ring */
     cursor: pointer;
     border: 2px solid #ffffff;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
@@ -192,7 +159,6 @@ input[type="range"]::-moz-range-thumb {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #6366f1;
     cursor: pointer;
     border: 2px solid #ffffff;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
@@ -329,7 +295,7 @@ table {
     gap: 1px;
     padding: 6px 10px 4px;
     border-radius: 8px;
-    color: var(--sidebar-muted);
+    color: var(--text-sidebar-muted);
     text-decoration: none;
     transition: color 0.15s, background 0.15s;
     min-width: 0;
@@ -337,11 +303,11 @@ table {
 }
 .bottom-nav-item:hover,
 .bottom-nav-item:active {
-    color: var(--sidebar-active);
-    background: var(--sidebar-hover);
+    color: var(--text-sidebar-active);
+    background: var(--bg-sidebar-hover);
 }
 .bottom-nav-active {
-    color: var(--sidebar-active) !important;
+    color: var(--text-sidebar-active) !important;
 }
 .safe-area-pb {
     padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -446,7 +412,7 @@ table {
     border: none;
     cursor: pointer;
     transition: filter 0.15s;
-    color: #fff;
+    color: var(--action-label);
 }
 
 .hl-card-swipe-reveal button:active,
@@ -454,14 +420,16 @@ table {
     filter: brightness(0.9);
 }
 
+/* Swipe action colours live in themes.css as --action-* tokens; each is dark
+   enough for the label it carries (5.02, 6.47 and 6.29:1, was 2.15/3.76/4.47). */
 .hl-card-swipe-reveal .swipe-fav {
-    background: #f59e0b;
+    background: var(--action-favorite);
 }
 .hl-card-swipe-reveal .swipe-delete {
-    background: #ef4444;
+    background: var(--action-delete);
 }
 .hl-card-swipe-reveal .swipe-share {
-    background: #6366f1;
+    background: var(--action-share);
 }
 
 /* ── Full-screen Mobile Modals ───────────────────────── */
@@ -492,8 +460,8 @@ table {
     display: none;
     width: 36px;
     height: 4px;
-    border-radius: 2px;
-    background: #cbd5e1;
+    border-radius: 3px; /* --rounded-xs */
+    background: var(--text-muted-lighter);
     margin: 8px auto 4px;
 }
 
@@ -536,7 +504,7 @@ table {
     .review-secondary-actions a {
         padding: 10px 6px !important;
         font-size: 0.7rem !important;
-        border-radius: 10px !important;
+        border-radius: 12px !important; /* matches the review card it sits in; was 10px */
         text-align: center;
         justify-content: center;
     }
@@ -556,7 +524,7 @@ table {
     stroke-linejoin: round;
 }
 .bottom-nav-active .bottom-nav-icon path {
-    stroke: var(--sidebar-active, #6366f1);
+    stroke: var(--text-sidebar-active);
 }
 
 /* ── Safe area for bottom nav on notched phones ─────── */
@@ -579,14 +547,11 @@ table {
     z-index: 5;
     position: relative;
 }
-.heatmap-cell.level-0 { background: var(--page-alt, #f1f5f9); }
-.heatmap-cell.level-1 { background: #bbf7d0; }
-.heatmap-cell.level-2 { background: #4ade80; }
-.heatmap-cell.level-3 { background: #16a34a; }
-.heatmap-cell.level-4 { background: #15803d; }
-/* Dark theme overrides */
-[data-theme="dark"] .heatmap-cell.level-0 { background: #1e293b; }
-[data-theme="dark"] .heatmap-cell.level-1 { background: #14532d; }
-[data-theme="dark"] .heatmap-cell.level-2 { background: #166534; }
-[data-theme="dark"] .heatmap-cell.level-3 { background: #15803d; }
-[data-theme="dark"] .heatmap-cell.level-4 { background: #22c55e; }
+.heatmap-cell.level-0 { background: var(--bg-page-alt); }
+.heatmap-cell.level-1 { background: var(--heat-1); }
+.heatmap-cell.level-2 { background: var(--heat-2); }
+.heatmap-cell.level-3 { background: var(--heat-3); }
+.heatmap-cell.level-4 { background: var(--heat-4); }
+/* Each theme declares its own heat ramp in themes.css, so the old
+   [data-theme="dark"] overrides are gone - including the gap where Glass and
+   Contemporary Dark had no ramp of their own and borrowed the light greens. */

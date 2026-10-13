@@ -51,72 +51,83 @@
             <a href="/"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
                       {% if active_page == 'dashboard' %}active{% endif %}">
-                <span>📊</span> Dashboard
+                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Dashboard
             </a>
             <a href="/books"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
                       {% if active_page == 'books' %}active{% endif %}">
-                <span>📚</span> Books
+                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="4" height="13" rx="1"/><rect x="9.5" y="7" width="4" height="10" rx="1"/><rect x="15.5" y="5.5" width="4" height="11.5" rx="1"/><path d="M3 20h18"/></svg>
+                Books
             </a>
             <a href="/highlights"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
                       {% if active_page == 'highlights' %}active{% endif %}">
-                <span>📝</span> Highlights
+                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1z"/><path d="M8 8h8M8 12h6M8 16h4"/></svg>
+                Highlights
             </a>
             <a href="/review"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
                       {% if active_page == 'review' %}active{% endif %}">
-                <span>📖</span> Daily Review
+                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                Daily Review
             </a>
             <a href="/tags"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
                       {% if active_page == 'tags' %}active{% endif %}">
-                <span>🏷️</span> Tags
+                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><path d="M7 7h.01"/></svg>
+                Tags
             </a>
             <a href="/achievements"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
                       {% if active_page == 'achievements' %}active{% endif %}">
-                <span>🏆</span> Achievements
+                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.7-5 2.7.9-5.6-4-3.9 5.6-.8z"/></svg>
+                Achievements
             </a>
             <a href="/about"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
                       {% if active_page == 'about' %}active{% endif %}">
-                <span>ℹ️</span> About
+                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11.5v4.5"/><path d="M12 8h.01"/></svg>
+                About
             </a>
             <a href="/import"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
                       {% if active_page == 'import' %}active{% endif %}">
-                <span>📥</span> Import
+                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v9.5"/><path d="M8.4 9.6L12 13.2l3.6-3.6"/><path d="M4 14.5v3A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5v-3"/></svg>
+                Import
             </a>
             <a href="/settings"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
                       {% if active_page == 'settings' %}active{% endif %}">
-                <span>⚙️</span> Settings
+                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h9M17 7.5h3M4 16.5h4M12 16.5h8"/><circle cx="15" cy="7.5" r="2"/><circle cx="10" cy="16.5" r="2"/></svg>
+                Settings
             </a>
             {% if request.session.get("user_id") == 1 %}
             <a href="/admin/users"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
                       {% if active_page == 'admin' %}active{% endif %}">
-                <span>👥</span> Users
+                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.5" cy="8.5" r="3.2"/><path d="M4 19.5a5.5 5.5 0 0 1 11 0"/><path d="M16.2 5.9a3.2 3.2 0 0 1 0 5.2"/><path d="M17.8 19.5a5.6 5.6 0 0 0-2.6-4.6"/></svg>
+                Users
             </a>
             {% endif %}
             <div class="border-t border-sidebar my-2"></div>
             <a href="/logout"
                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150">
-                <span>🚪</span> Logout
+                <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4.5h3A2.5 2.5 0 0 1 20 7v10a2.5 2.5 0 0 1-2.5 2.5h-3"/><path d="M9.5 8.2L5.7 12l3.8 3.8"/><path d="M5.7 12H15"/></svg>
+                Logout
             </a>
         </nav>
 
         <!-- Theme Toggle + Footer -->
         <div class="px-3 py-3 border-t border-sidebar space-y-2">
             <button id="theme-toggle" class="theme-toggle-btn">
-                <span id="theme-toggle-icon" class="text-base">🎨</span>
+                <span id="theme-toggle-icon"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4v16"/></svg></span>
                 <span id="theme-toggle-label">Switch to Reader</span>
             </button>
             {% if total_highlights is defined %}
             <div class="px-2 text-xs text-sidebar-muted flex items-center gap-2">
-                <span>📝</span>
-                <span><span class="text-sidebar font-medium">{{ total_highlights }}</span> highlights</span>
+                <svg class="nav-icon" style="width:14px;height:14px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1z"/><path d="M8 8h8M8 12h6M8 16h4"/></svg>
+                <span><span class="text-sidebar font-medium sidebar-count">{{ total_highlights }}</span> highlights</span>
             </div>
             {% endif %}
         </div>

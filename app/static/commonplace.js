@@ -245,7 +245,6 @@
                 var idx = order.indexOf(theme);
                 var next = order[(idx + 1) % order.length];
                 var nextLabel = next.charAt(0).toUpperCase() + next.slice(1);
-                icon.textContent = '\uD83C\uDFA8';
                 label.textContent = 'Switch to ' + nextLabel;
             }
         }
@@ -272,7 +271,7 @@
         var link = document.querySelector('a[href="/achievements"]');
         if (link && count > 0) {
             var badge = document.createElement('span');
-            badge.className = 'ml-auto text-xs bg-accent text-white rounded-full px-1.5 py-0.5 font-bold min-w-[20px] text-center';
+            badge.className = 'ml-auto text-xs badge-accent rounded-full px-1.5 py-0.5 font-bold min-w-[20px] text-center';
             badge.textContent = count;
             link.appendChild(badge);
         }

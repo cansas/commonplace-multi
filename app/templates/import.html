@@ -13,7 +13,7 @@
     {% if import_result %}
     <!-- Import Results -->
     <div class="rounded-xl border overflow-hidden shadow-sm
-        {% if import_result.success %}bg-emerald-50 border-emerald-200{% else %}bg-red-50 border-red-200{% endif %}">
+        {% if import_result.success %}bg-emerald-50 border-emerald-200{% else %}alert-danger{% endif %}">
         <div class="px-5 py-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -26,7 +26,7 @@
                     {% endif %}
                     <div>
                         {% if import_result.errors %}
-                        <p class="text-sm font-semibold text-red-800">Import completed with errors</p>
+                        <p class="text-sm font-semibold text-danger">Import completed with errors</p>
                         {% elif import_result.dry_run %}
                         <p class="text-sm font-semibold text-amber-800">Dry Run Preview</p>
                         {% else %}
@@ -35,14 +35,14 @@
                         <p class="text-xs text-secondary mt-0.5">{{ import_result.source_name }}</p>
                     </div>
                 </div>
-                <span class="text-sm font-medium {% if import_result.errors %}text-red-700{% else %}text-emerald-700{% endif %}">
+                <span class="text-sm font-medium {% if import_result.errors %}text-danger{% else %}text-emerald-700{% endif %}">
                     {{ import_result.imported }} new · {{ import_result.skipped }} skipped
                 </span>
             </div>
             {% if import_result.errors %}
             <div class="mt-3 space-y-1">
                 {% for err in import_result.errors %}
-                <p class="text-xs text-red-600">• {{ err }}</p>
+                <p class="text-xs text-danger">• {{ err }}</p>
                 {% endfor %}
             </div>
             {% endif %}
